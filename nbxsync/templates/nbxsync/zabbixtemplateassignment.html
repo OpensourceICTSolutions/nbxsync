@@ -1,0 +1,34 @@
+{% extends template_extends|default:'generic/object.html' %}
+{% load buttons %}
+{% load custom_links %}
+{% load helpers %}
+{% load perms %}
+{% load static %}
+{% load plugins %}
+{% load render_table from django_tables2 %}
+{% block content %}
+    <div class="row">
+        <div class="col col-md-6">
+            <div class="card">
+                <h5 class="card-header">Zabbix Template Assignment</h5>
+                <table class="table table-hover attr-table">
+                    <tr>
+                        <td>Assigned object</td>
+                        <td>{{ object.assigned_object|linkify }}</td>
+                    </tr>
+                    <tr>
+                        <td>Template</td>
+                        <td>{{ object.zabbixtemplate|linkify }}</td>
+                    </tr>
+                    <tr>
+                        <td>Server</td>
+                        <td>{{ object.zabbixserver|linkify }}</td>
+                    </tr>
+                </table>
+            </div>
+            {% plugin_left_page object %}
+            {% include 'inc/panels/tags.html' %}
+        </div>
+        <div class="col col-md-6">{% plugin_right_page object %}</div>
+    </div>
+{% endblock %}

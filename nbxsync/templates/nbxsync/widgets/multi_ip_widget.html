@@ -1,0 +1,34 @@
+{% load static %}
+{% load i18n %}
+{% block content %}
+    <div id="allowedip-container">
+        {% for val in widget.value %}
+            <div class="row mb-3">
+                <div class="col">
+                    <div class="d-flex">
+                        <input type="text"
+                               name="{{ widget.name }}"
+                               value="{{ val }}"
+                               class="form-control"
+                               placeholder="IP Address">
+                        <button type="button"
+                                title="Remove"
+                                class="btn btn-outline-danger ms-1 remove-allowedip">
+                            <i class="mdi mdi-minus-circle"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+    <button type="button"
+            id="add-allowedip"
+            data-field-name="{{ widget.name }}"
+            title="{% trans "Add IP" %}"
+            class="btn">
+        <i class="mdi mdi-plus"></i>
+    </button>
+{% endblock %}
+{% block javascript %}
+    <script src="{% static 'nbxsync/js/multi-ip-widget.js' %}" defer></script>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends template_extends|default:'generic/object.html' %}
+{% load buttons %}
+{% load custom_links %}
+{% load helpers %}
+{% load perms %}
+{% load static %}
+{% load plugins %}
+{% load render_table from django_tables2 %}
+{% block content %}
+    <div class="row">
+        <div class="col col-md-6">
+            <div class="card">
+                <h5 class="card-header">Zabbix Macro Assignment</h5>
+                <table class="table table-hover attr-table">
+                    <tr>
+                        <td>Name</td>
+                        <td>{{ object.full_name }}</td>
+                    </tr>
+                    <tr>
+                        <td>Is Regex</td>
+                        <td>{{ object.is_regex }}</td>
+                    </tr>
+                    <tr>
+                        <td>Context</td>
+                        <td>{{ object.context }}</td>
+                    </tr>
+                    <tr>
+                        <td>Value</td>
+                        <td>{{ object.value }}</td>
+                    </tr>
+                    <tr>
+                        <td>Assigned object</td>
+                        <td>{{ object.assigned_object|linkify }}</td>
+                    </tr>
+                </table>
+            </div>
+            {% plugin_left_page object %}
+            {% include 'inc/panels/tags.html' %}
+        </div>
+        {% plugin_right_page object %}
+    </div>
+{% endblock %}

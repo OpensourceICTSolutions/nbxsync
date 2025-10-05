@@ -1,0 +1,50 @@
+{% extends template_extends|default:'generic/object.html' %}
+{% load buttons %}
+{% load custom_links %}
+{% load helpers %}
+{% load perms %}
+{% load static %}
+{% load plugins %}
+{% load render_table from django_tables2 %}
+{% load zabbix_tags %}
+{% block content %}
+    <div class="row">
+        <div class="col col-md-6">
+            <div class="card">
+                <h5 class="card-header">Zabbix Tag</h5>
+                <table class="table table-hover attr-table">
+                    <tr>
+                        <td>Name</td>
+                        <td>{{ object.zabbixtag.name|linkify }}</td>
+                    </tr>
+                    <tr>
+                        <td>Description</td>
+                        <td>{{ object.zabbixtag.description }}</td>
+                    </tr>
+                    <tr>
+                        <td>Tag</td>
+                        <td>{{ object.zabbixtag.tag }}</td>
+                    </tr>
+                    <tr>
+                        <td>Value</td>
+                        <td>{{ object.zabbixtag.value }}</td>
+                    </tr>
+                    <tr>
+                        <td>Assigned object</td>
+                        <td>{{ object.assigned_object|linkify }}</td>
+                    </tr>
+                </table>
+            </div>
+            {% plugin_left_page object %}
+            {% include 'inc/panels/tags.html' %}
+        </div>
+        <div class="col col-md-6">
+            {% render_zabbix_tag_assignment object as rendered_output %}
+            <div class="card">
+                <div class="card-header">Rendered Value</div>
+                <div class="card-body">{{ rendered_output|safe }}</div>
+            </div>
+            {% plugin_right_page object %}
+        </div>
+    </div>
+{% endblock %}

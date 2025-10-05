@@ -1,0 +1,163 @@
+{% extends template_extends|default:'generic/object.html' %}
+{% load buttons %}
+{% load custom_links %}
+{% load helpers %}
+{% load perms %}
+{% load static %}
+{% load plugins %}
+{% load render_table from django_tables2 %}
+{% block content %}
+    <div class="row">
+        <div class="col col-md-6">
+            <div class="card">
+                <h5 class="card-header">Zabbix Host Interface</h5>
+                <table class="table table-hover attr-table">
+                    <tr>
+                        <td>Zabbix Server</td>
+                        <td>{{ object.zabbixserver|linkify }}</td>
+                    </tr>
+                    <tr>
+                        <td>Assigned to</td>
+                        <td>{{ object.assigned_object|linkify }}</td>
+                    </tr>
+                    <tr>
+                        <td>Type</td>
+                        <td>{{ object.get_type_display }}</td>
+                    </tr>
+                    <tr>
+                        <td>Interface ID</td>
+                        <td>{{ object.interfaceid }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div class="col col-md-6">
+            <div class="card">
+                <h5 class="card-header">Details</h5>
+                <table class="table table-hover attr-table">
+                    <tr>
+                        <td>Connect via</td>
+                        <td>{{ object.get_useip_display }}</td>
+                    </tr>
+                    {% if object.useip == ZabbixInterfaceUseChoices.DNS %}
+                        <tr>
+                            <td>DNS Name</td>
+                            <td>{{ object.dns }}</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td>IP Address</td>
+                            <td>{{ object.ip|linkify }}</td>
+                        </tr>
+                        <tr>
+                            <td>Port</td>
+                            <td>{{ object.port }}</td>
+                        </tr>
+                    {% endif %}
+                </table>
+            </div>
+            {% plugin_left_page object %}
+            {% include 'inc/panels/tags.html' %}
+        </div>
+    </div>
+    <div class="row">
+        {% if object.type == ZabbixHostInterfaceTypeChoices.AGENT %}
+            <div class="col col-md-6">
+                <div class="card">
+                    <h5 class="card-header">Agent Details</h5>
+                    <table class="table table-hover attr-table">
+                        <tr>
+                            <td>Connections to agent</td>
+                            <td>{{ object.get_tls_connect_display }}</td>
+                        </tr>
+                        <tr>
+                            <td>Connections from agent</td>
+                            <td>{{ object.get_tls_accept_display|join:", " }}</td>
+                        </tr>
+                        {% if ZabbixTLSChoices.PSK in object.tls_accept or object.tls_connect == ZabbixTLSChoices.PSK %}
+                            <tr>
+                                <td>PSK Identity</td>
+                                <td>{{ object.tls_psk_identity }}</td>
+                            </tr>
+                        {% endif %}
+                        {% if ZabbixTLSChoices.CERT in object.tls_accept or object.tls_connect == ZabbixTLSChoices.CERT %}
+                            <tr>
+                                <td>Certificate Issuer</td>
+                                <td>{{ object.tls_issuer }}</td>
+                            </tr>
+                            <tr>
+                                <td>Certificate Subject</td>
+                                <td>{{ object.tls_subject }}</td>
+                            </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+        {% endif %}
+        {% if object.type == ZabbixHostInterfaceTypeChoices.IPMI %}
+            <div class="col col-md-6">
+                <div class="card">
+                    <h5 class="card-header">IPMI Details</h5>
+                    <table class="table table-hover attr-table">
+                        <tr>
+                            <td>IPMI Username</td>
+                            <td>{{ object.ipmi_username }}</td>
+                        </tr>
+                        <tr>
+                            <td>IPMI Privilege</td>
+                            <td>{{ object.get_ipmi_privilege_display }}</td>
+                        </tr>
+                        <tr>
+                            <td>IPMI Authtype</td>
+                            <td>{{ object.get_ipmi_authtype_display }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        {% endif %}
+        {% if object.type == ZabbixHostInterfaceTypeChoices.SNMP %}
+            <div class="col col-md-6">
+                <div class="card">
+                    <h5 class="card-header">SNMP Details</h5>
+                    <table class="table table-hover attr-table">
+                        <tr>
+                            <td>SNMP Version</td>
+                            <td>{{ object.get_snmp_version_display }}</td>
+                        </tr>
+                        <tr>
+                            <td>SNMP Combined requests</td>
+                            <td>{{ object.snmp_usebulk }}</td>
+                        </tr>
+                        {% if object.snmp_version == ZabbixHostInterfaceSNMPVersionChoices.SNMPV3 %}
+                            <tr>
+                                <td>SNMPv3 Context name</td>
+                                <td>{{ object.snmpv3_context_name }}</td>
+                            </tr>
+                            <tr>
+                                <td>SNMPv3 Security name</td>
+                                <td>{{ object.snmpv3_security_name }}</td>
+                            </tr>
+                            <tr>
+                                <td>SNMPv3 Security level</td>
+                                <td>{{ object.get_snmpv3_security_level_display }}</td>
+                            </tr>
+                        {% endif %}
+                        {% if object.snmpv3_security_level == ZabbixInterfaceSNMPV3SecurityLevelChoices.AUTHNOPRIV or object.snmpv3_security_level == ZabbixInterfaceSNMPV3SecurityLevelChoices.AUTHPRIV %}
+                            <tr>
+                                <td>SNMPv3 Authentication Protocol</td>
+                                <td>{{ object.get_snmpv3_authentication_protocol_display }}</td>
+                            </tr>
+                        {% endif %}
+                        {% if object.snmpv3_security_level == ZabbixInterfaceSNMPV3SecurityLevelChoices.AUTHPRIV %}
+                            <tr>
+                                <td>SNMPv3 Privacy Protocol</td>
+                                <td>{{ object.get_snmpv3_snmpv3_privacy_protocol_display }}</td>
+                            </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+        {% endif %}
+        {% plugin_right_page object %}
+    </div>
+{% endblock %}

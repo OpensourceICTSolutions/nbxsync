@@ -1,0 +1,148 @@
+{% extends template_extends|default:'generic/object.html' %}
+{% load buttons %}
+{% load custom_links %}
+{% load helpers %}
+{% load perms %}
+{% load static %}
+{% load plugins %}
+{% load render_table from django_tables2 %}
+{% block content %}
+    <div class="row">
+        <div class="col col-md-6">
+            <div class="card">
+                <h5 class="card-header">Zabbix Proxy</h5>
+                <table class="table table-hover attr-table">
+                    <tr>
+                        <td>Name</td>
+                        <td>{{ object.name }}</td>
+                    </tr>
+                    <tr>
+                        <td>Proxy Group</td>
+                        <td>{{ object.proxygroup|linkify }}</td>
+                    </tr>
+                    <tr>
+                        <td>Operating mode</td>
+                        <td>{{ object.get_operating_mode_display }}</td>
+                    </tr>
+                    <tr>
+                        <td>Server</td>
+                        <td>{{ object.zabbixserver|linkify }}</td>
+                    </tr>
+                    {% if object.operating_mode == ZabbixProxyTypeChoices.ACTIVE %}
+                        <tr>
+                            <td>Local Address</td>
+                            <td>{{ object.local_address }}</td>
+                        </tr>
+                        <tr>
+                            <td>Local Port</td>
+                            <td>{{ object.local_port }}</td>
+                        </tr>
+                        <tr>
+                            <td>Allowed Address</td>
+                            <td>
+                                <ul>
+                                    {% for address in object.allowed_addresses %}<li>{{ address }}</li>{% endfor %}
+                                </ul>
+                            </td>
+                        </tr>
+                    {% endif %}
+                    {% if object.operating_mode == ZabbixProxyTypeChoices.PASSIVE %}
+                        <tr>
+                            <td>Address</td>
+                            <td>{{ object.address }}</td>
+                        </tr>
+                        <tr>
+                            <td>Port</td>
+                            <td>{{ object.port }}</td>
+                        </tr>
+                    {% endif %}
+                </table>
+            </div>
+            {% plugin_left_page object %}
+            {% include 'inc/panels/tags.html' %}
+        </div>
+        <div class="col col-md-6">
+            <div class="card">
+                <h5 class="card-header">Encryption</h5>
+                <table class="table table-hover attr-table">
+                    {% if object.operating_mode == ZabbixProxyTypeChoices.ACTIVE %}
+                        <tr>
+                            <td>Connections from proxy</td>
+                            <td>{{ object.get_tls_accept_display|join:", " }}</td>
+                        </tr>
+                    {% endif %}
+                    {% if object.operating_mode == ZabbixProxyTypeChoices.PASSIVE %}
+                        <tr>
+                            <td>Connections to proxy</td>
+                            <td>{{ object.get_tls_connect_display }}</td>
+                        </tr>
+                    {% endif %}
+                    {% if ZabbixTLSChoices.PSK in object.tls_accept or object.tls_connect == ZabbixTLSChoices.PSK %}
+                        <tr>
+                            <td>PSK Identity</td>
+                            <td>{{ object.tls_psk_identity }}</td>
+                        </tr>
+                    {% endif %}
+                    {% if ZabbixTLSChoices.CERT in object.tls_accept or object.tls_connect == ZabbixTLSChoices.CERT %}
+                        <tr>
+                            <td>Certificate Issuer</td>
+                            <td>{{ object.tls_issuer }}</td>
+                        </tr>
+                        <tr>
+                            <td>Certificate Subject</td>
+                            <td>{{ object.tls_subject }}</td>
+                        </tr>
+                    {% endif %}
+                </table>
+            </div>
+            {% if object.custom_timeouts == 1 %}
+                <div class="card">
+                    <h5 class="card-header">Custom Timeouts</h5>
+                    <table class="table table-hover attr-table">
+                        <tr>
+                            <td>Zabbix agent</td>
+                            <td>{{ object.timeout_zabbix_agent }}</td>
+                        </tr>
+                        <tr>
+                            <td>Simple check</td>
+                            <td>{{ object.timeout_simple_check }}</td>
+                        </tr>
+                        <tr>
+                            <td>SNMP agent</td>
+                            <td>{{ object.timeout_snmp_agent }}</td>
+                        </tr>
+                        <tr>
+                            <td>External check</td>
+                            <td>{{ object.timeout_external_check }}</td>
+                        </tr>
+                        <tr>
+                            <td>Database monitor</td>
+                            <td>{{ object.timeout_db_monitor }}</td>
+                        </tr>
+                        <tr>
+                            <td>HTTP agent</td>
+                            <td>{{ object.timeout_http_agent }}</td>
+                        </tr>
+                        <tr>
+                            <td>SSH agent</td>
+                            <td>{{ object.timeout_ssh_agent }}</td>
+                        </tr>
+                        <tr>
+                            <td>TELNET agent</td>
+                            <td>{{ object.timeout_telnet_agent }}</td>
+                        </tr>
+                        <tr>
+                            <td>Script</td>
+                            <td>{{ object.timeout_script }}</td>
+                        </tr>
+                        <tr>
+                            <td>Browser</td>
+                            <td>{{ object.timeout_browser }}</td>
+                        </tr>
+                    </table>
+                </div>
+            {% endif %}
+            {% plugin_right_page object %}
+        </div>
+    </div>
+{% endblock %}

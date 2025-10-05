@@ -1,0 +1,1 @@
+from .multipwidget import *
