@@ -1,0 +1,9 @@
+.slogan {
+  font-size: 1.1rem;
+  font-style: italic;
+  text-align: center;
+  padding: .9rem 1.2rem;
+  margin: 1.2rem 0 0;
+  background: color-mix(in srgb, var(--md-accent-fg-color) 6%, transparent);
+  border-radius: .25rem;
+}

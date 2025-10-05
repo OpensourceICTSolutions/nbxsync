@@ -1,0 +1,53 @@
+{% extends template_extends|default:'generic/object.html' %}
+{% load render_table from django_tables2 %}
+{% load buttons %}
+{% load custom_links %}
+{% load helpers %}
+{% load perms %}
+{% load static %}
+{% load plugins %}
+{% block content %}
+    <div class="row">
+        <div class="col col-md-6">
+            <div class="card">
+                <h5 class="card-header">Zabbix Proxy Group</h5>
+                <table class="table table-hover attr-table">
+                    <tr>
+                        <td>Name</td>
+                        <td>{{ object.name }}</td>
+                    </tr>
+                    <tr>
+                        <td>Description</td>
+                        <td>{{ object.description }}</td>
+                    </tr>
+                    <tr>
+                        <td>Zabbix Server</td>
+                        <td>{{ object.zabbixserver|linkify }}</td>
+                    </tr>
+                    <tr>
+                        <td>Failover period</td>
+                        <td>{{ object.failover_delay }}</td>
+                    </tr>
+                    <tr>
+                        <td>Minimum number of proxies</td>
+                        <td>{{ object.min_online }}</td>
+                    </tr>
+                </table>
+            </div>
+            {% include 'nbxsync/inc/sync_status.html' %}
+            {% plugin_left_page object %}
+            {% include 'inc/panels/tags.html' %}
+        </div>
+        <div class="col col-md-6">
+            <div class="card">
+                <h2 class="card-header">Assigned proxies</h2>
+                {% if objectassignment_table %}
+                    {% render_table objectassignment_table %}
+                {% else %}
+                    <div class="card-body text-muted">No proxies assigned.</div>
+                {% endif %}
+            </div>
+            {% plugin_right_page object %}
+        </div>
+    </div>
+{% endblock %}

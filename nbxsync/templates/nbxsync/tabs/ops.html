@@ -1,0 +1,34 @@
+{% extends template_extends|default:'generic/object.html' %}
+{% load buttons %}
+{% load custom_links %}
+{% load helpers %}
+{% load perms %}
+{% load static %}
+{% load render_table from django_tables2 %}
+{% load plugins %}
+{% block content %}
+    <div class="row">
+        <div class="col col-md-12">
+            <div class="card">
+                <h2 class="card-header">Problems</h2>
+                <div hx-target="#problems"
+                     hx-swap="innerHTML"
+                     hx-get="{% url 'plugins:nbxsync:zabbixhost_problems' objtype=object|meta:'model_name' pk=object.pk %}"
+                     hx-trigger="load, every 15s"></div>
+                <div id="problems"></div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col col-md-12">
+            <div class="card">
+                <h2 class="card-header">Events (last 15)</h2>
+                <div hx-target="#events"
+                     hx-swap="innerHTML"
+                     hx-get="{% url 'plugins:nbxsync:zabbixhost_events' objtype=object|meta:'model_name' pk=object.pk %}"
+                     hx-trigger="load, every 15s"></div>
+                <div id="events"></div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

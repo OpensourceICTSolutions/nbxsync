@@ -1,0 +1,77 @@
+{% extends 'generic/object_edit.html' %}
+{% load form_helpers %}
+{% load static %}
+{% block head %}
+    <link rel="stylesheet" href="{% static 'nbxsync/css/password_field.css' %}">
+{% endblock %}
+{% block form %}
+    <div id="snmp-form-container">
+        <div class="form-group my-5">
+            <div class="row">
+                <h2 class="col-9 offset-3">Generic Configuration</h2>
+            </div>
+            {% render_field form.name %}
+            {% render_field form.description %}
+            {% render_field form.zabbixserver %}
+            {% render_field form.proxygroup %}
+            {% render_field form.operating_mode %}
+            {% comment %} Only to be shown when Operating Mode == Active and Proxygroup is set {% endcomment %}
+            <div class="form-group my-5" id="opmode-active-wrapper">
+                <div class="row">
+                    <h2 class="col-9 offset-3">Active Proxy configuration</h2>
+                </div>
+                {% render_field form.local_address %}
+                {% render_field form.local_port %}
+                {% render_field form.allowed_addresses %}
+            </div>
+            {% comment %} Only to be shown when Operating Mode == Passive {% endcomment %}
+            <div class="form-group my-5" id="opmode-passive-wrapper">
+                <div class="row">
+                    <h2 class="col-9 offset-3">Passive Proxy configuration</h2>
+                </div>
+                {% render_field form.address %}
+                {% render_field form.port %}
+            </div>
+            <div class="form-group my-5">
+                <div class="row">
+                    <h2 class="col-9 offset-3">Encryption configuration</h2>
+                </div>
+                {% render_field form.tls_connect %}
+                {% render_field form.tls_accept %}
+                <div class="form-group" id="tlspsk-wrapper">
+                    {% render_field form.tls_psk_identity %}
+                    <div class="relative-container">
+                        {% render_field form.tls_psk %}
+                        <button type="button" id="toggle-psk" class="toggle-password-btn">
+                            <i class="mdi mdi-eye" id="toggle-icon"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="form-group" id="tlscert-wrapper">
+                    {% render_field form.tls_issuer %}
+                    {% render_field form.tls_subject %}
+                </div>
+                {% render_field form.custom_timeouts %}
+                {% comment %} Only to be shown when custom_timeouts == True {% endcomment %}
+                <div class="form-group my-5" id="customtimeout-wrapper">
+                    <div class="row">
+                        <h2 class="col-9 offset-3">Custom Timeouts</h2>
+                    </div>
+                    {% render_field form.timeout_zabbix_agent %}
+                    {% render_field form.timeout_simple_check %}
+                    {% render_field form.timeout_snmp_agent %}
+                    {% render_field form.timeout_external_check %}
+                    {% render_field form.timeout_db_monitor %}
+                    {% render_field form.timeout_http_agent %}
+                    {% render_field form.timeout_ssh_agent %}
+                    {% render_field form.timeout_telnet_agent %}
+                    {% render_field form.timeout_script %}
+                    {% render_field form.timeout_browser %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block javascript %}
+    <script src="{% static 'nbxsync/js/zabbixproxy-form.js' %}" defer></script>
+{% endblock %}

@@ -1,0 +1,35 @@
+<div class="card">
+    <h5 class="card-header">Sync Status</h5>
+    <table class="table table-hover attr-table">
+        <tr>
+            <td>Sync Status</td>
+            <td>
+                {% if object.last_sync_state %}
+                    <i class="mdi mdi-check-bold text-success"></i>
+                {% else %}
+                    <i class="mdi mdi-close-thick text-danger" title="{{ false_label }}"></i>
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
+            <td>Last sync action</td>
+            <td>
+                {% if object.last_sync %}
+                    {{ object.last_sync|date:'d-m-Y H:i' }}
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
+            <td>Last sync message</td>
+            <td>
+                {% if object.last_sync_message %}
+                    {{ object.last_sync_message }}
+                {% else %}
+                    Never synced
+                {% endif %}
+            </td>
+        </tr>
+    </table>
+</div>

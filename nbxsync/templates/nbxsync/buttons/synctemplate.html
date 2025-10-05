@@ -1,0 +1,13 @@
+<div class="modal fade" id="htmx-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog{% if size %} modal-{{ size }}{% endif %}">
+        <div class="modal-content" id="htmx-modal-content"></div>
+    </div>
+</div>
+<a href="#"
+   hx-get="{% url 'plugins:nbxsync:zabbixserver_templatessync' pk=object.pk %}"
+   hx-target="#htmx-modal"
+   data-bs-toggle="modal"
+   data-bs-target="#htmx-modal"
+   class="btn btn-blue">
+    <i class="mdi mdi-monitor-multiple"></i> {{ _("Sync Templates") }}
+</a>

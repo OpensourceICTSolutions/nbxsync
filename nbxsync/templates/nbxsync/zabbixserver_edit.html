@@ -1,0 +1,23 @@
+{% extends 'generic/object_edit.html' %}
+{% load form_helpers %}
+{% load helpers %}
+{% load static %}
+{% block head %}
+    <link rel="stylesheet" href="{% static 'nbxsync/css/password_field.css' %}">
+{% endblock %}
+{% block form %}
+    {% render_field form.name %}
+    {% render_field form.description %}
+    {% render_field form.url %}
+    {% render_field form.validate_certs %}
+    <div class="relative-container">
+        {% render_field form.token %}
+        <button type="button" id="toggle-token" class="toggle-password-btn">
+            <i class="mdi mdi-eye" id="toggle-icon"></i>
+        </button>
+    </div>
+    {% render_field form.tags %}
+{% endblock %}
+{% block javascript %}
+    <script src="{% static 'nbxsync/js/zabbixserver-form.js' %}" defer></script>
+{% endblock %}
