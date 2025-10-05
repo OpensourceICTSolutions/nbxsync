@@ -1,0 +1,56 @@
+{% extends template_extends|default:'generic/object.html' %}
+{% load buttons %}
+{% load custom_links %}
+{% load helpers %}
+{% load perms %}
+{% load static %}
+{% load plugins %}
+{% block tabs %}
+    <ul class="nav nav-tabs">
+        <li class="nav-item">
+            <a class="nav-link {% if request.path == object.get_absolute_url %}active{% endif %}"
+               href="{{ object.get_absolute_url }}">Details</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if 'templates' in request.path %}active{% endif %}"
+               href="{% url 'plugins:nbxsync:zabbixserver_templates' pk=object.pk %}">Templates {% badge template_count %}</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if 'changelog' in request.path %}active{% endif %}"
+               href="{% url 'plugins:nbxsync:zabbixserver_changelog' pk=object.pk %}">Changelog</a>
+        </li>
+    </ul>
+{% endblock %}
+{% block content %}
+    <div class="row">
+        <div class="col col-md-">
+            <div class="card">
+                <h5 class="card-header">Zabbix Server</h5>
+                <table class="table table-hover attr-table">
+                    <tr>
+                        <td>Name</td>
+                        <td>{{ object.name }}</td>
+                    </tr>
+                    <tr>
+                        <td>Description</td>
+                        <td>{{ object.description }}</td>
+                    </tr>
+                    <tr>
+                        <td>URL</td>
+                        <td>{{ object.url }}</td>
+                    </tr>
+                    <tr>
+                        <td>HTTPS Certificate validation</td>
+                        <td>{{ object.validate_certs }}</td>
+                    </tr>
+                </table>
+            </div>
+            {% plugin_left_page object %}
+        </div>
+        <div class="col col-md-6">
+            {% include 'nbxsync/inc/sync_status.html' %}
+            {% include 'inc/panels/tags.html' %}
+            {% plugin_right_page object %}
+        </div>
+    </div>
+{% endblock %}

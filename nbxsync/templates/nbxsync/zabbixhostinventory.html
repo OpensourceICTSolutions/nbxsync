@@ -1,0 +1,358 @@
+{% extends template_extends|default:'generic/object.html' %}
+{% load buttons %}
+{% load custom_links %}
+{% load helpers %}
+{% load perms %}
+{% load static %}
+{% load plugins %}
+{% load render_table from django_tables2 %}
+{% load render_field %}
+{% block content %}
+    <div class="row">
+        <div class="col-md-6">
+            <!-- General -->
+            <div class="card">
+                <h5 class="card-header">General</h5>
+                <table class="table table-hover attr-table">
+                    <tr>
+                        <td>Alias</td>
+                        <td>{{ object|render_field:"alias" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Asset Tag</td>
+                        <td>{{ object|render_field:"asset_tag" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Chassis</td>
+                        <td>{{ object|render_field:"chassis" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Contact</td>
+                        <td>{{ object|render_field:"contact" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Contract Number</td>
+                        <td>{{ object|render_field:"contract_number" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Deployment Status</td>
+                        <td>{{ object|render_field:"deployment_status" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Installer Name</td>
+                        <td>{{ object|render_field:"installer_name" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Vendor</td>
+                        <td>{{ object|render_field:"vendor" }}</td>
+                    </tr>
+                </table>
+            </div>
+            <!-- Hardware & Software -->
+            <div class="card">
+                <h5 class="card-header">Hardware & Software</h5>
+                <table class="table table-hover attr-table">
+                    <tr>
+                        <td>Hardware</td>
+                        <td>{{ object|render_field:"hardware" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Detailed Hardware</td>
+                        <td>{{ object|render_field:"hardware_full" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Model</td>
+                        <td>{{ object|render_field:"model_field" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Serial A</td>
+                        <td>{{ object|render_field:"serialno_a" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Serial B</td>
+                        <td>{{ object|render_field:"serialno_b" }}</td>
+                    </tr>
+                    <tr>
+                        <td>OS</td>
+                        <td>{{ object|render_field:"os" }}</td>
+                    </tr>
+                    <tr>
+                        <td>OS Full</td>
+                        <td>{{ object|render_field:"os_full" }}</td>
+                    </tr>
+                    <tr>
+                        <td>OS Short</td>
+                        <td>{{ object|render_field:"os_short" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Software</td>
+                        <td>{{ object|render_field:"software" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Software Full</td>
+                        <td>{{ object|render_field:"software_full" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Software App A</td>
+                        <td>{{ object|render_field:"software_app_a" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Software App B</td>
+                        <td>{{ object|render_field:"software_app_b" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Software App C</td>
+                        <td>{{ object|render_field:"software_app_c" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Software App D</td>
+                        <td>{{ object|render_field:"software_app_d" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Software App E</td>
+                        <td>{{ object|render_field:"software_app_e" }}</td>
+                    </tr>
+                </table>
+            </div>
+            <!-- Lifecycle Dates -->
+            <div class="card">
+                <h5 class="card-header">Lifecycle Dates</h5>
+                <table class="table table-hover attr-table">
+                    <tr>
+                        <td>HW Decommission</td>
+                        <td>{{ object|render_field:"date_hw_decomm" }}</td>
+                    </tr>
+                    <tr>
+                        <td>HW Expiry</td>
+                        <td>{{ object|render_field:"date_hw_expiry" }}</td>
+                    </tr>
+                    <tr>
+                        <td>HW Install</td>
+                        <td>{{ object|render_field:"date_hw_install" }}</td>
+                    </tr>
+                    <tr>
+                        <td>HW Purchase</td>
+                        <td>{{ object|render_field:"date_hw_purchase" }}</td>
+                    </tr>
+                </table>
+            </div>
+            <!-- Location -->
+            <div class="card">
+                <h5 class="card-header">Location</h5>
+                <table class="table table-hover attr-table">
+                    <tr>
+                        <td>Location</td>
+                        <td>{{ object|render_field:"location" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Latitude</td>
+                        <td>{{ object|render_field:"location_lat" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Longitude</td>
+                        <td>{{ object|render_field:"location_lon" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Address A</td>
+                        <td>{{ object|render_field:"site_address_a" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Address B</td>
+                        <td>{{ object|render_field:"site_address_b" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Address C</td>
+                        <td>{{ object|render_field:"site_address_c" }}</td>
+                    </tr>
+                    <tr>
+                        <td>City</td>
+                        <td>{{ object|render_field:"site_city" }}</td>
+                    </tr>
+                    <tr>
+                        <td>State</td>
+                        <td>{{ object|render_field:"site_state" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Country</td>
+                        <td>{{ object|render_field:"site_country" }}</td>
+                    </tr>
+                    <tr>
+                        <td>ZIP</td>
+                        <td>{{ object|render_field:"site_zip" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Rack</td>
+                        <td>{{ object|render_field:"site_rack" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Notes</td>
+                        <td>{{ object|render_field:"site_notes" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <!-- Column 2 -->
+        <div class="col-md-6">
+            <!-- Networking -->
+            <div class="card">
+                <h5 class="card-header">Networking</h5>
+                <table class="table table-hover attr-table">
+                    <tr>
+                        <td>Netmask</td>
+                        <td>{{ object|render_field:"host_netmask" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Networks</td>
+                        <td>{{ object|render_field:"host_networks" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Router</td>
+                        <td>{{ object|render_field:"host_router" }}</td>
+                    </tr>
+                    <tr>
+                        <td>OOB IP</td>
+                        <td>{{ object|render_field:"oob_ip" }}</td>
+                    </tr>
+                    <tr>
+                        <td>OOB Netmask</td>
+                        <td>{{ object|render_field:"oob_netmask" }}</td>
+                    </tr>
+                    <tr>
+                        <td>OOB Router</td>
+                        <td>{{ object|render_field:"oob_router" }}</td>
+                    </tr>
+                </table>
+            </div>
+            <!-- Hardware Identifiers -->
+            <div class="card">
+                <h5 class="card-header">Hardware Identifiers</h5>
+                <table class="table table-hover attr-table">
+                    <tr>
+                        <td>MAC Address A</td>
+                        <td>{{ object|render_field:"macaddress_a" }}</td>
+                    </tr>
+                    <tr>
+                        <td>MAC Address B</td>
+                        <td>{{ object|render_field:"macaddress_b" }}</td>
+                    </tr>
+                    <tr>
+                        <td>HW Architecture</td>
+                        <td>{{ object|render_field:"hw_arch" }}</td>
+                    </tr>
+                </table>
+            </div>
+            <!-- Primary Contact -->
+            <div class="card">
+                <h5 class="card-header">Primary Contact</h5>
+                <table class="table table-hover attr-table">
+                    <tr>
+                        <td>Name</td>
+                        <td>{{ object|render_field:"poc_1_name" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Email</td>
+                        <td>{{ object|render_field:"poc_1_email" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Phone A</td>
+                        <td>{{ object|render_field:"poc_1_phone_a" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Phone B</td>
+                        <td>{{ object|render_field:"poc_1_phone_b" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Cell</td>
+                        <td>{{ object|render_field:"poc_1_cell" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Screen</td>
+                        <td>{{ object|render_field:"poc_1_screen" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Notes</td>
+                        <td>{{ object|render_field:"poc_1_notes" }}</td>
+                    </tr>
+                </table>
+            </div>
+            <!-- Secondary Contact -->
+            <div class="card">
+                <h5 class="card-header">Secondary Contact</h5>
+                <table class="table table-hover attr-table">
+                    <tr>
+                        <td>Name</td>
+                        <td>{{ object|render_field:"poc_2_name" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Email</td>
+                        <td>{{ object|render_field:"poc_2_email" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Phone A</td>
+                        <td>{{ object|render_field:"poc_2_phone_a" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Phone B</td>
+                        <td>{{ object|render_field:"poc_2_phone_b" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Cell</td>
+                        <td>{{ object|render_field:"poc_2_cell" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Screen</td>
+                        <td>{{ object|render_field:"poc_2_screen" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Notes</td>
+                        <td>{{ object|render_field:"poc_2_notes" }}</td>
+                    </tr>
+                </table>
+            </div>
+            <!-- Miscellaneous -->
+            <div class="card">
+                <h5 class="card-header">Miscellaneous</h5>
+                <table class="table table-hover attr-table">
+                    <tr>
+                        <td>Tag</td>
+                        <td>{{ object|render_field:"tag" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Type</td>
+                        <td>{{ object|render_field:"type" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Type Full</td>
+                        <td>{{ object|render_field:"type_full" }}</td>
+                    </tr>
+                    <tr>
+                        <td>URL A</td>
+                        <td>{{ object|render_field:"url_a" }}</td>
+                    </tr>
+                    <tr>
+                        <td>URL B</td>
+                        <td>{{ object|render_field:"url_b" }}</td>
+                    </tr>
+                    <tr>
+                        <td>URL C</td>
+                        <td>{{ object|render_field:"url_c" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Name</td>
+                        <td>{{ object|render_field:"name" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Notes</td>
+                        <td>{{ object|render_field:"notes" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Assigned To</td>
+                        <td>{{ object.assigned_object|linkify }}</td>
+                    </tr>
+                </table>
+            </div>
+            {% plugin_right_page object %}
+            {% include 'inc/panels/tags.html' %}
+        </div>
+    </div>
+{% endblock %}

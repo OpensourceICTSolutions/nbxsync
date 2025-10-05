@@ -1,0 +1,71 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nbxsync"
+version = "1.0.0"
+authors = [
+  { name="Opensource ICT Solutions", email="info@oicts.com" },
+]
+description = "nbxsync"
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+keywords = ["netbox", "netbox-plugin", "zabbix", "nbxsync"]
+dependencies = [
+  "zabbix_utils",
+  "pydantic",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "djlint",
+    "mkdocs-material"
+]
+
+[project.urls]
+"Homepage" = "https://nbxsync.com"
+"Source" = "https://github.com/OpensourceICTSolutions/nbxsync"
+"Bug Tracker" = "https://github.com/OpensourceICTSolutions/nbxsync/issues/"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["nbxsync*"]
+
+[tool.setuptools.package-data]
+"nbxsync" = ["static/**", "templates/**"]
+
+[tool.ruff]
+exclude = [
+    "nbxsync/migrations",
+]
+line-length = 420
+
+[tool.ruff.lint]
+extend-select = ["E4", "E7", "E9", "F", "W", "C", "I"]
+ignore = ["F403", "F405"]
+
+[tool.ruff.lint.isort]
+known-local-folder = ["nbxsync"]
+known-first-party = [
+    "netbox",
+    "core",
+    "dcim",
+    "extras",
+    "tenancy",
+    "users",
+    "utilities",
+    "django_tables2",
+    "rest_framework",
+]
+
+[tool.ruff.format]
+quote-style = "single"

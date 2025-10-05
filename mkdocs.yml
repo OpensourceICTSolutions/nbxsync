@@ -1,0 +1,79 @@
+site_name: nbxSync
+site_url: https://nbxsync.com/
+repo_name: OpensourceICTSolutions/nbxsync
+repo_url: https://github.com/OpensourceICTSolutions/nbxsync
+extra_css:
+  - assets/styles/extra.css
+
+theme:
+  name: material
+  custom_dir: docs/overrides
+  language: en
+  icon:
+    repo: fontawesome/brands/github
+  logo: assets/img/logo.png
+  favicon: assets/img/logo.png
+  features:
+    - navigation.expand
+    - navigation.prune
+    - navigation.path
+    - navigation.indexes
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.action.view
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/lightbulb-outline
+        name: Switch to Dark Mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/lightbulb
+        name: Switch to Light Mode
+plugins:
+  - search:
+      lang: en
+
+nav:
+  - Home: index.md
+  - Philosofy: philosofy.md
+  - Installation: installation.md
+  - Configuration: configuration.md
+  - Setup: setup.md
+  - Permissions: permissions.md
+  - Models & Objects: models.md
+  - Dynamic Values: dynamic_values.md
+  - Signals: signals.md
+  - Traffic flows: traffic_flows.md
+  - Development: development.md
+  - Support: support.md
+  - Changelog: changelog.md
+
+markdown_extensions:
+  - toc:
+      permalink: true
+  - admonition
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight
+  - pymdownx.details
+  - pymdownx.emoji
+  - pymdownx.snippets
+  - pymdownx.keys
+  - pymdownx.tasklist
+  - pymdownx.arithmatex
+  - pymdownx.inlinehilite
+  - pymdownx.betterem:
+      smart_enable: all
+  - attr_list
+  - md_in_html
+  - tables
+  - footnotes
