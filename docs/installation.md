@@ -1,14 +1,23 @@
 # Installation
 
-## Prerequisites
+## Docker
+
+Installing on Docker is fairly simple and [documented by the Netbox Docker project](https://github.com/netbox-community/netbox-docker/wiki/Using-Netbox-Plugins). Just ensure to restart both the Netbox and Netbox-Worker container, as both will need to have nbxSync installed.
+
+Also, replace `netbox_secrets` with `nbxsync` obviously.
+
+## Normal install
+### Prerequisites
 
 - NetBox >= 4.x
 - Python >= 3.8
 - Zabbix server >= 7.0
 
-## Steps
+In order to install NetBox, please see [their installation instructions](https://netboxlabs.com/docs/netbox/installation/). Once you have a working Netbox installation, proceed with the steps below.
 
-### Install the plugin
+### Steps
+
+#### Install the plugin
 
 ```bash
 cd /opt/netbox/netbox/
@@ -17,7 +26,7 @@ pip install nbxsync
 echo nbxsync >> /opt/netbox/local_requirements.txt
 ```
 
-### Configuration
+#### Configuration
 
 If you want to change the default configuration, can add the following configuration and alter it accordingly. This is _not_ required though.
 
@@ -92,14 +101,14 @@ PLUGINS_CONFIG = {
     }
 ```
 
-### Run migrations
+#### Run migrations
 
 ```python
 python3 manage.py migrate nbxsync
 python3 manage.py collectstatic --no-input
 ```
 
-### Restart services
+#### Restart services
 
 ```bash
 sudo systemctl restart netbox netbox-worker
