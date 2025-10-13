@@ -69,7 +69,8 @@ class ZabbixServerAssignmentObjectViewTable(ZabbixInheritedAssignmentTable, NetB
             'zabbixserver',
             'zabbixproxy',
             'zabbixproxygroup',
-            'sync_statuscreated',
+            'sync_status',
+            'created',
             'last_updated',
             'actions',
         )
