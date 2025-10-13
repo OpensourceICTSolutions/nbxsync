@@ -1,6 +1,7 @@
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django_filters import CharFilter, ModelChoiceFilter, NumberFilter
+from utilities.filters import ContentTypeFilter
 
 from netbox.filtersets import NetBoxModelFilterSet
 
@@ -14,7 +15,7 @@ class ZabbixTagAssignmentFilterSet(NetBoxModelFilterSet):
     q = CharFilter(method='search', label='Search')
     zabbixtag_name = CharFilter(field_name='zabbixtag__name', lookup_expr='icontains')
     zabbixtag_tag = CharFilter(field_name='zabbixtag__tag', lookup_expr='icontains')
-    assigned_object_type = ModelChoiceFilter(queryset=ContentType.objects.all())
+    assigned_object_type = ContentTypeFilter()
     assigned_object_id = NumberFilter()
 
     class Meta:

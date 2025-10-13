@@ -9,7 +9,7 @@ __all__ = ('ZabbixHostgroupSerializer',)
 class ZabbixHostgroupSerializer(NetBoxModelSerializer):
     url = serializers.HyperlinkedIdentityField(view_name='plugins-api:nbxsync-api:zabbixhostgroup-detail')
     zabbixserver = ZabbixServerSerializer(read_only=True, nested=True)
-    zabbixserver_id = serializers.PrimaryKeyRelatedField(queryset=ZabbixServer.objects.all(), source='zabbixserver', write_only=True)
+    zabbixserver_id = serializers.PrimaryKeyRelatedField(queryset=ZabbixServer.objects.all(), source='zabbixserver', write_only=True, required=False)
 
     class Meta:
         model = ZabbixHostgroup

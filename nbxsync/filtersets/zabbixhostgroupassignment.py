@@ -2,6 +2,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django_filters import CharFilter, ModelChoiceFilter, NumberFilter
 
+from utilities.filters import ContentTypeFilter
 from netbox.filtersets import NetBoxModelFilterSet
 
 from nbxsync.models import ZabbixHostgroupAssignment
@@ -13,7 +14,7 @@ class ZabbixHostgroupAssignmentFilterSet(NetBoxModelFilterSet):
     q = CharFilter(method='search', label='Search')
     zabbixhostgroup_name = CharFilter(field_name='zabbixhostgroup__name', lookup_expr='icontains')
     value = CharFilter(lookup_expr='icontains')
-    assigned_object_type = ModelChoiceFilter(queryset=ContentType.objects.all())
+    assigned_object_type = ContentTypeFilter()
     assigned_object_id = NumberFilter()
 
     class Meta:

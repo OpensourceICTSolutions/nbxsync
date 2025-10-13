@@ -96,13 +96,13 @@ class ZabbixHostInventoryFilterSetTestCase(TestCase):
         self.assertIn(self.inventoryassignments[1], f.qs)
 
     def test_filter_by_assigned_object_type(self):
-        f = ZabbixHostInventoryFilterSet({'assigned_object_type': self.device_ct.pk}, queryset=ZabbixHostInventory.objects.all())
+        f = ZabbixHostInventoryFilterSet({'assigned_object_type': f'{self.device_ct.app_label}.{self.device_ct.model}'}, queryset=ZabbixHostInventory.objects.all())
         self.assertEqual(f.qs.count(), 2)
 
     def test_filter_fails_with_wrong_content_type(self):
         wrong_ct = ContentType.objects.get_for_model(ZabbixHostInventory)
         f = ZabbixHostInventoryFilterSet(
-            {'assigned_object_type': wrong_ct.pk, 'assigned_object_id': self.devices[0].id},
+            {'assigned_object_type': f'{wrong_ct.app_label}.{wrong_ct.model}', 'assigned_object_id': self.devices[0].id},
             queryset=ZabbixHostInventory.objects.all(),
         )
         self.assertEqual(f.qs.count(), 0)

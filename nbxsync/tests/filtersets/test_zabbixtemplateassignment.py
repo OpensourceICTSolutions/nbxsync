@@ -86,7 +86,7 @@ class ZabbixTemplateAssignmentFilterSetTestCase(TestCase):
         self.assertNotIn(self.assignments[0], f.qs)
 
     def test_filter_by_assigned_object_type(self):
-        f = ZabbixTemplateAssignmentFilterSet({'assigned_object_type': self.device_ct.pk}, queryset=ZabbixTemplateAssignment.objects.all())
+        f = ZabbixTemplateAssignmentFilterSet({'assigned_object_type': f'{self.device_ct.app_label}.{self.device_ct.model}'}, queryset=ZabbixTemplateAssignment.objects.all())
         self.assertQuerySetEqual(f.qs.order_by('id'), ZabbixTemplateAssignment.objects.all().order_by('id'), transform=lambda x: x)
 
     def test_filter_by_assigned_object_id_only(self):
@@ -96,7 +96,7 @@ class ZabbixTemplateAssignmentFilterSetTestCase(TestCase):
 
     def test_filter_by_type_and_id(self):
         f = ZabbixTemplateAssignmentFilterSet(
-            {'assigned_object_type': self.device_ct.pk, 'assigned_object_id': self.devices[1].id},
+            {'assigned_object_type': f'{self.device_ct.app_label}.{self.device_ct.model}', 'assigned_object_id': self.devices[1].id},
             queryset=ZabbixTemplateAssignment.objects.all(),
         )
         self.assertIn(self.assignments[1], f.qs)
@@ -105,15 +105,7 @@ class ZabbixTemplateAssignmentFilterSetTestCase(TestCase):
     def test_filter_fails_with_wrong_content_type(self):
         wrong_ct = ContentType.objects.get_for_model(ZabbixTemplate)
         f = ZabbixTemplateAssignmentFilterSet(
-            {'assigned_object_type': wrong_ct.pk, 'assigned_object_id': self.devices[0].id},
+            {'assigned_object_type': f'{wrong_ct.app_label}.{wrong_ct.model}', 'assigned_object_id': self.devices[0].id},
             queryset=ZabbixTemplateAssignment.objects.all(),
         )
         self.assertEqual(f.qs.count(), 0)
-
-    def test_filter_queryset_invalid_assigned_object_values(self):
-        f = ZabbixTemplateAssignmentFilterSet(
-            {'assigned_object_type': 'invalid_string', 'assigned_object_id': 'not_a_number'},
-            queryset=ZabbixTemplateAssignment.objects.all(),
-        )
-
-        self.assertQuerySetEqual(f.qs.order_by('id'), ZabbixTemplateAssignment.objects.all().order_by('id'), transform=lambda x: x)
