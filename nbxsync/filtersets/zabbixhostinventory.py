@@ -1,6 +1,8 @@
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django_filters import CharFilter, ModelChoiceFilter, NumberFilter
+
+from utilities.filters import ContentTypeFilter
 from netbox.filtersets import NetBoxModelFilterSet
 
 from nbxsync.models import ZabbixHostInventory
@@ -17,7 +19,7 @@ class ZabbixHostInventoryFilterSet(NetBoxModelFilterSet):
     vendor = CharFilter(lookup_expr='icontains')
     location = CharFilter(lookup_expr='icontains')
 
-    assigned_object_type = ModelChoiceFilter(queryset=ContentType.objects.all())
+    assigned_object_type = ContentTypeFilter()
     assigned_object_id = NumberFilter()
 
     class Meta:

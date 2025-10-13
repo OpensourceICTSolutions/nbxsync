@@ -13,7 +13,7 @@ from nbxsync.models import ZabbixHostInterface, ZabbixServer
 
 class ZabbixHostInterfaceSerializer(SyncInfoSerializerMixin, NetBoxModelSerializer):
     zabbixserver = ZabbixServerSerializer(nested=True)
-    zabbixserver_id = serializers.PrimaryKeyRelatedField(queryset=ZabbixServer.objects.all(), source='zabbixserver', write_only=True)
+    zabbixserver_id = serializers.PrimaryKeyRelatedField(queryset=ZabbixServer.objects.all(), source='zabbixserver', write_only=True, required=False)
 
     assigned_object_type = ContentTypeField(queryset=ContentType.objects.all())
     assigned_object = serializers.SerializerMethodField(read_only=True)
