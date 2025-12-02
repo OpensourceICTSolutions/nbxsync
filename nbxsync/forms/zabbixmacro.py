@@ -90,6 +90,10 @@ class ZabbixMacroForm(NetBoxModelForm):
 class ZabbixMacroFilterForm(NetBoxModelFilterSetForm):
     model = ZabbixMacro
 
+    description = forms.CharField(label=_('Macro'), max_length=1024, required=False)
+    hostmacroid = forms.IntegerField(label=_('Host Macro ID'), required=False)
+    type = forms.ChoiceField(choices=ZabbixMacroTypeChoices.choices, required=False)
+
     fieldsets = (
         FieldSet('q', 'filter_id'),
         FieldSet('macro', 'value', 'description', 'type', 'hostmacroid', name=_('Zabbix Macro')),
