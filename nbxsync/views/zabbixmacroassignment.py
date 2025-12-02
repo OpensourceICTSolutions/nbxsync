@@ -46,6 +46,7 @@ class ZabbixMacroAssignmentEditView(ObjectEditView):
 
     queryset = ZabbixMacroAssignment.objects.all()
     form = ZabbixMacroAssignmentForm
+    template_name = 'nbxsync/forms/zabbixmacroassignment.html'
 
 
 @register_model_view(ZabbixMacroAssignment, 'bulk_edit')
