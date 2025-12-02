@@ -8,7 +8,7 @@ __all__ = ('ZabbixInheritedAssignmentTable',)
 
 
 class ZabbixInheritedAssignmentTable(tables.Table):
-    inherited_from = tables.Column(empty_values=(), verbose_name=_('Inherited From'))
+    inherited_from = tables.Column(empty_values=(), verbose_name=_('Inherited From'), orderable=False)
 
     def render_inherited_from(self, record):
         source = getattr(record, '_inherited_from', None)
