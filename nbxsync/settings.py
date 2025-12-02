@@ -97,7 +97,10 @@ class PluginSettingsModel(BaseModel):
             ),
             ('manufacturer',),
             ('cluster',),
-            ('cluster', 'type',),
+            (
+                'cluster',
+                'type',
+            ),
             ('type',),
         ]
     )
