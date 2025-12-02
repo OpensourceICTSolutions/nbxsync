@@ -58,7 +58,7 @@ python3 manage.py collectstatic
 ### 4. Restart NetBox
 
 ```bash
-sudo systemctl restart netbox
+sudo systemctl restart netbox netbox-rq
 ```
 
 ---
