@@ -5,6 +5,7 @@ from netbox.views.generic import ObjectChangeLogView
 from nbxsync.models import *
 from nbxsync.views import *
 
+
 urlpatterns = [
     path('', ZabbixServerListView.as_view(), name='zabbixserver_list'),
     # Zabbix Server
@@ -177,6 +178,25 @@ urlpatterns = [
     path('zabbixmaintenancetagassignment/<int:pk>/edit/', ZabbixMaintenanceTagAssignmentEditView.as_view(), name='zabbixmaintenancetagassignment_edit'),
     path('zabbixmaintenancetagassignment/<int:pk>/delete/', ZabbixMaintenanceTagAssignmentDeleteView.as_view(), name='zabbixmaintenancetagassignment_delete'),
     path('zabbixmaintenancetagassignment/<int:pk>/changelog/', ObjectChangeLogView.as_view(), name='zabbixmaintenancetagassignment_changelog', kwargs={'model': ZabbixMaintenanceTagAssignment}),
+    # Zabbix Configuration Group
+    path('zabbixconfigurationgroup/', ZabbixConfigurationGroupListView.as_view(), name='zabbixconfigurationgroup_list'),
+    path('zabbixconfigurationgroup/add/', ZabbixConfigurationGroupEditView.as_view(), name='zabbixconfigurationgroup_add'),
+    path('zabbixconfigurationgroup/edit/', ZabbixConfigurationGroupBulkEditView.as_view(), name='zabbixconfigurationgroup_bulk_edit'),
+    path('zabbixconfigurationgroup/delete/', ZabbixConfigurationGroupBulkDeleteView.as_view(), name='zabbixconfigurationgroup_bulk_delete'),
+    path('zabbixconfigurationgroup/<int:pk>/', ZabbixConfigurationGroupView.as_view(), name='zabbixconfigurationgroup'),
+    path('zabbixconfigurationgroup/<int:pk>/edit/', ZabbixConfigurationGroupEditView.as_view(), name='zabbixconfigurationgroup_edit'),
+    path('zabbixconfigurationgroup/<int:pk>/delete/', ZabbixConfigurationGroupDeleteView.as_view(), name='zabbixconfigurationgroup_delete'),
+    path('zabbixconfigurationgroup/<int:pk>/changelog/', ObjectChangeLogView.as_view(), name='zabbixconfigurationgroup_changelog', kwargs={'model': ZabbixConfigurationGroup}),
+    path('zabbixconfigurationgroup/<int:pk>/sync', TriggerZabbicConfigurationgroupSyncJobView.as_view(), name='zabbixconfigurationgroup_sync'),
+    # Zabbix Configuration Group Assignment
+    path('zabbixconfigurationgroupassignment/', ZabbixConfigurationGroupAssignmentListView.as_view(), name='zabbixconfigurationgroupassignment_list'),
+    path('zabbixconfigurationgroupassignment/add/', ZabbixConfigurationGroupAssignmentEditView.as_view(), name='zabbixconfigurationgroupassignment_add'),
+    path('zabbixconfigurationgroupassignment/edit/', ZabbixConfigurationGroupAssignmentBulkEditView.as_view(), name='zabbixconfigurationgroupassignment_bulk_edit'),
+    path('zabbixconfigurationgroupassignment/delete/', ZabbixConfigurationGroupAssignmentBulkDeleteView.as_view(), name='zabbixconfigurationgroupassignment_bulk_delete'),
+    path('zabbixconfigurationgroupassignment/<int:pk>/', ZabbixConfigurationGroupAssignmentView.as_view(), name='zabbixconfigurationgroupassignment'),
+    path('zabbixconfigurationgroupassignment/<int:pk>/edit/', ZabbixConfigurationGroupAssignmentEditView.as_view(), name='zabbixconfigurationgroupassignment_edit'),
+    path('zabbixconfigurationgroupassignment/<int:pk>/delete/', ZabbixConfigurationGroupAssignmentDeleteView.as_view(), name='zabbixconfigurationgroupassignment_delete'),
+    path('zabbixconfigurationgroupassignment/<int:pk>/changelog/', ObjectChangeLogView.as_view(), name='zabbixconfigurationgroupassignment_changelog', kwargs={'model': ZabbixConfigurationGroupAssignment}),
     # Sync Device/VM Object
     path('zabbixhost/<str:objtype>/<int:pk>/sync', TriggerHostSyncJobView.as_view(), name='zabbixhost_sync'),
     path('zabbixhost/<str:objtype>/<int:pk>/sync-info/', ZabbixSyncInfoModalView.as_view(), name='zabbixhost_info'),

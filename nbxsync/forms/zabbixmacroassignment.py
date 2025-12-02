@@ -10,7 +10,7 @@ from dcim.models import Device, VirtualDeviceContext, DeviceRole, DeviceType, Ma
 from virtualization.models import Cluster, ClusterType, VirtualMachine
 
 from nbxsync.constants import ASSIGNMENT_TYPE_TO_FIELD
-from nbxsync.models import ZabbixMacro, ZabbixMacroAssignment
+from nbxsync.models import ZabbixMacro, ZabbixMacroAssignment, ZabbixConfigurationGroup
 
 __all__ = ('ZabbixMacroAssignmentForm', 'ZabbixMacroAssignmentFilterForm', 'ZabbixMacroAssignmentBulkEditForm')
 logger = logging.getLogger(__name__)
@@ -28,6 +28,7 @@ class ZabbixMacroAssignmentForm(NetBoxModelForm):
     virtualmachine = DynamicModelChoiceField(queryset=VirtualMachine.objects.all(), required=False, selector=True, label=_('Virtual Machine'))
     cluster = DynamicModelChoiceField(queryset=Cluster.objects.all(), required=False, selector=True, label=_('Cluster'))
     clustertype = DynamicModelChoiceField(queryset=ClusterType.objects.all(), required=False, selector=True, label=_('Cluster Type'))
+    zabbixconfigurationgroup = DynamicModelChoiceField(queryset=ZabbixConfigurationGroup.objects.all(), required=False, selector=True, label=_('Zabbix Configuration Group'))
 
     fieldsets = (
         FieldSet('zabbixmacro', 'is_regex', 'context', 'value', name=_('Generic')),
@@ -42,6 +43,7 @@ class ZabbixMacroAssignmentForm(NetBoxModelForm):
                 FieldSet('virtualmachine', name=_('Virtual Machine')),
                 FieldSet('cluster', name=_('Cluster')),
                 FieldSet('clustertype', name=_('Cluster Type')),
+                FieldSet('zabbixconfigurationgroup', name=_('Zabbix Configuration Group')),
             ),
             name=_('Assignment'),
         ),
@@ -63,6 +65,7 @@ class ZabbixMacroAssignmentForm(NetBoxModelForm):
             'role',
             'manufacturer',
             'platform',
+            'zabbixconfigurationgroup',
         )
 
     @property

@@ -7,8 +7,8 @@ from utilities.api import get_serializer_for_model
 from netbox.api.fields import ContentTypeField
 from netbox.api.serializers import NetBoxModelSerializer
 
-from nbxsync.api.serializers import SyncInfoSerializerMixin
-from nbxsync.models import ZabbixServerAssignment
+from nbxsync.api.serializers import SyncInfoSerializerMixin, ZabbixConfigurationGroupSerializer
+from nbxsync.models import ZabbixServerAssignment, ZabbixConfigurationGroup
 
 __all__ = ('ZabbixServerAssignmentSerializer',)
 
@@ -17,6 +17,8 @@ class ZabbixServerAssignmentSerializer(SyncInfoSerializerMixin, NetBoxModelSeria
     url = serializers.HyperlinkedIdentityField(view_name='plugins-api:nbxsync-api:zabbixserverassignment-detail')
     assigned_object_type = ContentTypeField(queryset=ContentType.objects.all())
     assigned_object = serializers.SerializerMethodField(read_only=True)
+    zabbixconfigurationgroup = ZabbixConfigurationGroupSerializer(nested=True, read_only=True, required=False)
+    zabbixconfigurationgroup_id = serializers.PrimaryKeyRelatedField(queryset=ZabbixConfigurationGroup.objects.all(), source='zabbixconfigurationgroup', required=False)
 
     class Meta:
         model = ZabbixServerAssignment
@@ -30,6 +32,8 @@ class ZabbixServerAssignmentSerializer(SyncInfoSerializerMixin, NetBoxModelSeria
             'zabbixserver',
             'zabbixproxy',
             'zabbixproxygroup',
+            'zabbixconfigurationgroup',
+            'zabbixconfigurationgroup_id',
             'hostid',
             'last_sync',
             'last_sync_state',

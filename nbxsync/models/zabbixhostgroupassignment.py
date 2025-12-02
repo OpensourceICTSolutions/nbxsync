@@ -9,8 +9,8 @@ from jinja2 import TemplateError, TemplateSyntaxError, UndefinedError
 from netbox.models import NetBoxModel
 from utilities.jinja2 import render_jinja2
 
-from nbxsync.constants import ASSIGNMENT_MODELS
-from nbxsync.models import SyncInfoModel
+from nbxsync.constants import ASSIGNMENT_MODELS, CONFIGGROUP_OBJECTS
+from nbxsync.models import SyncInfoModel, ZabbixConfigurationGroup
 
 
 __all__ = ('ZabbixHostgroupAssignment',)
@@ -20,7 +20,9 @@ TEMPLATE_PATTERN = re.compile(r'({{.*?}}|{%-?\s*.*?\s*-?%}|{#.*?#})')
 
 class ZabbixHostgroupAssignment(SyncInfoModel, NetBoxModel):
     zabbixhostgroup = models.ForeignKey('nbxsync.ZabbixHostgroup', on_delete=models.CASCADE, related_name='zabbixhostgroupassignment')
-    assigned_object_type = models.ForeignKey(to=ContentType, limit_choices_to=ASSIGNMENT_MODELS, on_delete=models.CASCADE, related_name='+', blank=True, null=True)
+    zabbixconfigurationgroup = models.ForeignKey('nbxsync.ZabbixConfigurationGroup', on_delete=models.SET_NULL, blank=True, null=True)
+
+    assigned_object_type = models.ForeignKey(to=ContentType, limit_choices_to=(ASSIGNMENT_MODELS | CONFIGGROUP_OBJECTS), on_delete=models.CASCADE, related_name='+', blank=True, null=True)
     assigned_object_id = models.PositiveBigIntegerField(blank=True, null=True)
     assigned_object = GenericForeignKey(ct_field='assigned_object_type', fk_field='assigned_object_id')
 
@@ -57,6 +59,9 @@ class ZabbixHostgroupAssignment(SyncInfoModel, NetBoxModel):
 
     def render(self, **context):
         context = self.get_context(**context)
+
+        if isinstance(self.assigned_object, ZabbixConfigurationGroup):
+            return self.zabbixhostgroup.value, True
 
         try:
             output = render_jinja2(self.zabbixhostgroup.value, context)

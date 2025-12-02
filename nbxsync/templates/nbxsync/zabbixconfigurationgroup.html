@@ -1,0 +1,164 @@
+{% extends template_extends|default:'generic/object.html' %}
+{% load buttons %}
+{% load custom_links %}
+{% load helpers %}
+{% load perms %}
+{% load static %}
+{% load render_table from django_tables2 %}
+{% load plugins %}
+{% block content %}
+    {% block extra_cards %}{% endblock %}
+    <div class="row">
+        <div class="col col-md-6">
+            <div class="card">
+                <h5 class="card-header">Zabbix Configuration Group</h5>
+                <table class="table table-hover attr-table">
+                    <tr>
+                        <td>Name</td>
+                        <td>{{ object.name }}</td>
+                    </tr>
+                    <tr>
+                        <td>Description</td>
+                        <td>{{ object.description }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div class="col col-md-6">
+            <div class="card">
+                <h2 class="card-header">
+                    Assigned Objects
+                    {% if perms.nbxsync.add_zabbixconfigurationgroupassignment %}
+                        <div class="card-actions">
+                            <a href="{% url 'plugins:nbxsync:zabbixconfigurationgroupassignment_add' %}?zabbixconfigurationgroup={{ object.pk }}&return_url={{ request.path }}"
+                               class="btn btn-ghost-primary btn-sm">
+                                <i class="mdi mdi-plus-thick" aria-hidden="true"></i> Add
+                            </a>
+                        </div>
+                    {% endif %}
+                </h2>
+                {% if objectassignments_table %}
+                    {% render_table objectassignments_table %}
+                {% else %}
+                    <div class="card-body text-muted">No objects assigned</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col col-md-6">
+            <div class="card">
+                <h2 class="card-header">
+                    Zabbix Servers
+                    {% if perms.nbxsync.add_zabbixserverassignment %}
+                        <div class="card-actions">
+                            <a href="{% url 'plugins:nbxsync:zabbixserverassignment_add' %}?assigned_object_type={{ content_type.pk }}&assigned_object_id={{ object.pk }}&return_url={{ request.path }}"
+                               class="btn btn-ghost-primary btn-sm">
+                                <i class="mdi mdi-plus-thick" aria-hidden="true"></i> Add
+                            </a>
+                        </div>
+                    {% endif %}
+                </h2>
+                {% if zabbixserver_assignments_table %}
+                    {% render_table zabbixserver_assignments_table %}
+                {% else %}
+                    <div class="card-body text-muted">No Zabbix Servers assigned</div>
+                {% endif %}
+            </div>
+            <div class="card">
+                <h2 class="card-header">
+                    Zabbix Hostgroups
+                    {% if perms.nbxsync.add_zabbixhostgroupassignment %}
+                        <div class="card-actions">
+                            <a href="{% url 'plugins:nbxsync:zabbixhostgroupassignment_add' %}?assigned_object_type={{ content_type.pk }}&assigned_object_id={{ object.pk }}&return_url={{ request.path }}"
+                               class="btn btn-ghost-primary btn-sm">
+                                <i class="mdi mdi-plus-thick" aria-hidden="true"></i> Add
+                            </a>
+                        </div>
+                    {% endif %}
+                </h2>
+                {% if zabbix_hostgroup_table %}
+                    {% render_table zabbix_hostgroup_table %}
+                {% else %}
+                    <div class="card-body text-muted">No hostgroups assigned</div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col col-md-6">
+            <div class="card">
+                <h2 class="card-header">
+                    Host Interfaces
+                    {% if perms.nbxsync.add_zabbixhostinterface %}
+                        <div class="card-actions">
+                            <a href="{% url 'plugins:nbxsync:zabbixhostinterface_add' %}?assigned_object_type={{ content_type.pk }}&assigned_object_id={{ object.pk }}&return_url={{ request.path }}"
+                               class="btn btn-ghost-primary btn-sm">
+                                <i class="mdi mdi-plus-thick" aria-hidden="true"></i> Add
+                            </a>
+                        </div>
+                    {% endif %}
+                </h2>
+                {% if hostinterface_assignment_table %}
+                    {% render_table hostinterface_assignment_table %}
+                {% else %}
+                    <div class="card-body text-muted">No hostinterfaces assigned</div>
+                {% endif %}
+            </div>
+            <div class="card">
+                <h2 class="card-header">
+                    Templates
+                    {% if perms.nbxsync.add_zabbixtemplateassignment %}
+                        <div class="card-actions">
+                            <a href="{% url 'plugins:nbxsync:zabbixtemplateassignment_add' %}?assigned_object_type={{ content_type.pk }}&assigned_object_id={{ object.pk }}&return_url={{ request.path }}"
+                               class="btn btn-ghost-primary btn-sm">
+                                <i class="mdi mdi-plus-thick" aria-hidden="true"></i> Add
+                            </a>
+                        </div>
+                    {% endif %}
+                </h2>
+                {% if zabbix_template_table %}
+                    {% render_table zabbix_template_table %}
+                {% else %}
+                    <div class="card-body text-muted">No templates assigned</div>
+                {% endif %}
+            </div>
+            <div class="card">
+                <h2 class="card-header">
+                    Zabbix Macros
+                    {% if perms.nbxsync.add_zabbixmacroassignment %}
+                        <div class="card-actions">
+                            <a href="{% url 'plugins:nbxsync:zabbixmacroassignment_add' %}?assigned_object_type={{ content_type.pk }}&assigned_object_id={{ object.pk }}&return_url={{ request.path }}"
+                               class="btn btn-ghost-primary btn-sm">
+                                <i class="mdi mdi-plus-thick" aria-hidden="true"></i> Add
+                            </a>
+                        </div>
+                    {% endif %}
+                </h2>
+                {% if zabbix_macro_table %}
+                    {% render_table zabbix_macro_table %}
+                {% else %}
+                    <div class="card-body text-muted">No macros assigned</div>
+                {% endif %}
+            </div>
+            <div class="card">
+                <h2 class="card-header">
+                    Zabbix Tags
+                    {% if perms.nbxsync.add_zabbixtagassignment %}
+                        <div class="card-actions">
+                            <a href="{% url 'plugins:nbxsync:zabbixtagassignment_add' %}?assigned_object_type={{ content_type.pk }}&assigned_object_id={{ object.pk }}&return_url={{ request.path }}"
+                               class="btn btn-ghost-primary btn-sm">
+                                <i class="mdi mdi-plus-thick" aria-hidden="true"></i> Add
+                            </a>
+                        </div>
+                    {% endif %}
+                </h2>
+                {% if zabbix_tag_table %}
+                    {% render_table zabbix_tag_table %}
+                {% else %}
+                    <div class="card-body text-muted">No tags assigned</div>
+                {% endif %}
+            </div>
+            {% plugin_left_page object %}
+            {% include 'inc/panels/tags.html' %}
+        </div>
+    </div>
+{% endblock %}

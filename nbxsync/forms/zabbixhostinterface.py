@@ -5,14 +5,14 @@ from django.utils.translation import gettext_lazy as _
 
 from netbox.forms import NetBoxModelBulkEditForm, NetBoxModelFilterSetForm, NetBoxModelForm
 from utilities.forms.fields import DynamicModelChoiceField, TagFilterField
-from utilities.forms.rendering import FieldSet
+from utilities.forms.rendering import FieldSet, TabbedGroups
 from dcim.models import Device, VirtualDeviceContext
 from virtualization.models import VirtualMachine
 from ipam.models import IPAddress
 
 from nbxsync.choices import IPMIAuthTypeChoices, IPMIPrivilegeChoices, ZabbixHostInterfaceTypeChoices, ZabbixInterfaceTypeChoices, ZabbixInterfaceUseChoices, ZabbixTLSChoices
 from nbxsync.constants import ASSIGNMENT_TYPE_TO_FIELD, ASSIGNMENT_TYPE_TO_FIELD_NBOBJS
-from nbxsync.models import ZabbixHostInterface, ZabbixServer, ZabbixServerAssignment
+from nbxsync.models import ZabbixHostInterface, ZabbixServer, ZabbixServerAssignment, ZabbixConfigurationGroup
 from nbxsync.models.zabbixproxy import default_tls_accept
 
 __all__ = ('ZabbixHostInterfaceForm', 'ZabbixHostInterfaceFilterForm', 'ZabbixHostInterfaceBulkEditForm')
@@ -26,6 +26,8 @@ class ZabbixHostInterfaceForm(NetBoxModelForm):
     device = DynamicModelChoiceField(queryset=Device.objects.all(), required=False, selector=True, label=_('Device'))
     virtualdevicecontext = DynamicModelChoiceField(queryset=VirtualDeviceContext.objects.all(), required=False, selector=True, label=_('Virtual Device Context'))
     virtualmachine = DynamicModelChoiceField(queryset=VirtualMachine.objects.all(), required=False, selector=True, label=_('Virtual Machine'))
+    zabbixconfigurationgroup = DynamicModelChoiceField(queryset=ZabbixConfigurationGroup.objects.all(), required=False, selector=True, label=_('Zabbix Configuration Group'))
+
     port = forms.IntegerField(required=True, label=_('Port number'), help_text=_('10050 for Agent'))
 
     tls_connect = forms.TypedChoiceField(choices=ZabbixTLSChoices, required=False, coerce=int, label=_('Connections to agent'))
@@ -52,7 +54,17 @@ class ZabbixHostInterfaceForm(NetBoxModelForm):
             'device',
             'virtualdevicecontext',
             'virtualmachine',
+            'zabbixconfigurationgroup',
             name=_('Zabbix Host Interface'),
+        ),
+        FieldSet(
+            TabbedGroups(
+                FieldSet('device', name=_('Device')),
+                FieldSet('virtualdevicecontext', name=_('Virtual Device Context')),
+                FieldSet('virtualmachine', name=_('Virtual Machine')),
+                FieldSet('zabbixconfigurationgroup', name=_('Zabbix Configuration Group')),
+            ),
+            name=_('Assignment'),
         ),
         FieldSet(
             'tls_connect',
@@ -97,6 +109,7 @@ class ZabbixHostInterfaceForm(NetBoxModelForm):
             'device',
             'virtualdevicecontext',
             'virtualmachine',
+            'zabbixconfigurationgroup',
             'tls_connect',
             'tls_accept',
             'tls_issuer',
@@ -178,6 +191,7 @@ class ZabbixHostInterfaceFilterForm(NetBoxModelFilterSetForm):
     device = DynamicModelChoiceField(queryset=Device.objects.all(), required=False, selector=True, label=_('Device'))
     virtualdevicecontext = DynamicModelChoiceField(queryset=VirtualDeviceContext.objects.all(), required=False, selector=True, label=_('Virtual Device Context'))
     virtualmachine = DynamicModelChoiceField(queryset=VirtualMachine.objects.all(), required=False, selector=True, label=_('Virtual Machine'))
+    zabbixconfigurationgroup = DynamicModelChoiceField(queryset=ZabbixConfigurationGroup.objects.all(), required=False, selector=True, label=_('Zabbix Configuration Group'))
 
     fieldsets = (
         FieldSet('q', 'filter_id'),
@@ -192,6 +206,7 @@ class ZabbixHostInterfaceFilterForm(NetBoxModelFilterSetForm):
             'device',
             'virtualdevicecontext',
             'virtualmachine',
+            'zabbixconfigurationgroup',
             name=_('Zabbix Host Interface'),
         ),
     )

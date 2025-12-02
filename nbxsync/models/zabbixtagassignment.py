@@ -10,7 +10,8 @@ from jinja2 import TemplateError, TemplateSyntaxError, UndefinedError
 from netbox.models import NetBoxModel
 from utilities.jinja2 import render_jinja2
 
-from nbxsync.constants import ASSIGNMENT_MODELS
+from nbxsync.constants import ASSIGNMENT_MODELS, CONFIGGROUP_OBJECTS
+from nbxsync.models import ZabbixConfigurationGroup
 
 __all__ = ('ZabbixTagAssignment',)
 
@@ -19,9 +20,10 @@ TEMPLATE_PATTERN = re.compile(r'({{.*?}}|{%-?\s*.*?\s*-?%}|{#.*?#})')
 
 class ZabbixTagAssignment(NetBoxModel):
     zabbixtag = models.ForeignKey(to='nbxsync.ZabbixTag', on_delete=models.CASCADE, related_name='zabbixtagassignment')
-    assigned_object_type = models.ForeignKey(to=ContentType, limit_choices_to=ASSIGNMENT_MODELS, on_delete=models.CASCADE, related_name='+', blank=True, null=True)
+    assigned_object_type = models.ForeignKey(to=ContentType, limit_choices_to=(ASSIGNMENT_MODELS | CONFIGGROUP_OBJECTS), on_delete=models.CASCADE, related_name='+', blank=True, null=True)
     assigned_object_id = models.PositiveBigIntegerField(blank=True, null=True)
     assigned_object = GenericForeignKey(ct_field='assigned_object_type', fk_field='assigned_object_id')
+    zabbixconfigurationgroup = models.ForeignKey('nbxsync.ZabbixConfigurationGroup', on_delete=models.SET_NULL, blank=True, null=True)
 
     class Meta:
         verbose_name = 'Zabbix Tag Assignment'
@@ -38,6 +40,9 @@ class ZabbixTagAssignment(NetBoxModel):
 
     def render(self, **context):
         context = self.get_context(**context)
+
+        if isinstance(self.assigned_object, ZabbixConfigurationGroup):
+            return self.zabbixtag.value, True
 
         try:
             output = render_jinja2(self.zabbixtag.value, context)
@@ -87,6 +92,9 @@ class ZabbixTagAssignment(NetBoxModel):
     def __str__(self):
         ret_val = ''
         if self.assigned_object:
-            ret_val = f'{str(self.zabbixtag.name)} - {str(self.assigned_object.name)}'
+            if hasattr(self.assigned_object, 'name'):
+                ret_val = f'{str(self.zabbixtag.name)} - {str(self.assigned_object.name)}'
+            else:
+                ret_val = f'{str(self.zabbixtag.name)} - {str(self.assigned_object)}'
 
         return ret_val

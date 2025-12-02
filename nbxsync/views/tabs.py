@@ -7,7 +7,7 @@ from virtualization.models import Cluster, ClusterType, VirtualMachine
 
 from nbxsync.filtersets import ZabbixTemplateFilterSet, ZabbixMacroFilterSet
 from nbxsync.mixins import ZabbixTabMixin
-from nbxsync.models import ZabbixServer, ZabbixMacro, ZabbixHostInterface, ZabbixTemplate, ZabbixServerAssignment, ZabbixMaintenanceObjectAssignment, ZabbixHostInventory
+from nbxsync.models import ZabbixServer, ZabbixMacro, ZabbixHostInterface, ZabbixTemplate, ZabbixServerAssignment, ZabbixMaintenanceObjectAssignment, ZabbixHostInventory, ZabbixConfigurationGroupAssignment
 from nbxsync.tables import ZabbixTemplateTable, ZabbixMacroTable, ZabbixHostInterfaceObjectViewTable, ZabbixServerAssignmentObjectViewTable, ZabbixMaintenanceObjectAssignmentDetailViewTable
 
 
@@ -90,7 +90,7 @@ class ZabbixClusterTypeTabView(ZabbixTabMixin, ObjectView):
 class ZabbixDeviceTabView(ZabbixTabMixin, ObjectView):
     queryset = Device.objects.all()
     template_name = 'nbxsync/tabs/full.html'
-    tab = ViewTab(label='Zabbix', badge=lambda obj: ZabbixServerAssignment.objects.filter(assigned_object_type=ContentType.objects.get_for_model(obj), assigned_object_id=obj.pk).count(), permission='nbxsync.view_zabbix')
+    tab = ViewTab(label='Zabbix', badge=lambda obj: ZabbixServerAssignment.objects.filter(assigned_object_type=ContentType.objects.get_for_model(obj), assigned_object_id=obj.pk).count(), permission='nbxsync.view_zabbixserver')
 
     def get_extra_context(self, request, instance):
         context = super().get_extra_context(request, instance)
@@ -101,6 +101,7 @@ class ZabbixDeviceTabView(ZabbixTabMixin, ObjectView):
         zabbixserver_assignments = ZabbixServerAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).select_related('assigned_object_type')
         maintenance_objectassignments = ZabbixMaintenanceObjectAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).select_related('assigned_object_type')
         hostinventory_assignment = ZabbixHostInventory.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).first()
+        configurationgroup_assignment = ZabbixConfigurationGroupAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).first()
 
         if hostinterface_assignments:
             hostinterface_assignment_table = ZabbixHostInterfaceObjectViewTable(hostinterface_assignments)
@@ -124,6 +125,7 @@ class ZabbixDeviceTabView(ZabbixTabMixin, ObjectView):
         context['zabbixserver_assignments_table'] = zabbixserver_assignments_table
         context['maintenance_objectassignment_table'] = maintenance_objectassignment_table
         context['hostinventory_assignment'] = hostinventory_assignment
+        context['configurationgroup_assignment'] = configurationgroup_assignment
         return context
 
 
@@ -131,7 +133,7 @@ class ZabbixDeviceTabView(ZabbixTabMixin, ObjectView):
 class ZabbixVirtualMachineTabView(ZabbixTabMixin, ObjectView):
     queryset = VirtualMachine.objects.all()
     template_name = 'nbxsync/tabs/full.html'
-    tab = ViewTab(label='Zabbix', badge=lambda obj: ZabbixServerAssignment.objects.filter(assigned_object_type=ContentType.objects.get_for_model(obj), assigned_object_id=obj.pk).count(), permission='nbxsync.view_zabbix')
+    tab = ViewTab(label='Zabbix', badge=lambda obj: ZabbixServerAssignment.objects.filter(assigned_object_type=ContentType.objects.get_for_model(obj), assigned_object_id=obj.pk).count(), permission='nbxsync.view_zabbixserver')
 
     def get_extra_context(self, request, instance):
         context = super().get_extra_context(request, instance)
@@ -142,6 +144,7 @@ class ZabbixVirtualMachineTabView(ZabbixTabMixin, ObjectView):
         zabbixserver_assignments = ZabbixServerAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).select_related('assigned_object_type')
         maintenance_objectassignments = ZabbixMaintenanceObjectAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).select_related('assigned_object_type')
         hostinventory_assignment = ZabbixHostInventory.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).first()
+        configurationgroup_assignment = ZabbixConfigurationGroupAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).first()
 
         if hostinterface_assignments:
             hostinterface_assignment_table = ZabbixHostInterfaceObjectViewTable(hostinterface_assignments)
@@ -165,6 +168,8 @@ class ZabbixVirtualMachineTabView(ZabbixTabMixin, ObjectView):
         context['zabbixserver_assignments_table'] = zabbixserver_assignments_table
         context['maintenance_objectassignment_table'] = maintenance_objectassignment_table
         context['hostinventory_assignment'] = hostinventory_assignment
+        context['configurationgroup_assignment'] = configurationgroup_assignment
+
         return context
 
 
@@ -172,7 +177,7 @@ class ZabbixVirtualMachineTabView(ZabbixTabMixin, ObjectView):
 class ZabbixVirtualDeviceContextTabView(ZabbixTabMixin, ObjectView):
     queryset = VirtualDeviceContext.objects.all()
     template_name = 'nbxsync/tabs/full.html'
-    tab = ViewTab(label='Zabbix', badge=lambda obj: ZabbixServerAssignment.objects.filter(assigned_object_type=ContentType.objects.get_for_model(obj), assigned_object_id=obj.pk).count(), permission='nbxsync.view_zabbix')
+    tab = ViewTab(label='Zabbix', badge=lambda obj: ZabbixServerAssignment.objects.filter(assigned_object_type=ContentType.objects.get_for_model(obj), assigned_object_id=obj.pk).count(), permission='nbxsync.view_zabbixserver')
 
     def get_extra_context(self, request, instance):
         context = super().get_extra_context(request, instance)
@@ -183,6 +188,7 @@ class ZabbixVirtualDeviceContextTabView(ZabbixTabMixin, ObjectView):
         zabbixserver_assignments = ZabbixServerAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).select_related('assigned_object_type')
         maintenance_objectassignments = ZabbixMaintenanceObjectAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).select_related('assigned_object_type')
         hostinventory_assignment = ZabbixHostInventory.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).first()
+        configurationgroup_assignment = ZabbixConfigurationGroupAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).first()
 
         if hostinterface_assignments:
             hostinterface_assignment_table = ZabbixHostInterfaceObjectViewTable(hostinterface_assignments)
@@ -206,6 +212,8 @@ class ZabbixVirtualDeviceContextTabView(ZabbixTabMixin, ObjectView):
         context['zabbixserver_assignments_table'] = zabbixserver_assignments_table
         context['maintenance_objectassignment_table'] = maintenance_objectassignment_table
         context['hostinventory_assignment'] = hostinventory_assignment
+        context['configurationgroup_assignment'] = configurationgroup_assignment
+
         return context
 
 
@@ -216,18 +224,18 @@ class ZabbixVirtualDeviceContextTabView(ZabbixTabMixin, ObjectView):
 class ZabbixDeviceOpsTabView(ZabbixTabMixin, ObjectView):
     queryset = Device.objects.all()
     template_name = 'nbxsync/tabs/ops.html'
-    tab = ViewTab(label='Zabbix Ops', permission='nbxsync.view_zabbix')
+    tab = ViewTab(label='Zabbix Ops', permission='nbxsync.view_zabbixserver')
 
 
 @register_model_view(VirtualDeviceContext, name='zabbix_ops', path='zabbix_ops')
 class ZabbixVirtualMachineOpsTabView(ZabbixTabMixin, ObjectView):
     queryset = VirtualDeviceContext.objects.all()
     template_name = 'nbxsync/tabs/ops.html'
-    tab = ViewTab(label='Zabbix Ops', permission='nbxsync.view_zabbix')
+    tab = ViewTab(label='Zabbix Ops', permission='nbxsync.view_zabbixserver')
 
 
 @register_model_view(VirtualMachine, name='zabbix_ops', path='zabbix_ops')
 class ZabbixVirtualMachineOpsTabView(ZabbixTabMixin, ObjectView):
     queryset = VirtualMachine.objects.all()
     template_name = 'nbxsync/tabs/ops.html'
-    tab = ViewTab(label='Zabbix Ops', permission='nbxsync.view_zabbix')
+    tab = ViewTab(label='Zabbix Ops', permission='nbxsync.view_zabbixserver')
