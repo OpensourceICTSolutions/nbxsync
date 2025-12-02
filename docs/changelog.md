@@ -18,7 +18,7 @@
 - Fixed bug where templates with HTTP agent items required *any* interface, whilst it should be *None*
 - Fixed issue where sorting the ZabbixServerAssignmentObjectViewTable on the 'Sync status' column caused an exception
 - Fixed issue where sorting on the 'Inherited From' column on the ZabbixInheritedAssignmentTable caused an exception
-- Fixed bug where Maintenace windows were to be synced whilst the data wasn't complete
+- Fixed bug where Maintenance windows were to be synced whilst the data wasn't complete
 
 ### Breaking changes
 
