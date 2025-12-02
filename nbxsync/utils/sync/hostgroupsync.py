@@ -20,12 +20,6 @@ class HostGroupSync(ZabbixSyncBase):
             'name': name,
         }
 
-    # TODO: Cleanup
-    # def get_update_params(self, **kwargs) -> dict:
-    #     params = self.get_create_params()
-    #     params['groupid'] = kwargs.get('object_id')
-    #     return params
-
     def get_update_params(self, **kwargs) -> dict:
         params = self.get_create_params()
         object_id = kwargs.get('object_id')

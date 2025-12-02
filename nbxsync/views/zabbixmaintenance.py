@@ -7,14 +7,7 @@ from nbxsync.models import ZabbixMaintenance, ZabbixMaintenanceObjectAssignment,
 from nbxsync.tables import ZabbixMaintenanceObjectAssignmentObjectViewTable, ZabbixMaintenancePeriodObjectViewTable, ZabbixMaintenanceTable, ZabbixMaintenanceTagAssignmentObjectViewTable
 
 
-__all__ = (
-    'ZabbixMaintenanceListView',
-    'ZabbixMaintenanceView',
-    'ZabbixMaintenanceEditView',
-    'ZabbixMaintenanceBulkEditView',
-    'ZabbixMaintenanceDeleteView',
-    'ZabbixMaintenanceBulkDeleteView',
-)
+__all__ = ('ZabbixMaintenanceListView', 'ZabbixMaintenanceView', 'ZabbixMaintenanceEditView', 'ZabbixMaintenanceBulkEditView', 'ZabbixMaintenanceDeleteView', 'ZabbixMaintenanceBulkDeleteView')
 
 
 # ZabbixMaintenance

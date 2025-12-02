@@ -53,12 +53,7 @@ class ZabbixServerBulkEditForm(NetBoxModelBulkEditForm):
     description = forms.CharField(label=_('Description'), required=False, widget=forms.Textarea(attrs={'rows': 1, 'cols': 40}))
     url = forms.CharField(label=_('URL'), max_length=200, required=False)
     token = forms.CharField(label=_('Token'), max_length=200, required=False)
-    validate_certs = forms.TypedChoiceField(
-        label=_('Validate HTTPS Certificate'),
-        choices=BOOLEAN_WITH_BLANK_CHOICES,
-        coerce=lambda x: x == 'True',
-        required=False,
-    )
+    validate_certs = forms.TypedChoiceField(label=_('Validate HTTPS Certificate'), choices=BOOLEAN_WITH_BLANK_CHOICES, coerce=lambda x: x == 'True', required=False)
 
     fieldsets = (FieldSet('name', 'description', 'url', 'token', 'validate_certs'),)
     nullable_fields = ()
