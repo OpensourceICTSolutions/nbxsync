@@ -24,20 +24,8 @@ class ZabbixMacroAssignmentTestCase(
     @classmethod
     def setUpTestData(cls):
         cls.zabbix_servers = [
-            ZabbixServer(
-                name='Zabbix Server Bulk 1',
-                description='Test Bulk Server 1',
-                url='http://examplebulk1.com',
-                token='bulk1-token',
-                validate_certs=True,
-            ),
-            ZabbixServer(
-                name='Zabbix Server Bulk 2',
-                description='Test Bulk Server 2',
-                url='http://examplebulk2.com',
-                token='bulk2-token',
-                validate_certs=True,
-            ),
+            ZabbixServer(name='Zabbix Server Bulk 1', description='Test Bulk Server 1', url='http://examplebulk1.com', token='bulk1-token', validate_certs=True),
+            ZabbixServer(name='Zabbix Server Bulk 2', description='Test Bulk Server 2', url='http://examplebulk2.com', token='bulk2-token', validate_certs=True),
         ]
         ZabbixServer.objects.bulk_create(cls.zabbix_servers)
 
@@ -62,50 +50,18 @@ class ZabbixMacroAssignmentTestCase(
         cls.virtualmachine_ct = ContentType.objects.get_for_model(VirtualMachine)
 
         cls.zabbix_macros = [
-            ZabbixMacro(
-                macro='Zabbix Macro Bulk 1',
-                value='Bulk Macro',
-                description='Test Bulk Macro 1',
-                hostmacroid=1,
-                type=0,
-                assigned_object_type=zabbixserver_ct,
-                assigned_object_id=cls.zabbix_servers[0].id,
-            ),
-            ZabbixMacro(
-                macro='Zabbix Macro Bulk 2',
-                value='Bulk Macro',
-                description='Test Bulk Macro 2',
-                hostmacroid=2,
-                type=0,
-                assigned_object_type=zabbixtemplate_ct,
-                assigned_object_id=cls.zabbix_templates[0].id,
-            ),
+            ZabbixMacro(macro='Zabbix Macro Bulk 1', value='Bulk Macro', description='Test Bulk Macro 1', hostmacroid=1, type=0, assigned_object_type=zabbixserver_ct, assigned_object_id=cls.zabbix_servers[0].id),
+            ZabbixMacro(macro='Zabbix Macro Bulk 2', value='Bulk Macro', description='Test Bulk Macro 2', hostmacroid=2, type=0, assigned_object_type=zabbixtemplate_ct, assigned_object_id=cls.zabbix_templates[0].id),
         ]
         ZabbixMacro.objects.bulk_create(cls.zabbix_macros)
 
         zabbix_macroassignments = [
-            ZabbixMacroAssignment(
-                zabbixmacro=cls.zabbix_macros[0],
-                value='demo',
-                assigned_object_type=cls.device_ct,
-                assigned_object_id=cls.devices[0].id,
-            ),
-            ZabbixMacroAssignment(
-                zabbixmacro=cls.zabbix_macros[1],
-                value='demo',
-                assigned_object_type=cls.virtualmachine_ct,
-                assigned_object_id=cls.virtualmachines[0].id,
-            ),
+            ZabbixMacroAssignment(zabbixmacro=cls.zabbix_macros[0], value='demo', assigned_object_type=cls.device_ct, assigned_object_id=cls.devices[0].id),
+            ZabbixMacroAssignment(zabbixmacro=cls.zabbix_macros[1], value='demo', assigned_object_type=cls.virtualmachine_ct, assigned_object_id=cls.virtualmachines[0].id),
         ]
         ZabbixMacroAssignment.objects.bulk_create(zabbix_macroassignments)
 
-        cls.form_data = {
-            'zabbixmacro': cls.zabbix_macros[1].id,
-            'is_regex': True,
-            'context': 'Bla',
-            'value': 'demo',
-            'device': cls.devices[0].id,
-        }
+        cls.form_data = {'zabbixmacro': cls.zabbix_macros[1].id, 'is_regex': True, 'context': 'Bla', 'value': 'demo', 'device': cls.devices[0].id}
 
         cls.bulk_edit_data = {
             'value': 'Test Value 31',
@@ -154,10 +110,7 @@ class ZabbixMacroAssignmentTestCase(
 
         with self.assertLogs('nbxsync.forms', level='DEBUG') as cm:
             url = reverse('plugins:nbxsync:zabbixmacroassignment_add')
-            response = self.client.get(
-                url,
-                {'assigned_object_type': invalid_ct_id, 'assigned_object_id': invalid_obj_id},
-            )
+            response = self.client.get(url, {'assigned_object_type': invalid_ct_id, 'assigned_object_id': invalid_obj_id})
             self.assertEqual(response.status_code, 200)
 
         # Verify our except path executed and logged

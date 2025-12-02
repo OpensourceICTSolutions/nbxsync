@@ -26,11 +26,11 @@ class ZabbixMacroTestCase(TestCase):
         macro.full_clean()
         macro.save()
         self.assertEqual(ZabbixMacro.objects.count(), 1)
-        self.assertEqual(macro.macro, '{$TEST_MACRO}')  # ensure formatting
+        self.assertEqual(macro.macro, '{$TEST_MACRO}')
 
     def test_macro_formatting_on_save(self):
         data = self.valid_data.copy()
-        data['macro'] = 'MACRO_NAME'  # no {$...}
+        data['macro'] = 'MACRO_NAME'
         macro = ZabbixMacro(**data)
         macro.save()
         self.assertEqual(macro.macro, '{$MACRO_NAME}')
@@ -46,14 +46,14 @@ class ZabbixMacroTestCase(TestCase):
 
     def test_macro_uniqueness_per_object(self):
         data1 = self.valid_data.copy()
-        data1['macro'] = '{$DUPLICATE_MACRO}'  # simulate formatted macro
+        data1['macro'] = '{$DUPLICATE_MACRO}'
         data1['hostmacroid'] = 123
 
         ZabbixMacro.objects.create(**data1)
 
         data2 = self.valid_data.copy()
-        data2['macro'] = '{$DUPLICATE_MACRO}'  # same formatted macro
-        data2['hostmacroid'] = 999  # avoid hostmacroid uniqueness conflict
+        data2['macro'] = '{$DUPLICATE_MACRO}'
+        data2['hostmacroid'] = 999
 
         duplicate = ZabbixMacro(**data2)
 
@@ -81,5 +81,5 @@ class ZabbixMacroTestCase(TestCase):
         data['assigned_object_id'] = None
         macro = ZabbixMacro(**data)
         macro.macro = '{$BARE_MACRO}'
-        macro.full_clean = lambda: None  # bypass validation to test __str__
+        macro.full_clean = lambda: None
         self.assertEqual(str(macro), '{$BARE_MACRO}')

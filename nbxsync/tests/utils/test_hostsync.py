@@ -20,13 +20,7 @@ class HostSyncTestCase(TestCase):
 
         self.device_ct = ContentType.objects.get_for_model(Device)
 
-        self.zabbixserver = ZabbixServer.objects.create(
-            name='Zabbix Server A',
-            description='Test Server',
-            url='http://example.com',
-            token='dummy-token',
-            validate_certs=True,
-        )
+        self.zabbixserver = ZabbixServer.objects.create(name='Zabbix Server A', description='Test Server', url='http://example.com', token='dummy-token', validate_certs=True)
         self.proxygroup = ZabbixProxyGroup.objects.create(name='Proxy Group A', zabbixserver=self.zabbixserver, proxy_groupid=456)
 
         self.zabbix_proxy = ZabbixProxy.objects.create(
@@ -45,43 +39,16 @@ class HostSyncTestCase(TestCase):
 
         # AGENT interface
         self.interface_agent = ZabbixHostInterface.objects.create(
-            assigned_object_type=self.device_ct,
-            assigned_object_id=self.device.id,
-            zabbixserver=self.zabbixserver,
-            type=ZabbixHostInterfaceTypeChoices.AGENT,
-            interfaceid=10001,
-            ip=self.ip,
-            port=161,
-            tls_connect=1,
-            tls_accept=[1],
-            tls_psk_identity='psk_id',
-            tls_psk='psk_secret',
+            assigned_object_type=self.device_ct, assigned_object_id=self.device.id, zabbixserver=self.zabbixserver, type=ZabbixHostInterfaceTypeChoices.AGENT, interfaceid=10001, ip=self.ip, port=161, tls_connect=1, tls_accept=[1], tls_psk_identity='psk_id', tls_psk='psk_secret'
         )
 
         # SNMPv2 interface
         self.interface_snmp = ZabbixHostInterface.objects.create(
-            assigned_object_type=self.device_ct,
-            assigned_object_id=self.device.id,
-            zabbixserver=self.zabbixserver,
-            type=ZabbixHostInterfaceTypeChoices.SNMP,
-            interfaceid=10002,
-            ip=self.ip,
-            port=161,
-            snmp_version=ZabbixHostInterfaceSNMPVersionChoices.SNMPV2,
-            snmp_community='public',
+            assigned_object_type=self.device_ct, assigned_object_id=self.device.id, zabbixserver=self.zabbixserver, type=ZabbixHostInterfaceTypeChoices.SNMP, interfaceid=10002, ip=self.ip, port=161, snmp_version=ZabbixHostInterfaceSNMPVersionChoices.SNMPV2, snmp_community='public'
         )
 
         # IPMI interface
-        self.interface_ipmi = ZabbixHostInterface.objects.create(
-            assigned_object_type=self.device_ct,
-            assigned_object_id=self.device.id,
-            zabbixserver=self.zabbixserver,
-            type=ZabbixHostInterfaceTypeChoices.IPMI,
-            interfaceid=10003,
-            port=161,
-            ipmi_username='admin',
-            ipmi_password='password',
-        )
+        self.interface_ipmi = ZabbixHostInterface.objects.create(assigned_object_type=self.device_ct, assigned_object_id=self.device.id, zabbixserver=self.zabbixserver, type=ZabbixHostInterfaceTypeChoices.IPMI, interfaceid=10003, port=161, ipmi_username='admin', ipmi_password='password')
 
         # Simulate Host object with plugin settings
         class DummyHost:
@@ -102,13 +69,7 @@ class HostSyncTestCase(TestCase):
             def update_sync_info(self, success, message):
                 print(f'Sync: {success}, Msg: {message}')
 
-        self.obj = DummyHost(
-            device=self.device,
-            device_ct=self.device_ct,
-            proxy=self.zabbix_proxy,
-            proxy_group=self.proxygroup,
-            server=self.zabbixserver,
-        )
+        self.obj = DummyHost(device=self.device, device_ct=self.device_ct, proxy=self.zabbix_proxy, proxy_group=self.proxygroup, server=self.zabbixserver)
 
         class DummyAPI:
             def __init__(self):
@@ -137,33 +98,16 @@ class HostSyncTestCase(TestCase):
                     return [{'templateid': 1}]
 
             class Hostgroup:
-                def get(self, **kwargs):
-                    # support search by name and explicit IDs
-                    if 'groupids' in kwargs and kwargs['groupids'] is not None:
-                        return [{'groupid': kwargs['groupids']}]
-                    if 'search' in kwargs and isinstance(kwargs['search'], dict):
-                        name = kwargs['search'].get('name')
-                        # Return a fake match only if a name was provided
-                        if name:
-                            # Map names to IDs as needed for tests; default to a fake ID
-                            return [{'groupid': 9999}]
-                    return []
+                pass
 
             class Maintenance:
                 def get(self, **kwargs):
                     # Return no maintenances so delete() can proceed
                     return []
 
-                def delete(self, **kwargs):
-                    return ['deleted']
-
         dummy_api = DummyAPI()
 
-        self.sync = HostSync(
-            api=dummy_api,
-            netbox_obj=self.obj,
-            obj=self.obj,
-        )
+        self.sync = HostSync(api=dummy_api, netbox_obj=self.obj, obj=self.obj)
         # Assign context separately so it's not lost
         self.sync.context = {
             'all_objects': {
@@ -236,11 +180,7 @@ class HostSyncTestCase(TestCase):
             interfaceid=10004,
         )
 
-        self.sync.context['all_objects']['hostinterfaces'] = [
-            self.interface_agent,
-            self.interface_snmpv3,
-            self.interface_ipmi,
-        ]
+        self.sync.context['all_objects']['hostinterfaces'] = [self.interface_agent, self.interface_snmpv3, self.interface_ipmi]
 
         macros = self.sync.get_macros()
         self.assertTrue(any(m['macro'] == '{$AUTH_PASS}' for m in macros['macros']))
@@ -484,12 +424,6 @@ class HostSyncTestCase(TestCase):
         class DummyGroup:
             def __init__(self, groupid, value=''):
                 self.zabbixhostgroup = DummyZabbixHostGroup(groupid)
-
-            def is_template(self):
-                return True
-
-            def render(self):
-                return self.zabbixhostgroup.value, True
 
         # Inject dummy hostgroups into obj.assigned_objects
         self.obj.assigned_objects['hostgroups'] = [DummyGroup(groupid=1001), DummyGroup(groupid=1002)]

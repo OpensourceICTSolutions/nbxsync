@@ -10,16 +10,8 @@ from utilities.testing import create_test_device
 from nbxsync.choices import ZabbixProxyTypeChoices, ZabbixTLSChoices
 from nbxsync.choices.zabbixstatus import ZabbixHostStatus
 from nbxsync.jobs.synchost import SyncHostJob
-from nbxsync.models import (
-    ZabbixHostgroup,
-    ZabbixHostgroupAssignment,
-    ZabbixHostInterface,
-    ZabbixProxy,
-    ZabbixProxyGroup,
-    ZabbixServer,
-    ZabbixServerAssignment,
-)
-from nbxsync.utils.sync import ProxyGroupSync
+from nbxsync.models import ZabbixHostgroup, ZabbixHostgroupAssignment, ZabbixHostInterface, ZabbixProxy, ZabbixProxyGroup, ZabbixServer, ZabbixServerAssignment
+from nbxsync.utils.sync import HostSync, ProxyGroupSync, HostInterfaceSync
 
 
 class SyncHostJobTestCase(TestCase):
@@ -153,3 +145,34 @@ class SyncHostJobTestCase(TestCase):
             job.run()
 
         self.assertIn('Unexpected error: Simulated failure', str(context.exception))
+
+    @patch('nbxsync.jobs.synchost.safe_sync')
+    @patch.object(SyncHostJob, 'verify_hostinterfaces')
+    def test_sync_host_hostsync_exception_is_swallowed(self, mock_verify_interfaces, mock_safe_sync):
+        hostsync_call_count = {'count': 0}
+
+        def side_effect(sync_class, *args, **kwargs):
+            if getattr(sync_class, '__name__', None) == 'HostSync':
+                if hostsync_call_count['count'] == 0:
+                    hostsync_call_count['count'] += 1
+                    raise Exception('Simulated HostSync failure')
+                hostsync_call_count['count'] += 1
+                return None
+            return None
+
+        mock_safe_sync.side_effect = side_effect
+
+        job = SyncHostJob(instance=self.device)
+
+        with patch('nbxsync.jobs.synchost.get_assigned_zabbixobjects') as mock_gao:
+            mock_gao.return_value = {
+                'hostgroups': [],
+                'hostinterfaces': [self.hostinterface],
+            }
+
+            job.run()
+
+        self.assertGreaterEqual(hostsync_call_count['count'], 2)
+
+        interface_sync_called = any(getattr(call.args[0], '__name__', None) == 'HostInterfaceSync' for call in mock_safe_sync.call_args_list)
+        self.assertTrue(interface_sync_called)

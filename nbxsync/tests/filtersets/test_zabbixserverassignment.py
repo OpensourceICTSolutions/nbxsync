@@ -100,3 +100,26 @@ class ZabbixServerAssignmentFilterSetTestCase(TestCase):
         f = ZabbixServerAssignmentFilterSet({'assigned_object_id': self.devices[0].id}, queryset=ZabbixServerAssignment.objects.all())
         self.assertIn(self.assignments[0], f.qs)
         self.assertNotIn(self.assignments[1], f.qs)
+
+    def test_search_numeric_value_matches_hostid(self):
+        # Create an assignment that has a hostid set
+        assignment_with_hostid = ZabbixServerAssignment.objects.create(
+            zabbixserver=self.zabbix_servers[2],
+            assigned_object_type=self.device_ct,
+            assigned_object_id=self.devices[2].id,
+            hostid=555123,
+        )
+
+        # Sanity: another assignment without this hostid should not be returned
+        _ = ZabbixServerAssignment.objects.create(
+            zabbixserver=self.zabbix_servers[0],
+            assigned_object_type=self.device_ct,
+            assigned_object_id=self.devices[3].id,
+            hostid=999999,
+        )
+
+        f = ZabbixServerAssignmentFilterSet({'q': '555123'}, queryset=ZabbixServerAssignment.objects.all())
+        self.assertIn(assignment_with_hostid, f.qs)
+        # Ensure we only matched by hostid, not by names
+        self.assertEqual(f.qs.count(), 1)
+        self.assertEqual(f.qs.first().hostid, 555123)

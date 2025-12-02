@@ -6,12 +6,7 @@ from nbxsync.models import ZabbixTag
 
 class ZabbixTagTestCase(TestCase):
     def setUp(self):
-        self.valid_data = {
-            'name': 'Environment Tag',
-            'description': 'Tag for environment scope',
-            'tag': 'environment',
-            'value': 'production',
-        }
+        self.valid_data = {'name': 'Environment Tag', 'description': 'Tag for environment scope', 'tag': 'environment', 'value': 'production'}
 
     def test_valid_tag_creation(self):
         tag = ZabbixTag(**self.valid_data)
@@ -33,7 +28,7 @@ class ZabbixTagTestCase(TestCase):
         data['description'] = ''
         data['value'] = ''
         tag = ZabbixTag(**data)
-        tag.full_clean()  # Should not raise
+        tag.full_clean()
 
     def test_str_method(self):
         tag = ZabbixTag.objects.create(**self.valid_data)
@@ -41,7 +36,6 @@ class ZabbixTagTestCase(TestCase):
         self.assertEqual(str(tag), expected)
 
     def test_is_template_true(self):
-        # value contains a Jinja-style placeholder
         tag = ZabbixTag.objects.create(
             **{
                 **self.valid_data,

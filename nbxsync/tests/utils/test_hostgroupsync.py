@@ -16,37 +16,14 @@ class HostGroupSyncIntegrationTests(TestCase):
         cls.device_ct = ContentType.objects.get_for_model(Device)
         cls.device = create_test_device(name='HG Sync TestDev1')
 
-        cls.zabbixserver = ZabbixServer.objects.create(
-            name='Zabbix A',
-            url='http://zabbix.local',
-            token='abc123',
-            validate_certs=True,
-        )
+        cls.zabbixserver = ZabbixServer.objects.create(name='Zabbix A', url='http://zabbix.local', token='abc123', validate_certs=True)
         cls.hostgroups = [
-            ZabbixHostgroup.objects.create(
-                name='Static Group',
-                groupid=123,
-                zabbixserver=cls.zabbixserver,
-                value='Static Group',
-            ),
-            ZabbixHostgroup.objects.create(
-                name='Dynamic Group',
-                groupid=None,  # no stored id for dynamic values
-                zabbixserver=cls.zabbixserver,
-                value='HG {{ object.name }}',
-            ),
+            ZabbixHostgroup.objects.create(name='Static Group', groupid=123, zabbixserver=cls.zabbixserver, value='Static Group'),
+            ZabbixHostgroup.objects.create(name='Dynamic Group', groupid=None, zabbixserver=cls.zabbixserver, value='HG {{ object.name }}'),
         ]
 
-        cls.assignment_static = ZabbixHostgroupAssignment.objects.create(
-            zabbixhostgroup=cls.hostgroups[0],
-            assigned_object_type=cls.device_ct,
-            assigned_object_id=cls.device.id,
-        )
-        cls.assignment_dynamic = ZabbixHostgroupAssignment.objects.create(
-            zabbixhostgroup=cls.hostgroups[1],
-            assigned_object_type=cls.device_ct,
-            assigned_object_id=cls.device.id,
-        )
+        cls.assignment_static = ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=cls.hostgroups[0], assigned_object_type=cls.device_ct, assigned_object_id=cls.device.id)
+        cls.assignment_dynamic = ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=cls.hostgroups[1], assigned_object_type=cls.device_ct, assigned_object_id=cls.device.id)
 
     def test_get_name_value_static(self):
         sync = HostGroupSync(api=MagicMock(), netbox_obj=self.assignment_static)
@@ -85,3 +62,17 @@ class HostGroupSyncIntegrationTests(TestCase):
         sync = HostGroupSync(api=mock_api, netbox_obj=self.assignment_static)
         self.assertEqual(sync.api_object(), mock_api.hostgroup)
         self.assertEqual(sync.result_key(), 'groupids')
+
+    def test_set_id_dynamic_updates_existing_hostgroup(self):
+        existing_hg = ZabbixHostgroup.objects.create(name='ExistingGroup', groupid=999, zabbixserver=self.zabbixserver, value='ExistingGroup', description='Existing hostgroup to be updated')
+        count_before = ZabbixHostgroup.objects.count()
+        sync = HostGroupSync(api=None, netbox_obj=self.assignment_dynamic)
+        sync.set_id(999)
+
+        count_after = ZabbixHostgroup.objects.count()
+        updated_hg = ZabbixHostgroup.objects.get(pk=existing_hg.pk)
+
+        self.assertEqual(count_before, count_after)
+        self.assertEqual(updated_hg.groupid, 999)
+        self.assertEqual(updated_hg.name, 'ExistingGroup')
+        self.assertEqual(updated_hg.zabbixserver, self.zabbixserver)
