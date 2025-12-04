@@ -55,7 +55,7 @@ class ZabbixHostInterface(SyncInfoModel, NetBoxModel):
     tls_issuer = models.CharField(max_length=255, blank=True)
     tls_subject = models.CharField(max_length=255, blank=True)
     tls_psk_identity = models.CharField(max_length=255, blank=True)
-    tls_psk = models.CharField(max_length=255, blank=True)
+    tls_psk = models.CharField(max_length=1024, blank=True)
 
     # SNMP (v1/v2/v3)
     snmp_version = models.IntegerField(choices=ZabbixHostInterfaceSNMPVersionChoices, default=ZabbixHostInterfaceSNMPVersionChoices.SNMPV2, blank=True, null=True, verbose_name=_('SNMP Version'))
