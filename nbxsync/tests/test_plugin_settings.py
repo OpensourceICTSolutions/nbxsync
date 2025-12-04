@@ -46,3 +46,40 @@ class PluginSettingsModelTestCase(TestCase):
 
         settings = get_plugin_settings()
         self.assertIsInstance(settings, PluginSettingsModel)
+
+    def test_snmp_macro_validation_invalid_authpass(self):
+        with self.assertRaises(ValidationError) as ctx:
+            SNMPConfig(
+                snmp_community='{$OK}',
+                snmp_authpass='NOT_A_MACRO',  # invalid
+                snmp_privpass='{$OK}',
+            )
+        self.assertIn("Value must start with '{$' and end with '}'", str(ctx.exception))
+
+    def test_snmp_macro_validation_invalid_privpass(self):
+        with self.assertRaises(ValidationError) as ctx:
+            SNMPConfig(
+                snmp_community='{$OK}',
+                snmp_authpass='{$OK}',
+                snmp_privpass='${MALFORMED}',  # invalid suffix/prefix
+            )
+        self.assertIn("Value must start with '{$' and end with '}'", str(ctx.exception))
+
+    def test_snmp_macro_validation_non_string_values(self):
+        # Non-string should also trigger the same validator error (mode='before')
+        with self.assertRaises(ValidationError) as ctx:
+            SNMPConfig(
+                snmp_community=123,  # not a string
+                snmp_authpass='{$OK}',
+                snmp_privpass='{$OK}',
+            )
+        self.assertIn("Value must start with '{$' and end with '}'", str(ctx.exception))
+
+    def test_snmp_macro_validation_trailing_brace_missing(self):
+        with self.assertRaises(ValidationError) as ctx:
+            SNMPConfig(
+                snmp_community='{$MISSING_END',  # missing trailing '}'
+                snmp_authpass='{$OK}',
+                snmp_privpass='{$OK}',
+            )
+        self.assertIn("Value must start with '{$' and end with '}'", str(ctx.exception))

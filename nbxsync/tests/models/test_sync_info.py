@@ -6,13 +6,7 @@ from nbxsync.models import ZabbixServer
 
 class SyncInfoModelTestCase(TestCase):
     def setUp(self):
-        self.zabbixserver = ZabbixServer.objects.create(
-            name='Zabbix Test Server',
-            description='Test server',
-            url='http://example.com',
-            token='dummy-token',
-            validate_certs=True,
-        )
+        self.zabbixserver = ZabbixServer.objects.create(name='Zabbix Test Server', description='Test server', url='http://example.com', token='dummy-token', validate_certs=True)
 
     def test_default_sync_fields(self):
         self.assertIsNone(self.zabbixserver.last_sync)

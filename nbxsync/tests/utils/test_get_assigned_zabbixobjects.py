@@ -4,17 +4,7 @@ from django.test import TestCase
 from dcim.models import Device, DeviceType, Manufacturer
 from utilities.testing import create_test_device
 
-from nbxsync.models import (
-    ZabbixHostgroup,
-    ZabbixHostgroupAssignment,
-    ZabbixMacro,
-    ZabbixMacroAssignment,
-    ZabbixServer,
-    ZabbixTag,
-    ZabbixTagAssignment,
-    ZabbixTemplate,
-    ZabbixTemplateAssignment,
-)
+from nbxsync.models import ZabbixHostgroup, ZabbixHostgroupAssignment, ZabbixMacro, ZabbixMacroAssignment, ZabbixServer, ZabbixTag, ZabbixTagAssignment, ZabbixTemplate, ZabbixTemplateAssignment
 from nbxsync.utils.inheritance import get_assigned_zabbixobjects
 
 
@@ -35,24 +25,10 @@ class GetAssignedZabbixObjectsTestCase(TestCase):
         self.group = ZabbixHostgroup.objects.create(name='ProdGroup', groupid=201, value='prod', zabbixserver=self.server)
 
     def test_inherited_assignments(self):
-        # Inherited assignments
-        self.template_assignment = ZabbixTemplateAssignment.objects.create(
-            zabbixtemplate=self.template,
-            assigned_object_type=self.manufacturer_ct,
-            assigned_object_id=self.manufacturer.pk,
-        )
-        self.macro_assignment = ZabbixMacroAssignment.objects.create(
-            zabbixmacro=self.macro,
-            assigned_object_type=self.manufacturer_ct,
-            assigned_object_id=self.manufacturer.pk,
-            value='mval',
-        )
+        self.template_assignment = ZabbixTemplateAssignment.objects.create(zabbixtemplate=self.template, assigned_object_type=self.manufacturer_ct, assigned_object_id=self.manufacturer.pk)
+        self.macro_assignment = ZabbixMacroAssignment.objects.create(zabbixmacro=self.macro, assigned_object_type=self.manufacturer_ct, assigned_object_id=self.manufacturer.pk, value='mval')
         self.tag_assignment = ZabbixTagAssignment.objects.create(zabbixtag=self.tag, assigned_object_type=self.manufacturer_ct, assigned_object_id=self.manufacturer.pk)
-        self.group_assignment = ZabbixHostgroupAssignment.objects.create(
-            zabbixhostgroup=self.group,
-            assigned_object_type=self.manufacturer_ct,
-            assigned_object_id=self.manufacturer.pk,
-        )
+        self.group_assignment = ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.group, assigned_object_type=self.manufacturer_ct, assigned_object_id=self.manufacturer.pk)
 
         result = get_assigned_zabbixobjects(self.device)
 
@@ -62,7 +38,6 @@ class GetAssignedZabbixObjectsTestCase(TestCase):
         self.assertEqual(len(result['hostgroups']), 1)
 
     def test_direct_assignments(self):
-        # Direct assignments
         self.template_assignment = ZabbixTemplateAssignment.objects.create(zabbixtemplate=self.template, assigned_object_type=self.device_ct, assigned_object_id=self.device.pk)
         self.macro_assignment = ZabbixMacroAssignment.objects.create(zabbixmacro=self.macro, assigned_object_type=self.device_ct, assigned_object_id=self.device.pk, value='mval')
         self.tag_assignment = ZabbixTagAssignment.objects.create(zabbixtag=self.tag, assigned_object_type=self.device_ct, assigned_object_id=self.device.pk)

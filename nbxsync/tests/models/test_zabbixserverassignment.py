@@ -27,13 +27,7 @@ class ZabbixServerAssignmentTestCase(TestCase):
         self.assertIn('An assigned object must be provided', str(cm.exception))
 
     def test_both_proxy_and_proxygroup_fails(self):
-        assignment = ZabbixServerAssignment(
-            zabbixserver_id=self.zabbixserver.id,
-            assigned_object_type=self.device_ct,
-            assigned_object_id=self.device.id,
-            zabbixproxy=self.proxy,
-            zabbixproxygroup=self.proxy_group,
-        )
+        assignment = ZabbixServerAssignment(zabbixserver_id=self.zabbixserver.id, assigned_object_type=self.device_ct, assigned_object_id=self.device.id, zabbixproxy=self.proxy, zabbixproxygroup=self.proxy_group)
         with self.assertRaises(ValidationError) as cm:
             assignment.full_clean()
         self.assertIn('You cannot set both a proxy and proxygroup', str(cm.exception))

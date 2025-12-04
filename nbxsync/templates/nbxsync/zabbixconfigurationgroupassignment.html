@@ -1,0 +1,29 @@
+{% extends template_extends|default:'generic/object.html' %}
+{% load buttons %}
+{% load custom_links %}
+{% load helpers %}
+{% load perms %}
+{% load static %}
+{% load plugins %}
+{% load render_table from django_tables2 %}
+{% block content %}
+    <div class="row">
+        <div class="col col-md-6">
+            <div class="card">
+                <h5 class="card-header">Zabbix Configuration Group Assignment</h5>
+                <table class="table table-hover attr-table">
+                    <tr>
+                        <td>Zabbix Configuration Group</td>
+                        <td>{{ object.zabbixconfigurationgroup|linkify }}</td>
+                    </tr>
+                    <tr>
+                        <td>Name</td>
+                        <td>{{ object.assigned_object|linkify }}</td>
+                    </tr>
+                </table>
+            </div>
+            {% plugin_left_page object %}
+        </div>
+        <div class="col col-md-6">{% include 'inc/panels/tags.html' %}</div>
+    </div>
+{% endblock %}

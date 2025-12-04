@@ -7,7 +7,7 @@ from ipam.models import IPAddress
 from dcim.models import Device
 
 from nbxsync.forms import ZabbixHostInterfaceForm
-from nbxsync.models import ZabbixHostInterface, ZabbixServer
+from nbxsync.models import ZabbixHostInterface, ZabbixServer, ZabbixServerAssignment
 
 
 class ZabbixHostInterfaceAssignmentTestCase(
@@ -162,6 +162,85 @@ class ZabbixHostInterfaceAssignmentTestCase(
         )
 
         self.assertEqual(form.initial.get('virtualmachine'), vm.pk)
+
+    def test_form_prefill_single_zabbixserverassignment_sets_initial(self):
+        """
+        When exactly one ZabbixServerAssignment exists for the provided
+        (assigned_object_type, assigned_object_id), the form should prefill
+        initial['zabbixserver'] with that assignment's id.
+        """
+        device = self.devices[0]
+        ct = ContentType.objects.get_for_model(Device)
+
+        assignment = ZabbixServerAssignment.objects.create(
+            zabbixserver=self.zabbix_servers[0],
+            assigned_object_type=ct,
+            assigned_object_id=device.pk,
+        )
+
+        form = ZabbixHostInterfaceForm(
+            initial={
+                'assigned_object_type': ct.pk,
+                'assigned_object_id': device.pk,
+            }
+        )
+
+        # IMPORTANT: the code sets initial['zabbixserver'] = assignment.id (assignment PK),
+        # not the ZabbixServer PK.
+        self.assertEqual(form.initial.get('zabbixserver'), assignment.id)
+
+    def test_form_prefill_no_zabbixserverassignment_does_not_set_initial(self):
+        """
+        When no ZabbixServerAssignment exists, the form should not set
+        initial['zabbixserver'].
+        """
+        device = self.devices[1]
+        ct = ContentType.objects.get_for_model(Device)
+
+        # Ensure there is no assignment for this (ct, id)
+        ZabbixServerAssignment.objects.filter(
+            assigned_object_type=ct,
+            assigned_object_id=device.pk,
+        ).delete()
+
+        form = ZabbixHostInterfaceForm(
+            initial={
+                'assigned_object_type': ct.pk,
+                'assigned_object_id': device.pk,
+            }
+        )
+        self.assertNotIn('zabbixserver', form.initial)
+
+    def test_form_prefill_multiple_zabbixserverassignments_is_ignored(self):
+        """
+        When multiple ZabbixServerAssignment rows exist for the same
+        (assigned_object_type, assigned_object_id), the form should ignore
+        and leave initial['zabbixserver'] unset (MultipleObjectsReturned path).
+        """
+        device = self.devices[2]
+        ct = ContentType.objects.get_for_model(Device)
+
+        # Create two assignments for the same object (different servers).
+        ZabbixServerAssignment.objects.create(
+            zabbixserver=self.zabbix_servers[0],
+            assigned_object_type=ct,
+            assigned_object_id=device.pk,
+        )
+        ZabbixServerAssignment.objects.create(
+            zabbixserver=self.zabbix_servers[1],
+            assigned_object_type=ct,
+            assigned_object_id=device.pk,
+        )
+
+        form = ZabbixHostInterfaceForm(
+            initial={
+                'assigned_object_type': ct.pk,
+                'assigned_object_id': device.pk,
+            }
+        )
+
+        # Multiple matches should be ignored by the form's __init__ logic
+        self.assertNotIn('zabbixserver', form.initial)
 
     def _get_base_url(self):
         return 'plugins:nbxsync:zabbixhostinterface_{}'

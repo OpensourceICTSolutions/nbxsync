@@ -41,9 +41,6 @@ class ZabbixMaintenanceForm(NetBoxModelForm):
         )
 
     def clean(self):
-        """
-        Basic validation to ensure the window is coherent.
-        """
         super().clean()
 
         since = self.cleaned_data.get('active_since')
@@ -53,10 +50,6 @@ class ZabbixMaintenanceForm(NetBoxModelForm):
 
 
 class ZabbixMaintenanceFilterForm(NetBoxModelFilterSetForm):
-    """
-    Filter form
-    """
-
     model = ZabbixMaintenance
 
     zabbixserver = DynamicModelMultipleChoiceField(queryset=ZabbixServer.objects.all(), required=False, label=_('Zabbix Server (name)'), to_field_name='name')
@@ -83,26 +76,15 @@ class ZabbixMaintenanceFilterForm(NetBoxModelFilterSetForm):
 
 
 class ZabbixMaintenanceBulkEditForm(NetBoxModelBulkEditForm):
-    """
-    Bulk edit form
-    """
-
     model = ZabbixMaintenance
 
     zabbixserver = DynamicModelChoiceField(queryset=ZabbixServer.objects.all(), required=False, selector=True, label=_('Zabbix Server'))
-
     name = forms.CharField(label=_('Name'), max_length=512, required=False)
     description = forms.CharField(label=_('Description'), required=False, widget=forms.Textarea(attrs={'rows': 1, 'cols': 40}))
-
     active_since = forms.DateTimeField(label=_('Active since'), widget=DateTimePicker(), required=False)
     active_till = forms.DateTimeField(label=_('Active till'), widget=DateTimePicker(), required=False)
-
     maintenance_type = forms.ChoiceField(choices=ZabbixMaintenanceTypeChoices.choices, required=False, label=_('Maintenance type'))
-    tags_evaltype = forms.ChoiceField(
-        choices=ZabbixMaintenanceTagsEvalChoices.choices,
-        required=False,
-        label=_('Tags evaluation type'),
-    )
+    tags_evaltype = forms.ChoiceField(choices=ZabbixMaintenanceTagsEvalChoices.choices, required=False, label=_('Tags evaluation type'))
 
     fieldsets = (
         FieldSet(
@@ -116,5 +98,4 @@ class ZabbixMaintenanceBulkEditForm(NetBoxModelBulkEditForm):
         ),
     )
 
-    # Fields which can be nulled in bulk
     nullable_fields = ('description',)

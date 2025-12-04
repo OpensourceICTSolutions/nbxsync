@@ -21,6 +21,8 @@ from nbxsync.api.views import (
     ZabbixMaintenancePeriodViewSet,
     ZabbixMaintenanceObjectAssignmentViewSet,
     ZabbixMaintenanceTagAssignmentViewSet,
+    ZabbixConfigurationGroupViewSet,
+    ZabbixConfigurationGroupAssignmentViewSet,
 )
 
 
@@ -43,5 +45,7 @@ router.register('zabbixmaintenance', ZabbixMaintenanceViewSet)
 router.register('zabbixmaintenanceperiod', ZabbixMaintenancePeriodViewSet)
 router.register('zabbixmaintenanceobjectassignment', ZabbixMaintenanceObjectAssignmentViewSet)
 router.register('zabbixmaintenancetagassignment', ZabbixMaintenanceTagAssignmentViewSet)
+router.register('zabbixconfigurationgroup', ZabbixConfigurationGroupViewSet)
+router.register('zabbixconfigurationgroupassignment', ZabbixConfigurationGroupAssignmentViewSet)
 
 urlpatterns = router.urls

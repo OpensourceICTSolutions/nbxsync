@@ -50,6 +50,7 @@ nav:
   - Dynamic Values: dynamic_values.md
   - Signals: signals.md
   - Traffic flows: traffic_flows.md
+  - Scaling: scaling.md
   - Development: development.md
   - Support: support.md
   - Changelog: changelog.md

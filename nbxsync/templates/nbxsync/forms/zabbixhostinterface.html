@@ -1,11 +1,12 @@
 {% extends 'generic/object_edit.html' %}
 {% load form_helpers %}
 {% load static %}
+{% load i18n %}
 {% block head %}
     <link rel="stylesheet" href="{% static 'nbxsync/css/password_field.css' %}">
 {% endblock %}
 {% block form %}
-    <div class="form-group my-5">
+    <div class="field-group my-5">
         <div class="row">
             <h2 class="col-9 offset-3">Generic Configuration</h2>
         </div>
@@ -13,8 +14,8 @@
         {% render_field form.type %}
         {% render_field form.useip %}
         {% render_field form.interface_type %}
-        <div class="form-group" id="ip-address-wrapper">{% render_field form.ip %}</div>
-        <div class="form-group" id="dns-wrapper">{% render_field form.dns %}</div>
+        <div class="field-group" id="ip-address-wrapper">{% render_field form.ip %}</div>
+        <div class="field-group" id="dns-wrapper">{% render_field form.dns %}</div>
         {% comment %} Port label and checkbox magic {% endcomment %}
         <div class="row mb-3" id="port-wrapper">
             <label class="col-sm-3 col-form-label text-lg-end"
@@ -32,14 +33,14 @@
         </div>
     </div>
     <div id="ipmi-wrapper" class="field-group my-5">
-        <div class="form-group my-5">
+        <div class="field-group my-5">
             <div class="row">
                 <h2 class="col-9 offset-3">IPMI configuration</h2>
             </div>
             {% render_field form.ipmi_authtype %}
             {% render_field form.ipmi_privilege %}
             {% render_field form.ipmi_username %}
-            <div class="form-group" id="ipmipassword-wrapper">
+            <div class="field-group" id="ipmipassword-wrapper">
                 <div class="relative-container">
                     {% render_field form.ipmi_password %}
                     <button type="button" id="toggle-ipmipassword" class="toggle-password-btn">
@@ -50,13 +51,13 @@
         </div>
     </div>
     <div id="agent-wrapper" class="field-group my-5">
-        <div class="form-group my-5">
+        <div class="field-group my-5">
             <div class="row">
                 <h2 class="col-9 offset-3">Encryption configuration</h2>
             </div>
             {% render_field form.tls_connect %}
             {% render_field form.tls_accept %}
-            <div class="form-group" id="tlspsk-wrapper">
+            <div class="field-group" id="tlspsk-wrapper">
                 {% render_field form.tls_psk_identity %}
                 <div class="relative-container">
                     {% render_field form.tls_psk %}
@@ -65,20 +66,20 @@
                     </button>
                 </div>
             </div>
-            <div class="form-group" id="tlscert-wrapper">
+            <div class="field-group" id="tlscert-wrapper">
                 {% render_field form.tls_issuer %}
                 {% render_field form.tls_subject %}
             </div>
         </div>
     </div>
     <div id="snmp-version-wrapper" class="field-group my-5">
-        <div class="form-group">
+        <div class="field-group">
             {% render_field form.snmp_version %}
             {% render_field form.snmp_usebulk %}
         </div>
     </div>
     <div id="snmpv2-wrapper" class="field-group my-5">
-        <div class="form-group my-5">
+        <div class="field-group my-5">
             <div class="row">
                 <h2 class="col-9 offset-3">SNMPv1/2 Configuration</h2>
             </div>
@@ -86,7 +87,7 @@
         {% render_field form.snmp_community %}
     </div>
     <div id="snmpv3-wrapper" class="field-group my-5">
-        <div class="form-group my-5">
+        <div class="field-group my-5">
             <div class="row">
                 <h2 class="col-9 offset-3">SNMPv3 Configuration</h2>
             </div>
@@ -103,62 +104,14 @@
             {% render_field form.snmpv3_privacy_protocol %}
         </div>
     </div>
-    <div class="form-group my-5">
-        <div class="row">
-            <h2 class="col-9 offset-3">Assignment</h2>
-        </div>
+    <div class="field-group my-5">
         <div class="row mb-2">
-            <div class="offset-sm-3">
-                <ul class="nav nav-pills" role="tablist">
-                    <li role="presentation" class="nav-item">
-                        <button role="tab"
-                                type="button"
-                                id="device_tab"
-                                data-bs-toggle="tab"
-                                aria-controls="device"
-                                data-bs-target="#device"
-                                class="nav-link {% if form.initial.device or not form.initial.virtualmachine and not form.initial.virtualdevicecontext %}active{% endif %}">
-                            Device
-                        </button>
-                    </li>
-                    <li role="presentation" class="nav-item">
-                        <button role="tab"
-                                type="button"
-                                id="virtualdevicecontext_tab"
-                                data-bs-toggle="tab"
-                                aria-controls="virtualdevicecontext"
-                                data-bs-target="#virtualdevicecontext"
-                                class="nav-link {% if form.initial.virtualdevicecontext %}active{% endif %}">
-                            Virtual Device context
-                        </button>
-                    </li>
-                    <li role="presentation" class="nav-item">
-                        <button role="tab"
-                                type="button"
-                                id="vm_tab"
-                                data-bs-toggle="tab"
-                                aria-controls="virtualmachine"
-                                data-bs-target="#virtualmachine"
-                                class="nav-link {% if form.initial.virtualmachine %}active{% endif %}">
-                            Virtual Machine
-                        </button>
-                    </li>
-                </ul>
-            </div>
-        </div>
-        <div class="tab-content p-0 border-0">
-            <div class="tab-pane {% if form.initial.device or not form.initial.virtualmachine and not form.initial.virtualdevicecontext %}active{% endif %}"
-                 id="device"
-                 role="tabpanel"
-                 aria-labeled-by="device_tab">{% render_field form.device %}</div>
-            <div class="tab-pane {% if form.initial.virtualdevicecontext %}active{% endif %}"
-                 id="virtualdevicecontext"
-                 role="tabpanel"
-                 aria-labeled-by="virtualdevicecontext_tab">{% render_field form.virtualdevicecontext %}</div>
-            <div class="tab-pane {% if form.initial.virtualmachine %}active{% endif %}"
-                 id="virtualmachine"
-                 role="tabpanel"
-                 aria-labeled-by="vm_tab">{% render_field form.virtualmachine %}</div>
+            {% trans "Assignment" as assignment_label %}
+            {% for fieldset in form.fieldsets %}
+                {% if fieldset.name == assignment_label %}
+                    {% render_fieldset form fieldset %}
+                {% endif %}
+            {% endfor %}
         </div>
     </div>
 {% endblock %}

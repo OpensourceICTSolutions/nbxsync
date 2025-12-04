@@ -20,6 +20,9 @@ class ZabbixMacroAssignment(SyncInfoModel, NetBoxModel):
     assigned_object_type = models.ForeignKey(to=ContentType, limit_choices_to=ASSIGNMENT_MODELS, on_delete=models.CASCADE, related_name='+', blank=True, null=True)
     assigned_object_id = models.PositiveBigIntegerField(blank=True, null=True)
     assigned_object = GenericForeignKey(ct_field='assigned_object_type', fk_field='assigned_object_id')
+    zabbixconfigurationgroup = models.ForeignKey('nbxsync.ZabbixConfigurationGroup', on_delete=models.SET_NULL, blank=True, null=True)
+
+    parent = models.ForeignKey('self', null=True, blank=True, related_name='children', on_delete=models.SET_NULL)
 
     class Meta:
         verbose_name = 'Zabbix Macro Assignment'
@@ -28,7 +31,7 @@ class ZabbixMacroAssignment(SyncInfoModel, NetBoxModel):
 
         constraints = [
             models.UniqueConstraint(
-                fields=['zabbixmacro', 'assigned_object_type', 'assigned_object_id'],
+                fields=['zabbixmacro', 'is_regex', 'context', 'value', 'assigned_object_type', 'assigned_object_id'],
                 name='%(app_label)s_%(class)s_unique__macroassignment_per_object',
                 violation_error_message='Macro can only be assigned once to a given object',
             )
@@ -44,10 +47,6 @@ class ZabbixMacroAssignment(SyncInfoModel, NetBoxModel):
 
         if self.is_regex and self.value == '':
             raise ValidationError('A value must be provided when the macro is a regex')
-
-        # Set context to '' if the macroassignment aint a regex....
-        if not self.is_regex and self.context != '':
-            self.context = ''
 
     def save(self, *args, **kwargs):
         self.clean()

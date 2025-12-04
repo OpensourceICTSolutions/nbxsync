@@ -7,16 +7,19 @@ from netbox.api.fields import ContentTypeField
 from netbox.api.serializers import NetBoxModelSerializer
 from utilities.api import get_serializer_for_model
 
-from nbxsync.api.serializers import SyncInfoSerializerMixin
-from nbxsync.models import ZabbixHostgroupAssignment
+from nbxsync.api.serializers import SyncInfoSerializerMixin, ZabbixConfigurationGroupSerializer
+from nbxsync.models import ZabbixHostgroupAssignment, ZabbixConfigurationGroup
 
 __all__ = ('ZabbixHostgroupAssignmentSerializer',)
 
 
 class ZabbixHostgroupAssignmentSerializer(SyncInfoSerializerMixin, NetBoxModelSerializer):
-    url = serializers.HyperlinkedIdentityField(view_name='plugins-api:nbxsync-api:zabbixhostgroup-detail')
+    url = serializers.HyperlinkedIdentityField(view_name='plugins-api:nbxsync-api:zabbixhostgroupassignment-detail')
     assigned_object_type = ContentTypeField(queryset=ContentType.objects.all())
     assigned_object = serializers.SerializerMethodField(read_only=True)
+
+    zabbixconfigurationgroup = ZabbixConfigurationGroupSerializer(nested=True, read_only=True, required=False)
+    zabbixconfigurationgroup_id = serializers.PrimaryKeyRelatedField(queryset=ZabbixConfigurationGroup.objects.all(), source='zabbixconfigurationgroup', required=False)
 
     class Meta:
         model = ZabbixHostgroupAssignment
@@ -28,6 +31,8 @@ class ZabbixHostgroupAssignmentSerializer(SyncInfoSerializerMixin, NetBoxModelSe
             'assigned_object_id',
             'assigned_object',
             'zabbixhostgroup',
+            'zabbixconfigurationgroup',
+            'zabbixconfigurationgroup_id',
             'last_sync',
             'last_sync_state',
             'last_sync_message',

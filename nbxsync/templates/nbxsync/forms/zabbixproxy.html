@@ -6,7 +6,7 @@
 {% endblock %}
 {% block form %}
     <div id="snmp-form-container">
-        <div class="form-group my-5">
+        <div class="field-group my-5">
             <div class="row">
                 <h2 class="col-9 offset-3">Generic Configuration</h2>
             </div>
@@ -16,7 +16,7 @@
             {% render_field form.proxygroup %}
             {% render_field form.operating_mode %}
             {% comment %} Only to be shown when Operating Mode == Active and Proxygroup is set {% endcomment %}
-            <div class="form-group my-5" id="opmode-active-wrapper">
+            <div class="field-group my-5" id="opmode-active-wrapper">
                 <div class="row">
                     <h2 class="col-9 offset-3">Active Proxy configuration</h2>
                 </div>
@@ -25,20 +25,20 @@
                 {% render_field form.allowed_addresses %}
             </div>
             {% comment %} Only to be shown when Operating Mode == Passive {% endcomment %}
-            <div class="form-group my-5" id="opmode-passive-wrapper">
+            <div class="field-group my-5" id="opmode-passive-wrapper">
                 <div class="row">
                     <h2 class="col-9 offset-3">Passive Proxy configuration</h2>
                 </div>
                 {% render_field form.address %}
                 {% render_field form.port %}
             </div>
-            <div class="form-group my-5">
+            <div class="field-group my-5">
                 <div class="row">
                     <h2 class="col-9 offset-3">Encryption configuration</h2>
                 </div>
                 {% render_field form.tls_connect %}
                 {% render_field form.tls_accept %}
-                <div class="form-group" id="tlspsk-wrapper">
+                <div class="field-group" id="tlspsk-wrapper">
                     {% render_field form.tls_psk_identity %}
                     <div class="relative-container">
                         {% render_field form.tls_psk %}
@@ -47,13 +47,13 @@
                         </button>
                     </div>
                 </div>
-                <div class="form-group" id="tlscert-wrapper">
+                <div class="field-group" id="tlscert-wrapper">
                     {% render_field form.tls_issuer %}
                     {% render_field form.tls_subject %}
                 </div>
                 {% render_field form.custom_timeouts %}
                 {% comment %} Only to be shown when custom_timeouts == True {% endcomment %}
-                <div class="form-group my-5" id="customtimeout-wrapper">
+                <div class="field-group my-5" id="customtimeout-wrapper">
                     <div class="row">
                         <h2 class="col-9 offset-3">Custom Timeouts</h2>
                     </div>

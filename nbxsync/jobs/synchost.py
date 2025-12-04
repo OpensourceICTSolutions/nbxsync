@@ -64,7 +64,13 @@ class SyncHostJob:
                 safe_sync(ProxyGroupSync, assignment.zabbixproxygroup)
 
             # Sync the actual Host
-            safe_sync(HostSync, assignment, extra_args={'all_objects': all_objects})
+            try:
+                safe_sync(HostSync, assignment, extra_args={'all_objects': all_objects})
+            except Exception as e:
+                # This can happen, in cases where the host exists, a new HostInterface is added (SNMP for example) and a new template (which requires SNMP)
+                # In such cases, the Host Update will fail, due to the Interface not existing yet.
+                # Fail silently, so we can create the interface - and we'll sync the template on the next run...
+                pass
 
             # Once the Host exists and we have a HostId, time to sync the interfaces
             for hostinterface in all_objects['hostinterfaces']:

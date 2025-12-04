@@ -142,11 +142,11 @@ Defines a Maintenance object in Zabbix
 
 ### `ZabbixMaintenancePeriod`
 
-Linked to a ZabbixMaintenance, defines when the maintenance object comes into play
+Linked to a `ZabbixMaintenance`, defines when the maintenance object comes into play
 
 ### `ZabbixMaintenanceObjectAssignment`
 
-Defines the assigned objects (Device/VirtualMachine/ZabbixHostgroup) affected by the Zabbix Maintenace
+Defines the assigned objects (Device/Virtual Device Context/VirtualMachine/ZabbixHostgroup) affected by the Zabbix Maintenace
 
 For Zabbix HostGroups, only statically defined objects are supported - as there is no way to resolve any Jinja2-templated hostgroups without the context of the assigned object
 
@@ -155,6 +155,19 @@ For Zabbix HostGroups, only statically defined objects are supported - as there 
 Defines the assigned Zabbix Tags affected by the Zabbix Maintenace
 
 For Zabbix Tags, only statically defined objects are supported - as there is no way to resolve any Jinja2-templated value without the context of the assigned object
+
+## Zabbix Configuration Group Models
+
+### `ZabbixConfigurationGroup`
+
+Models a group of configuration settings (such as `ZabbixServer`, `ZabbixHostInterface` et cetera) that are *replicated* to all assigned Devices, Virtual Device Contexts or VirtualMachines.
+
+Please note that on the `ZabbixHostInterface`, no IP address needs to be entered: upon replicating this to the assigned object, the *primary IP Address* will be used on the `ZabbixHostInterface`
+
+### `ZabbixConfigurationGroupAssignment`
+
+Links a Device/Virtual Device Context/VirtualMachine to a `ZabbixConfigurationGroup` and as such determines the applied configuration on the linked object. Device/Virtual Device Context/VirtualMachines can only be assigned to a single `ZabbixConfigurationGroup`
+
 
 ---
 

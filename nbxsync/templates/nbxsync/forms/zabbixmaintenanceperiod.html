@@ -2,7 +2,7 @@
 {% load form_helpers %}
 {% load static %}
 {% block form %}
-    <div class="form-group my-5">
+    <div class="field-group my-5">
         <div class="row">
             <h2 class="col-9 offset-3">Generic Configuration</h2>
         </div>
@@ -12,24 +12,24 @@
             <h2 class="col-9 offset-3">Details</h2>
         </div>
         {% comment %} Only to be shown when TimePeriod Type == Mothly {% endcomment %}
-        <div class="form-group" id="month-wrapper">{% render_field form.month %}</div>
+        <div class="field-group" id="month-wrapper">{% render_field form.month %}</div>
         {% comment %} Only to be shown when TimePeriod Type == Mothly {% endcomment %}
-        <div class="form-group" id="month_date-wrapper">{% render_field form.month_date %}</div>
+        <div class="field-group" id="month_date-wrapper">{% render_field form.month_date %}</div>
         {% comment %} Only to be shown when TimePeriod Type == Mothly and MonthDate == Day of Month {% endcomment %}
-        <div class="form-group" id="day-wrapper">{% render_field form.day %}</div>
+        <div class="field-group" id="day-wrapper">{% render_field form.day %}</div>
         {% comment %} Only to be shown when TimePeriod Type == Mothly and MonthDate == Day of Week {% endcomment %}
-        <div class="form-group" id="week-wrapper">{% render_field form.week %}</div>
+        <div class="field-group" id="week-wrapper">{% render_field form.week %}</div>
         {% comment %} Only to be shown when TimePeriod Type == Weekly {% endcomment %}
-        <div class="form-group" id="dayofweek-wrapper">{% render_field form.dayofweek %}</div>
+        <div class="field-group" id="dayofweek-wrapper">{% render_field form.dayofweek %}</div>
         <div class="row">
             <h2 class="col-9 offset-3">Maintenance period schedule</h2>
         </div>
         {% comment %} Only to be shown when TimePeriod Type == One Time Only {% endcomment %}
-        <div class="form-group" id="start_date-wrapper">{% render_field form.start_date %}</div>
+        <div class="field-group" id="start_date-wrapper">{% render_field form.start_date %}</div>
         {% comment %} Only to be shown when TimePeriod Type == Daily, Weekly or Monthly {% endcomment %}
-        <div class="form-group" id="start_time-wrapper">{% render_field form.start_time %}</div>
+        <div class="field-group" id="start_time-wrapper">{% render_field form.start_time %}</div>
         {% comment %} Only to be shown when TimePeriod Type == Daily {% endcomment %}
-        <div class="form-group" id="every-wrapper">{% render_field form.every %}</div>
+        <div class="field-group" id="every-wrapper">{% render_field form.every %}</div>
         <div class="row">
             <h2 class="col-9 offset-3">Maintenance period length</h2>
         </div>

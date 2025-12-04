@@ -9,7 +9,7 @@ from jinja2 import TemplateError, TemplateSyntaxError, UndefinedError
 from dcim.models import Device
 from utilities.testing import create_test_device
 
-from nbxsync.models import ZabbixHostgroup, ZabbixHostgroupAssignment, ZabbixServer
+from nbxsync.models import ZabbixHostgroup, ZabbixHostgroupAssignment, ZabbixServer, ZabbixConfigurationGroup
 
 
 class ZabbixHostgroupAssignmentTestCase(TestCase):
@@ -43,15 +43,10 @@ class ZabbixHostgroupAssignmentTestCase(TestCase):
         self.assertFalse(assignment.is_template())
 
     def test_is_template_true(self):
-        # Make the hostgroup value contain Jinja syntax
         self.group.value = 'Hello {{ object.name }}'
         self.group.save()
 
-        assignment = ZabbixHostgroupAssignment(
-            zabbixhostgroup=self.group,
-            assigned_object_type=self.device_ct,
-            assigned_object_id=self.device.id,
-        )
+        assignment = ZabbixHostgroupAssignment(zabbixhostgroup=self.group, assigned_object_type=self.device_ct, assigned_object_id=self.device.id)
         self.assertTrue(assignment.is_template())
 
     def test_render_success(self):
@@ -65,18 +60,10 @@ class ZabbixHostgroupAssignmentTestCase(TestCase):
     def test_render_template_syntax_error(self):
         self.group.value = '{% broken syntax'
         self.group.save()
-        assignment = ZabbixHostgroupAssignment.objects.create(
-            zabbixhostgroup=self.group,
-            assigned_object_type=self.device_ct,
-            assigned_object_id=self.device.id,
-        )
-        with patch(
-            'nbxsync.models.zabbixhostgroupassignment.render_jinja2',
-            side_effect=TemplateSyntaxError('oops', lineno=1),
-        ):
+        assignment = ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.group, assigned_object_type=self.device_ct, assigned_object_id=self.device.id)
+        with patch('nbxsync.models.zabbixhostgroupassignment.render_jinja2', side_effect=TemplateSyntaxError('oops', lineno=1)):
             rendered, success = assignment.render()
             self.assertFalse(success)
-            # message shape: "Template syntax error in '{% broken syntax': oops\n  line 1"
             self.assertIn('Template syntax error', rendered)
             self.assertIn(self.group.value, rendered)
             self.assertIn('oops', rendered)
@@ -108,19 +95,27 @@ class ZabbixHostgroupAssignmentTestCase(TestCase):
         self.group.value = '{{ object.name }}'
         self.group.save()
 
-        assignment = ZabbixHostgroupAssignment.objects.create(
-            zabbixhostgroup=self.group,
-            assigned_object_type=self.device_ct,
-            assigned_object_id=self.device.id,
-        )
+        assignment = ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.group, assigned_object_type=self.device_ct, assigned_object_id=self.device.id)
 
-        with patch(
-            'nbxsync.models.zabbixhostgroupassignment.render_jinja2',
-            side_effect=RuntimeError('unexpected error'),
-        ):
+        with patch('nbxsync.models.zabbixhostgroupassignment.render_jinja2', side_effect=RuntimeError('unexpected error')):
             rendered, success = assignment.render()
             self.assertFalse(success)
-            # message shape: "Unexpected error rendering template '{{ object.name }}': unexpected error"
             self.assertIn('Unexpected error rendering template', rendered)
             self.assertIn(self.group.value, rendered)
             self.assertIn('unexpected error', rendered)
+
+    def test_render_with_configuration_group_returns_value_without_template_rendering(self):
+        self.group.value = 'Hello {{ object.name }}'
+        self.group.save()
+
+        config_group = ZabbixConfigurationGroup()
+
+        assignment = ZabbixHostgroupAssignment(zabbixhostgroup=self.group)
+        assignment.assigned_object = config_group
+
+        with patch('nbxsync.models.zabbixhostgroupassignment.render_jinja2') as mock_render:
+            rendered, success = assignment.render()
+
+        self.assertTrue(success)
+        self.assertEqual(rendered, self.group.value)
+        mock_render.assert_not_called()

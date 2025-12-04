@@ -3,6 +3,8 @@ from .tabs import *
 
 from .hostinfo import *
 
+from .zabbixconfigurationgroup import *
+
 from .zabbixmacro import *
 from .zabbixmacroassignment import *
 from .zabbixserver import *
@@ -21,3 +23,4 @@ from .zabbixmaintenance import *
 from .zabbixmaintenanceperiod import *
 from .zabbixmaintenanceobjectassignment import *
 from .zabbixmaintenancetagassignment import *
+from .zabbixconfigurationgroupassignment import *

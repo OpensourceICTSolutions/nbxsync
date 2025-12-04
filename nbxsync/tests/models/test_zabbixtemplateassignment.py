@@ -10,14 +10,7 @@ from nbxsync.models import ZabbixServer, ZabbixTemplate, ZabbixTemplateAssignmen
 
 class ZabbixTemplateAssignmentTestCase(TestCase):
     def setUp(self):
-        self.zabbixserver = ZabbixServer.objects.create(
-            name='Test Server',
-            description='Test Description',
-            url='http://127.0.0.1',
-            token='s3cr3t-t0ken',
-            validate_certs=False,
-        )
-
+        self.zabbixserver = ZabbixServer.objects.create(name='Test Server', description='Test Description', url='http://127.0.0.1', token='s3cr3t-t0ken', validate_certs=False)
         self.template = ZabbixTemplate.objects.create(name='Linux Template', templateid=123, zabbixserver_id=self.zabbixserver.id)
 
         self.device = create_test_device(name='Device 1')
@@ -36,8 +29,7 @@ class ZabbixTemplateAssignmentTestCase(TestCase):
 
     def test_clean_fails_without_assigned_object(self):
         assignment = ZabbixTemplateAssignment(zabbixtemplate=self.template, assigned_object_type=None, assigned_object_id=None)
-        # Directly calling save() or full_clean() doesn't guarantee hitting model.clean()
-        # So call clean() ourselves *and* verify it raises from the logic
+
         with self.assertRaises(ValidationError) as cm:
             assignment.clean()
 
@@ -47,20 +39,14 @@ class ZabbixTemplateAssignmentTestCase(TestCase):
         device = create_test_device(name='Device 2')
         device_ct = ContentType.objects.get_for_model(device)
 
-        # Insert the first assignment
         ZabbixTemplateAssignment.objects.create(zabbixtemplate=self.template, assigned_object_type=device_ct, assigned_object_id=device.id)
-
-        # Second, duplicate object
         duplicate = ZabbixTemplateAssignment(zabbixtemplate=self.template, assigned_object_type=device_ct, assigned_object_id=device.id)
 
-        # Ensure test isolation: DB rollback protection via outer atomic
         try:
             with transaction.atomic():
                 duplicate.save()
         except IntegrityError:
-            pass  # This is expected
-        # else:
-        #     self.fail("IntegrityError not raised on duplicate save()")
+            pass
 
     def test_str_returns_empty_if_no_assigned_object(self):
         assignment = ZabbixTemplateAssignment(zabbixtemplate=self.template, assigned_object_type=None, assigned_object_id=None)

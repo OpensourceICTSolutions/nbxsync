@@ -8,4 +8,5 @@ INHERITANCE_SOURCE_COLORS = {
     'Platform': 'warning',
     'Manufacturer': 'secondary',
     'Role': 'success',
+    'Zabbix Configuration Group': 'succes',
 }

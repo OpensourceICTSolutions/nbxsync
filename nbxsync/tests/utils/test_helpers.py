@@ -11,11 +11,7 @@ class HelperTests(TestCase):
         self.zabbixserver = ZabbixServer.objects.create(name='Zabbix Test', url='http://localhost', token='abc123')
 
     def test_create_new_template(self):
-        data = {
-            'templateid': 1234,
-            'name': 'Linux Template',
-            'interface_requirements': [HostInterfaceRequirementChoices.AGENT],
-        }
+        data = {'templateid': 1234, 'name': 'Linux Template', 'interface_requirements': [HostInterfaceRequirementChoices.AGENT]}
 
         result = create_or_update_zabbixtemplate(data.copy(), self.zabbixserver)
         self.assertIsNotNone(result)
@@ -24,12 +20,7 @@ class HelperTests(TestCase):
         self.assertEqual(result.zabbixserver, self.zabbixserver)
 
     def test_update_existing_template(self):
-        template = ZabbixTemplate.objects.create(
-            name='Old Name',
-            templateid=4321,
-            zabbixserver=self.zabbixserver,
-            interface_requirements=[HostInterfaceRequirementChoices.SNMP],
-        )
+        template = ZabbixTemplate.objects.create(name='Old Name', templateid=4321, zabbixserver=self.zabbixserver, interface_requirements=[HostInterfaceRequirementChoices.SNMP])
 
         data = {'templateid': 4321, 'name': 'Updated Name'}
 
@@ -56,10 +47,7 @@ class HelperTests(TestCase):
         self.assertEqual(template.name, 'Invalid Update Template')
 
     def test_create_new_template_invalid_serializer(self):
-        bad_data = {
-            'templateid': 9999,
-            'name': '',  # Blank name should be invalid
-        }
+        bad_data = {'templateid': 9999, 'name': ''}
 
         result = create_or_update_zabbixtemplate(bad_data.copy(), self.zabbixserver)
 
@@ -86,14 +74,7 @@ class HelperTests(TestCase):
 
     def test_update_existing_macro(self):
         template = ZabbixTemplate.objects.create(name='Update Macro Template', templateid=777, zabbixserver=self.zabbixserver, interface_requirements=[])
-
-        macro = ZabbixMacro.objects.create(
-            macro='{$TO_UPDATE}',
-            value='old',
-            type=ZabbixMacroTypeChoices.TEXT,
-            hostmacroid=8888,
-            assigned_object=template,
-        )
+        macro = ZabbixMacro.objects.create(macro='{$TO_UPDATE}', value='old', type=ZabbixMacroTypeChoices.TEXT, hostmacroid=8888, assigned_object=template)
 
         macro_data = {'hostmacroid': 8888, 'macro': '{$TO_UPDATE}', 'value': 'new', 'type': ZabbixMacroTypeChoices.TEXT}
 
@@ -104,21 +85,8 @@ class HelperTests(TestCase):
     def test_update_existing_macro_invalid_serializer(self):
         template = ZabbixTemplate.objects.create(name='Macro Update Template', templateid=888, zabbixserver=self.zabbixserver, interface_requirements=[])
 
-        macro = ZabbixMacro.objects.create(
-            macro='{$BROKEN}',
-            value='oldvalue',
-            type=ZabbixMacroTypeChoices.TEXT,
-            hostmacroid=123,
-            assigned_object=template,
-        )
-
-        # Invalid update: empty macro name is invalid
-        invalid_macro_data = {
-            'hostmacroid': 123,
-            'macro': '',  # Invalid due to blank=False
-            'value': 'newvalue',
-            'type': ZabbixMacroTypeChoices.TEXT,
-        }
+        macro = ZabbixMacro.objects.create(macro='{$BROKEN}', value='oldvalue', type=ZabbixMacroTypeChoices.TEXT, hostmacroid=123, assigned_object=template)
+        invalid_macro_data = {'hostmacroid': 123, 'macro': '', 'value': 'newvalue', 'type': ZabbixMacroTypeChoices.TEXT}
 
         result = create_or_update_zabbixmacro(invalid_macro_data.copy(), template)
 
@@ -128,12 +96,7 @@ class HelperTests(TestCase):
     def test_create_new_macro_invalid_serializer(self):
         template = ZabbixTemplate.objects.create(name='Macro Create Fail Template', templateid=999, zabbixserver=self.zabbixserver, interface_requirements=[])
 
-        invalid_macro_data = {
-            'hostmacroid': 999,
-            'macro': '',  # Invalid due to blank=False
-            'value': 'xyz',
-            'type': ZabbixMacroTypeChoices.TEXT,
-        }
+        invalid_macro_data = {'hostmacroid': 999, 'macro': '', 'value': 'xyz', 'type': ZabbixMacroTypeChoices.TEXT}
 
         result = create_or_update_zabbixmacro(invalid_macro_data.copy(), template)
 

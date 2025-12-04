@@ -22,11 +22,7 @@ from nbxsync.utils.sync.hostinterfacesync import HostInterfaceSync
 class HostInterfaceSyncTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.zabbixserver = ZabbixServer.objects.create(
-            name='Zabbix Server 1',
-            url='http://example.com',
-            token='dummy-token',
-        )
+        cls.zabbixserver = ZabbixServer.objects.create(name='Zabbix Server 1', url='http://example.com', token='dummy-token')
 
         cls.device = create_test_device(name='HG Sync TestDev1')
         cls.device_ct = ContentType.objects.get_for_model(Device)
@@ -34,23 +30,10 @@ class HostInterfaceSyncTests(TestCase):
         cls.ip = IPAddress.objects.create(address='10.1.1.1/32')
 
         cls.hostinterface = ZabbixHostInterface.objects.create(
-            zabbixserver=cls.zabbixserver,
-            type=ZabbixHostInterfaceTypeChoices.AGENT,
-            interface_type=ZabbixInterfaceTypeChoices.DEFAULT,
-            useip=ZabbixInterfaceUseChoices.IP,
-            dns='router1.local',
-            ip=cls.ip,
-            port=10050,
-            assigned_object_type=cls.device_ct,
-            assigned_object_id=cls.device.id,
+            zabbixserver=cls.zabbixserver, type=ZabbixHostInterfaceTypeChoices.AGENT, interface_type=ZabbixInterfaceTypeChoices.DEFAULT, useip=ZabbixInterfaceUseChoices.IP, dns='router1.local', ip=cls.ip, port=10050, assigned_object_type=cls.device_ct, assigned_object_id=cls.device.id
         )
 
-        cls.assignment = ZabbixServerAssignment.objects.create(
-            zabbixserver=cls.zabbixserver,
-            hostid='10101',
-            assigned_object_type=cls.device_ct,
-            assigned_object_id=cls.device.id,
-        )
+        cls.assignment = ZabbixServerAssignment.objects.create(zabbixserver=cls.zabbixserver, hostid='10101', assigned_object_type=cls.device_ct, assigned_object_id=cls.device.id)
 
     def test_get_create_params_basic(self):
         sync = HostInterfaceSync(api=None, netbox_obj=self.hostinterface)

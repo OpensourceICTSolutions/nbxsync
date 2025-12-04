@@ -13,6 +13,7 @@ class ZabbixMacroTable(NetBoxTable):
     macro = tables.Column(linkify=True)
     assigned_object_type = ContentTypeModelNameColumn(accessor='assigned_object_type', verbose_name=_('Object Type'), order_by=('assigned_object_type__model',))
     assigned_object = tables.Column(verbose_name=_('Object'), linkify=True, orderable=False)
+    hostmacroid = tables.Column(verbose_name=_('Host Macro ID'))
 
     class Meta(NetBoxTable.Meta):
         model = ZabbixMacro

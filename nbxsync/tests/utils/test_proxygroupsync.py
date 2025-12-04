@@ -9,22 +9,8 @@ from nbxsync.utils.sync.proxygroupsync import ProxyGroupSync
 class ProxyGroupSyncIntegrationTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.zabbixserver = ZabbixServer.objects.create(
-            name='Zabbix Server A',
-            description='Test Server',
-            url='http://example.com',
-            token='dummy-token',
-            validate_certs=True,
-        )
-
-        cls.proxygroup = ZabbixProxyGroup.objects.create(
-            name='Group A',
-            zabbixserver=cls.zabbixserver,
-            proxy_groupid=456,
-            description='Failover Group A',
-            failover_delay='1m',
-            min_online=2,
-        )
+        cls.zabbixserver = ZabbixServer.objects.create(name='Zabbix Server A', description='Test Server', url='http://example.com', token='dummy-token', validate_certs=True)
+        cls.proxygroup = ZabbixProxyGroup.objects.create(name='Group A', zabbixserver=cls.zabbixserver, proxy_groupid=456, description='Failover Group A', failover_delay='1m', min_online=2)
 
     def test_get_create_params(self):
         sync = ProxyGroupSync(api=MagicMock(), netbox_obj=self.proxygroup)
@@ -83,10 +69,7 @@ class ProxyGroupSyncIntegrationTests(TestCase):
         self.proxygroup.save = failing_save
         self.proxygroup.update_sync_info = MagicMock()
 
-        data = {
-            'proxy_groupid': 888,
-            'name': 'Bad Save Group',
-        }
+        data = {'proxy_groupid': 888, 'name': 'Bad Save Group'}
 
         sync = ProxyGroupSync(api=MagicMock(), netbox_obj=self.proxygroup)
 

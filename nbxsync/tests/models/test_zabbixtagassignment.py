@@ -6,16 +6,19 @@ from django.db import IntegrityError, transaction
 from django.test import TestCase
 from jinja2 import TemplateError, TemplateSyntaxError, UndefinedError
 
-from dcim.models import Device
+from dcim.models import Device, DeviceType, Manufacturer
 from utilities.testing import create_test_device
 
-from nbxsync.models import ZabbixTag, ZabbixTagAssignment
+from nbxsync.models import ZabbixTag, ZabbixTagAssignment, ZabbixConfigurationGroup
 
 
 class ZabbixTagAssignmentTestCase(TestCase):
     def setUp(self):
         self.device = create_test_device(name='TaggedDevice')
+        self.manufacturer = Manufacturer.objects.create(name='Test')
+        self.device_type = DeviceType.objects.create(model='Demo', slug='demo', u_height=1.0, manufacturer=self.manufacturer)
         self.device_ct = ContentType.objects.get_for_model(Device)
+        self.device_type_ct = ContentType.objects.get_for_model(DeviceType)
         self.tag = ZabbixTag.objects.create(name='Environment', tag='env', value='{{ object.name }}')
 
     def test_valid_assignment_and_render(self):
@@ -86,7 +89,28 @@ class ZabbixTagAssignmentTestCase(TestCase):
         self.assertEqual(context['description'], self.tag.description)
         self.assertEqual(context['extra'], 'extra_val')
 
-    def test_str_method(self):
+    def test_str_method_with_name(self):
         assignment = ZabbixTagAssignment.objects.create(zabbixtag=self.tag, assigned_object_type=self.device_ct, assigned_object_id=self.device.id)
         expected = f'{self.tag.name} - {self.device.name}'
         self.assertEqual(str(assignment), expected)
+
+    def test_str_method_without_name(self):
+        assignment = ZabbixTagAssignment.objects.create(zabbixtag=self.tag, assigned_object_type=self.device_type_ct, assigned_object_id=self.device_type.id)
+        expected = f'{self.tag.name} - {str(self.device_type)}'
+        self.assertEqual(str(assignment), expected)
+
+    def test_render_with_configuration_group_returns_value_without_template_rendering(self):
+        self.tag.value = 'Hello {{ object.name }}'
+        self.tag.save()
+
+        cfg = ZabbixConfigurationGroup.objects.create(name='ConfigGroupForTag', description='Used for tag assignment testing')
+
+        assignment = ZabbixTagAssignment(zabbixtag=self.tag)
+        assignment.assigned_object = cfg
+
+        with patch('nbxsync.models.zabbixtagassignment.render_jinja2') as mock_render:
+            rendered, success = assignment.render()
+
+        self.assertTrue(success)
+        self.assertEqual(rendered, self.tag.value)
+        mock_render.assert_not_called()

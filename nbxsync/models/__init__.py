@@ -1,8 +1,13 @@
 from .sync_info import *
+
+from .zabbixhostgroup import *
 from .zabbixserver import *
 from .zabbixtag import *
-from .zabbixhostgroup import *
 from .zabbixtemplate import *
+
+from .zabbixconfigurationgroup import *
+from .zabbixconfigurationgroupassignment import *
+
 from .zabbixmacro import *
 from .zabbixhostinterface import *
 from .zabbixproxygroup import *

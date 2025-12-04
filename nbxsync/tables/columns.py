@@ -1,8 +1,9 @@
 import django_tables2 as tables
-from django.utils.safestring import mark_safe
+from django.contrib.contenttypes.models import ContentType
 from django.utils.text import capfirst
 
 from netbox.tables.columns import ActionsColumn
+from nbxsync.models import ZabbixConfigurationGroup
 
 __all__ = ('InheritanceAwareActionsColumn', 'ContentTypeModelNameColumn')
 
@@ -13,8 +14,13 @@ class InheritanceAwareActionsColumn(ActionsColumn):
         html = super().render(**kwargs)
 
         record = kwargs.get('record')
-        if getattr(record, '_inherited_from', None):
-            # Suppress the whole cell for inherited records (after callbacks ran)
+
+        if record.assigned_object_type_id == ContentType.objects.get_for_model(ZabbixConfigurationGroup).id:
+            return html
+
+        # If the object for this row has the attribute _inherited_from or zabbixconfigurationgroup
+        # Hide the 'Actions' cell, so the user has no easy way to edit this row (as we dont want that)
+        if getattr(record, '_inherited_from', None) or getattr(record, 'zabbixconfigurationgroup', None):
             return ''
         return html
 

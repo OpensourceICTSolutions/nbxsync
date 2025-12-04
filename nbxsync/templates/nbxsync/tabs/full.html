@@ -44,32 +44,103 @@
         </div>
         <div class="col col-md-6">
             <div class="card">
-                <h2 class="card-header">
-                    Host Inventory
-                    {% if hostinventory_assignment %}
-                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="{% url 'plugins:nbxsync:zabbixhostinventory' pk=hostinventory_assignment.pk %}"
-   class="badge text-bg-green">{{ hostinventory_assignment.get_inventory_mode }}</a>
-                    {% endif %}
-                    {% if perms.nbxsync.add_zabbixhostinventory %}
-                        <div class="card-actions">
-                            {% if hostinventory_assignment %}
-                                <a href="{% url 'plugins:nbxsync:zabbixhostinventory_edit' pk=hostinventory_assignment.pk %}?&return_url={{ request.path }}"
-                                   class="btn btn-ghost-yellow btn-sm">
-                                    <i class="mdi mdi-pencil" aria-hidden="true"></i> Edit
-                                </a>
-                                <a href="{% url 'plugins:nbxsync:zabbixhostinventory_delete' pk=hostinventory_assignment.pk %}?&return_url={{ request.path }}"
-                                   class="btn btn-ghost-red btn-sm">
-                                    <i class="mdi mdi-trash-can-outline" aria-hidden="true"></i> Delete
-                                </a>
-                            {% else %}
-                                <a href="{% url 'plugins:nbxsync:zabbixhostinventory_add' %}?assigned_object_type={{ content_type.pk }}&assigned_object_id={{ object.pk }}&return_url={{ request.path }}"
-                                   class="btn btn-ghost-primary btn-sm">
-                                    <i class="mdi mdi-plus-thick" aria-hidden="true"></i> Add
-                                </a>
-                            {% endif %}
-                        </div>
-                    {% endif %}
-                </h2>
+                <h2 class="card-header">Miscellaneous</h2>
+                <div clas="table-container">
+                    <table class="table table-hover object-list">
+                        <tbody>
+                            <tr class="even">
+                                <td>Host Inventory</td>
+                                <td>
+                                    {% if hostinventory_assignment %}
+                                        <a href="{% url 'plugins:nbxsync:zabbixhostinventory' pk=hostinventory_assignment.pk %}">{{ hostinventory_assignment.get_inventory_mode }}</a>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="noprint p-1 text-end text-nowrap">
+                                    {% if perms.nbxsync.add_zabbixhostinventory %}
+                                        {% if hostinventory_assignment %}
+                                            <span class="btn-group dropdown">
+                                                <a class="btn btn-sm btn-warning"
+                                                   href="{% url 'plugins:nbxsync:zabbixhostinventory_edit' pk=hostinventory_assignment.pk %}?&return_url={{ request.path }}"
+                                                   type="button"
+                                                   aria-label="Edit">
+                                                    <i class="mdi mdi-pencil"></i>
+                                                </a>
+                                                <a class="btn btn-sm btn-warning dropdown-toggle"
+                                                   type="button"
+                                                   data-bs-toggle="dropdown"
+                                                   style="padding-left: 2px"
+                                                   aria-expanded="false">
+                                                    <span class="visually-hidden">Toggle Dropdown</span>
+                                                </a>
+                                                <ul class="dropdown-menu" style="">
+                                                    <li>
+                                                        <a class="dropdown-item"
+                                                           href="{% url 'plugins:nbxsync:zabbixhostinventory_delete' pk=hostinventory_assignment.pk %}?&return_url={{ request.path }}">
+                                                            <i class="mdi mdi-trash-can-outline"></i> Delete
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </span>
+                                        {% else %}
+                                            <a href="{% url 'plugins:nbxsync:zabbixhostinventory_add' %}?assigned_object_type={{ content_type.pk }}&assigned_object_id={{ object.pk }}&return_url={{ request.path }}"
+                                               title="Add"
+                                               class="btn btn-sm btn-success">
+                                                <i class="mdi mdi-plus-thick" aria-hidden="true"></i>
+                                            </a>
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr class="odd">
+                                <td>Configuration Group</td>
+                                <td>
+                                    {% if configurationgroup_assignment %}
+                                        <a href="{% url 'plugins:nbxsync:zabbixconfigurationgroup' pk=configurationgroup_assignment.zabbixconfigurationgroup.pk %}">{{ configurationgroup_assignment.zabbixconfigurationgroup }}</a>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="noprint p-1 text-end text-nowrap">
+                                    {% if perms.nbxsync.add_zabbixconfigurationgroupassignment %}
+                                        {% if configurationgroup_assignment %}
+                                            <span class="btn-group dropdown">
+                                                <a class="btn btn-sm btn-warning"
+                                                   href="{% url 'plugins:nbxsync:zabbixconfigurationgroupassignment_edit' pk=configurationgroup_assignment.pk %}?&return_url={{ request.path }}"
+                                                   type="button"
+                                                   aria-label="Edit">
+                                                    <i class="mdi mdi-pencil"></i>
+                                                </a>
+                                                <a class="btn btn-sm btn-warning dropdown-toggle"
+                                                   type="button"
+                                                   data-bs-toggle="dropdown"
+                                                   style="padding-left: 2px"
+                                                   aria-expanded="false">
+                                                    <span class="visually-hidden">Toggle Dropdown</span>
+                                                </a>
+                                                <ul class="dropdown-menu" style="">
+                                                    <li>
+                                                        <a class="dropdown-item"
+                                                           href="{% url 'plugins:nbxsync:zabbixconfigurationgroupassignment_delete' pk=configurationgroup_assignment.pk %}?&return_url={{ request.path }}">
+                                                            <i class="mdi mdi-trash-can-outline"></i> Delete
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </span>
+                                        {% else %}
+                                            <a href="{% url 'plugins:nbxsync:zabbixconfigurationgroupassignment_add' %}?assigned_object_type={{ content_type.pk }}&assigned_object_id={{ object.pk }}&return_url={{ request.path }}"
+                                               title="Add"
+                                               class="btn btn-sm btn-success">
+                                                <i class="mdi mdi-plus-thick" aria-hidden="true"></i>
+                                            </a>
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
         <div class="col col-md-6">

@@ -72,7 +72,7 @@ class ZabbixHostInventoryTestCase(TestCase):
         self.assertEqual(alias_rendered, f'Test {self.device.name} Alias')
 
     def test_render_field_truncates_long_value(self):
-        long_value = '{{ "A" * 200 }}'  # Alias max is 128, so this should be truncated
+        long_value = '{{ "A" * 200 }}'
         data = self.valid_data.copy()
         data['alias'] = long_value
         inventory = ZabbixHostInventory.objects.create(**data)
