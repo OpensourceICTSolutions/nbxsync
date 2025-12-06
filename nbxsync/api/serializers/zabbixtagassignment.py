@@ -7,16 +7,19 @@ from utilities.api import get_serializer_for_model
 from netbox.api.fields import ContentTypeField
 from netbox.api.serializers import NetBoxModelSerializer
 
-from nbxsync.api.serializers import SyncInfoSerializerMixin
-from nbxsync.models import ZabbixTagAssignment
+from nbxsync.api.serializers import SyncInfoSerializerMixin, ZabbixConfigurationGroupSerializer
+from nbxsync.models import ZabbixTagAssignment, ZabbixConfigurationGroup
 
 __all__ = ('ZabbixTagAssignmentSerializer',)
 
 
 class ZabbixTagAssignmentSerializer(SyncInfoSerializerMixin, NetBoxModelSerializer):
-    url = serializers.HyperlinkedIdentityField(view_name='plugins-api:nbxsync-api:zabbixtag-detail')
+    url = serializers.HyperlinkedIdentityField(view_name='plugins-api:nbxsync-api:zabbixtagassignment-detail')
     assigned_object_type = ContentTypeField(queryset=ContentType.objects.all())
     assigned_object = serializers.SerializerMethodField(read_only=True)
+
+    zabbixconfigurationgroup = ZabbixConfigurationGroupSerializer(nested=True, read_only=True, required=False)
+    zabbixconfigurationgroup_id = serializers.PrimaryKeyRelatedField(queryset=ZabbixConfigurationGroup.objects.all(), source='zabbixconfigurationgroup', required=False)
 
     class Meta:
         model = ZabbixTagAssignment
@@ -27,6 +30,8 @@ class ZabbixTagAssignmentSerializer(SyncInfoSerializerMixin, NetBoxModelSerializ
             'assigned_object_type',
             'assigned_object_id',
             'assigned_object',
+            'zabbixconfigurationgroup',
+            'zabbixconfigurationgroup_id',
             'zabbixtag',
         )
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nbxsync"
-version = "1.0.0"
+version = "1.0.1"
 authors = [
   { name="Opensource ICT Solutions", email="info@oicts.com" },
 ]
@@ -19,7 +19,7 @@ classifiers = [
 keywords = ["netbox", "netbox-plugin", "zabbix", "nbxsync"]
 dependencies = [
   "zabbix_utils",
-  "pydantic",
+  "pydantic<2.11",
 ]
 
 [project.optional-dependencies]
@@ -47,7 +47,7 @@ include = ["nbxsync*"]
 exclude = [
     "nbxsync/migrations",
 ]
-line-length = 420
+line-length = 320
 
 [tool.ruff.lint]
 extend-select = ["E4", "E7", "E9", "F", "W", "C", "I"]
@@ -65,6 +65,7 @@ known-first-party = [
     "utilities",
     "django_tables2",
     "rest_framework",
+    "pydantic",
 ]
 
 [tool.ruff.format]

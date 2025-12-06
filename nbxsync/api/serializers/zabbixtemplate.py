@@ -12,7 +12,7 @@ __all__ = ('ZabbixTemplateSerializer',)
 class ZabbixTemplateSerializer(NetBoxModelSerializer):
     url = serializers.HyperlinkedIdentityField(view_name='plugins-api:nbxsync-api:zabbixtemplate-detail')
     zabbixserver = ZabbixServerSerializer(nested=True)
-    zabbixserver_id = serializers.PrimaryKeyRelatedField(queryset=ZabbixServer.objects.all(), source='zabbixserver', write_only=True)
+    zabbixserver_id = serializers.PrimaryKeyRelatedField(queryset=ZabbixServer.objects.all(), source='zabbixserver', write_only=True, required=False)
     interface_requirements = serializers.ListField(child=serializers.ChoiceField(choices=HostInterfaceRequirementChoices.choices), required=False, allow_empty=True)
 
     class Meta:

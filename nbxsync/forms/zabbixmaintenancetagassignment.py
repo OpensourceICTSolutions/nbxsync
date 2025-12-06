@@ -13,14 +13,7 @@ __all__ = ('ZabbixMaintenanceTagAssignmentForm', 'ZabbixMaintenanceTagAssignment
 
 class ZabbixMaintenanceTagAssignmentForm(NetBoxModelForm):
     zabbixmaintenance = DynamicModelChoiceField(queryset=ZabbixMaintenance.objects.all(), required=True, selector=True, label=_('Zabbix Maintenance'))
-    zabbixtag = DynamicModelChoiceField(
-        queryset=ZabbixTag.objects.all(),
-        required=True,
-        selector=True,
-        query_params={'is_template': False},
-        label=_('Zabbix Tag'),
-        help_text=_('Static only, no templated Zabbix Tags'),
-    )
+    zabbixtag = DynamicModelChoiceField(queryset=ZabbixTag.objects.all(), required=True, selector=True, query_params={'is_template': False}, label=_('Zabbix Tag'), help_text=_('Static only, no templated Zabbix Tags'))
     operator = forms.TypedChoiceField(choices=ZabbixMaintenanceTagOperatorChoices, required=True, coerce=int, label=_('Operator'))
     value = forms.CharField(required=False, label=_('Value'))
 

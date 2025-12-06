@@ -25,13 +25,7 @@ class ZabbixMaintenancePeriodForm(NetBoxModelForm):
 
     # ArrayFields of integer choices → use TypedMultipleChoiceField to coerce to int
     dayofweek = forms.TypedMultipleChoiceField(label=_('Day(s) of week'), required=False, choices=ZabbixTimePeriodDayofWeekChoices.choices, coerce=int)
-    day = forms.IntegerField(
-        label=_('Day of month'),
-        required=False,
-        min_value=1,
-        max_value=31,
-        help_text=_('Day of the month when the maintenance must come into effect (1–31).'),
-    )
+    day = forms.IntegerField(label=_('Day of month'), required=False, min_value=1, max_value=31, help_text=_('Day of the month when the maintenance must come into effect (1–31).'))
     week = forms.ChoiceField(label=_('Day of week'), required=False, choices=ZabbixTimePeriodDayofWeekOptionChoices.choices)
 
     month = forms.TypedMultipleChoiceField(label=_('Month(s)'), required=False, choices=ZabbixTimePeriodMonthChoices.choices, coerce=int)
@@ -143,10 +137,6 @@ class ZabbixMaintenancePeriodForm(NetBoxModelForm):
 
 
 class ZabbixMaintenancePeriodFilterForm(NetBoxModelFilterSetForm):
-    """
-    Filter form (pairs with the table/filterset you’ll add for this model)
-    """
-
     model = ZabbixMaintenancePeriod
 
     zabbixmaintenance = DynamicModelMultipleChoiceField(queryset=ZabbixMaintenance.objects.all(), required=False, label=_('Maintenance (name)'), to_field_name='name')
@@ -174,10 +164,6 @@ class ZabbixMaintenancePeriodFilterForm(NetBoxModelFilterSetForm):
 
 
 class ZabbixMaintenancePeriodBulkEditForm(NetBoxModelBulkEditForm):
-    """
-    Bulk edit form
-    """
-
     model = ZabbixMaintenancePeriod
 
     zabbixmaintenance = DynamicModelChoiceField(queryset=ZabbixMaintenance.objects.all(), required=False, selector=True, label=_('Maintenance'))
@@ -204,7 +190,6 @@ class ZabbixMaintenancePeriodBulkEditForm(NetBoxModelBulkEditForm):
         ),
     )
 
-    # Fields which can be nulled in bulk (model has null=True on these)
     nullable_fields = (
         'period',
         'every',

@@ -6,7 +6,7 @@ nbxSync integrates with the [Netbox Permission system](https://netbox.readthedoc
 
 **What it is:** Mirrors a Zabbix host group (logical grouping of hosts for permissions, templates, maintenance, etc.).
 
-**How it’s used:** Created locally or discovered from Zabbix, then attached to Devices/VMs via **Zabbix Hostgroup Assignment**.
+**How it’s used:** Created locally or discovered from Zabbix, then attached to Devices/VDCs/VMs via **Zabbix Hostgroup Assignment**.
 
 **Typical permissions:**
 
@@ -22,7 +22,7 @@ nbxSync integrates with the [Netbox Permission system](https://netbox.readthedoc
 
 ## Zabbix Hostgroup Assignment
 
-**What it is:** The through-model that binds a NetBox object (Device/VM) to one or more Zabbix host groups.
+**What it is:** The through-model that binds a NetBox object (Device/VDC/VM) to one or more Zabbix host groups.
 
 **How it’s used:** Decide host placement in Zabbix UI and ACLs; supports both manual and policy-driven assignments.
 
@@ -94,7 +94,7 @@ nbxSync integrates with the [Netbox Permission system](https://netbox.readthedoc
 
 ## Zabbix Macro Assignment
 
-**What it is:** Attaches a macro to a specific Device/VM with precedence over template-level macros.
+**What it is:** Attaches a macro to a specific Device/VDC/VM with precedence over template-level macros.
 
 **How it’s used:** Host-specific overrides—e.g., a unique SNMP community or threshold.
 
@@ -130,7 +130,7 @@ nbxSync integrates with the [Netbox Permission system](https://netbox.readthedoc
 
 ## Zabbix Maintenance Object Assignment
 
-**What it is:** Links a maintenance to specific targets (Device/VM or HostGroup).
+**What it is:** Links a maintenance to specific targets (Device/VDC/VM or HostGroup).
 
 **How it’s used:** Choose scope of a maintenance—single device, service group.
 
@@ -274,7 +274,7 @@ nbxSync integrates with the [Netbox Permission system](https://netbox.readthedoc
 
 ## Zabbix Tag Assignment
 
-**What it is:** Applies tags to a Device/VM (or template) so they appear on the Zabbix host/events.
+**What it is:** Applies tags to a Device/VDC/VM (or template) so they appear on the Zabbix host/events.
 
 **How it’s used:** Drive alert routing, dashboards, and maintenance selection.
 
@@ -310,7 +310,7 @@ nbxSync integrates with the [Netbox Permission system](https://netbox.readthedoc
 
 ## Zabbix Template Assignment
 
-**What it is:** Binds a template to a Device/VM.
+**What it is:** Binds a template to a Device/VDC/VM.
 
 **How it’s used:** Attach monitoring logic to assets; supports layering and overrides.
 
@@ -325,3 +325,39 @@ nbxSync integrates with the [Netbox Permission system](https://netbox.readthedoc
 - change_zabbixtemplateassignment
 - delete_zabbixtemplateassignment
 - view_zabbixtemplateassignment
+
+## Zabbix Configuration Group
+
+**What it is:** Groups together multiple Zabbix objects which are then replicated to all Assigned Objects
+
+**How it’s used:** Used to 'template' configuration and replicate it to objects linked via **Zabbix Configuration Group Assignments**.
+
+**Typical permissions:**
+
+- _view_ to let operators see the templated configuration
+- _add/change/delete_ for engineers curating configuration structure.
+
+### Permissions
+
+- add_zabbixconfigurationgroup
+- change_zabbixconfigurationgroup
+- delete_zabbixconfigurationgroup
+- view_zabbixconfigurationgroup
+
+## Zabbix Configuration Group Assignment
+
+**What it is:** The through-model that binds a NetBox object (Device/VDC/VM) to a single Zabbix Configuration Group
+
+**How it’s used:** Used to assign a single Zabbix Configuration Group to a Device/VDC/VM to replicate the templated configuration
+
+**Typical permissions:**
+
+- _view_ for read-only visibility of where things land.
+- _add/change/delete_ for engineers orchestrating group membership.
+
+### Permissions
+
+- add_zabbixconfigurationgroupassignment
+- change_zabbixconfigurationgroupassignment
+- delete_zabbixconfigurationgroupassignment
+- view_zabbixconfigurationgroupassignment

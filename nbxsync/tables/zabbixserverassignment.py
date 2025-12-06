@@ -5,14 +5,13 @@ from django.utils.translation import gettext_lazy as _
 from netbox.tables import NetBoxTable
 
 from nbxsync.models import ZabbixServerAssignment
-from nbxsync.tables import ZabbixInheritedAssignmentTable
 from nbxsync.tables.columns import ContentTypeModelNameColumn, InheritanceAwareActionsColumn
 from nbxsync.constants import ADD_HOSTINTERFACE_BUTTON
 
 __all__ = ('ZabbixServerAssignmentTable', 'ZabbixServerAssignmentObjectViewTable')
 
 
-class ZabbixServerAssignmentTable(ZabbixInheritedAssignmentTable, NetBoxTable):
+class ZabbixServerAssignmentTable(NetBoxTable):
     assigned_object = tables.Column(verbose_name=_('Assigned to'), linkify=True, orderable=False)
     assigned_object_type = ContentTypeModelNameColumn(accessor='assigned_object_type', verbose_name=_('Object Type'), order_by=('assigned_object_type__model',))
     zabbixserver = tables.Column(accessor='zabbixserver.name', verbose_name=_('Zabbix Server'), linkify={'viewname': 'plugins:nbxsync:zabbixserver', 'args': [A('zabbixserver.pk')]})
@@ -43,7 +42,7 @@ class ZabbixServerAssignmentTable(ZabbixInheritedAssignmentTable, NetBoxTable):
         )
 
 
-class ZabbixServerAssignmentObjectViewTable(ZabbixInheritedAssignmentTable, NetBoxTable):
+class ZabbixServerAssignmentObjectViewTable(NetBoxTable):
     assigned_object = tables.Column(verbose_name=_('Assigned To'), linkify=True, orderable=False)
     assigned_object_type = ContentTypeModelNameColumn(accessor='assigned_object_type', verbose_name=_('Object Type'), order_by=('assigned_object_type__model',))
     zabbixserver = tables.Column(accessor='zabbixserver.name', verbose_name=_('Zabbix Server'), linkify={'viewname': 'plugins:nbxsync:zabbixserver', 'args': [A('zabbixserver.pk')]})
@@ -56,7 +55,8 @@ class ZabbixServerAssignmentObjectViewTable(ZabbixInheritedAssignmentTable, NetB
             {% else %}
                 <i class="mdi mdi-close-thick text-danger" title="{{ record.last_sync|date:'d-m-Y H:i' }}: {{ record.last_sync_message }}"></i>
             {% endif %}
-        """
+        """,
+        orderable=False,
     )
     actions = InheritanceAwareActionsColumn(extra_buttons=ADD_HOSTINTERFACE_BUTTON)
 
@@ -69,7 +69,8 @@ class ZabbixServerAssignmentObjectViewTable(ZabbixInheritedAssignmentTable, NetB
             'zabbixserver',
             'zabbixproxy',
             'zabbixproxygroup',
-            'sync_statuscreated',
+            'sync_status',
+            'created',
             'last_updated',
             'actions',
         )

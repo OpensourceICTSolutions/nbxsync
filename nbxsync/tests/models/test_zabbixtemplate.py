@@ -10,12 +10,7 @@ class ZabbixTemplateTestCase(TestCase):
     def setUp(self):
         self.zabbixserver1 = ZabbixServer.objects.create(name='Zabbix A', url='http://localhost', token='tokenA')
         self.zabbixserver2 = ZabbixServer.objects.create(name='Zabbix B', url='http://127.0.0.2', token='tokenB')
-        self.valid_data = {
-            'name': 'Linux OS Template',
-            'templateid': 12345,
-            'zabbixserver': self.zabbixserver1,
-            'interface_requirements': [HostInterfaceRequirementChoices.AGENT],
-        }
+        self.valid_data = {'name': 'Linux OS Template', 'templateid': 12345, 'zabbixserver': self.zabbixserver1, 'interface_requirements': [HostInterfaceRequirementChoices.AGENT]}
 
     def test_valid_creation(self):
         template = ZabbixTemplate(**self.valid_data)
@@ -56,7 +51,7 @@ class ZabbixTemplateTestCase(TestCase):
         data = self.valid_data.copy()
         data['zabbixserver'] = self.zabbixserver2
         template = ZabbixTemplate(**data)
-        template.full_clean()  # should not raise
+        template.full_clean()
 
     def test_default_interface_requirement_function(self):
         default = default_interfacerequirement()
@@ -64,7 +59,7 @@ class ZabbixTemplateTestCase(TestCase):
 
     def test_default_interface_requirement_applied(self):
         data = self.valid_data.copy()
-        data.pop('interface_requirements')  # omit this field
+        data.pop('interface_requirements')
 
         template = ZabbixTemplate.objects.create(**data)
         self.assertEqual(template.interface_requirements, [HostInterfaceRequirementChoices.NONE.value])

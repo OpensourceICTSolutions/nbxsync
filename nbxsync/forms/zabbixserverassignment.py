@@ -11,7 +11,7 @@ from dcim.models import Device, VirtualDeviceContext
 from virtualization.models import VirtualMachine
 
 from nbxsync.constants import ASSIGNMENT_TYPE_TO_FIELD, ASSIGNMENT_TYPE_TO_FIELD_NBOBJS
-from nbxsync.models import ZabbixProxy, ZabbixProxyGroup, ZabbixServer, ZabbixServerAssignment
+from nbxsync.models import ZabbixProxy, ZabbixProxyGroup, ZabbixServer, ZabbixServerAssignment, ZabbixConfigurationGroup
 
 __all__ = ('ZabbixServerAssignmentForm', 'ZabbixServerAssignmentFilterForm', 'ZabbixServerAssignmentBulkImportForm', 'ZabbixServerAssignmentBulkEditForm')
 logger = logging.getLogger(__name__)
@@ -21,10 +21,10 @@ class ZabbixServerAssignmentForm(NetBoxModelForm):
     zabbixserver = DynamicModelChoiceField(queryset=ZabbixServer.objects.all(), required=True, selector=True, label=_('Zabbix Server'))
     zabbixproxy = DynamicModelChoiceField(queryset=ZabbixProxy.objects.all(), required=False, selector=True, label=_('Zabbix Proxy'))
     zabbixproxygroup = DynamicModelChoiceField(queryset=ZabbixProxyGroup.objects.all(), required=False, selector=True, label=_('Zabbix Proxygroup'))
+    zabbixconfigurationgroup = DynamicModelChoiceField(queryset=ZabbixConfigurationGroup.objects.all(), required=False, selector=True, label=_('Zabbix Configuration Group'))
 
     device = DynamicModelChoiceField(queryset=Device.objects.all(), required=False, selector=True, label=_('Device'))
     virtualdevicecontext = DynamicModelChoiceField(queryset=VirtualDeviceContext.objects.all(), required=False, selector=True, label=_('Virtual Device Context'))
-
     virtualmachine = DynamicModelChoiceField(queryset=VirtualMachine.objects.all(), required=False, selector=True, label=_('Virtual Machine'))
 
     fieldsets = (
@@ -41,6 +41,7 @@ class ZabbixServerAssignmentForm(NetBoxModelForm):
                 FieldSet('device', name=_('Device')),
                 FieldSet('virtualdevicecontext', name=_('Virtual Device Context')),
                 FieldSet('virtualmachine', name=_('Virtual Machine')),
+                FieldSet('zabbixconfigurationgroup', name=_('Zabbix Configuration Group')),
             ),
             name=_('Device Assignment'),
         ),
@@ -55,6 +56,7 @@ class ZabbixServerAssignmentForm(NetBoxModelForm):
             'device',
             'virtualdevicecontext',
             'virtualmachine',
+            'zabbixconfigurationgroup',
         )
 
     @property

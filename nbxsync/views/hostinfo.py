@@ -23,6 +23,8 @@ class ZabbixHostProblemsView(TemplateView):
 
         problem_list = []
         for zabbixserverassignment in zabbixserverassignments:
+            if not zabbixserverassignment.hostid:
+                continue
             # Get the problems for this host
             try:
                 with ZabbixConnection(zabbixserverassignment.zabbixserver) as api:
@@ -50,6 +52,8 @@ class ZabbixHostEventsView(TemplateView):
 
         event_list = []
         for zabbixserverassignment in zabbixserverassignments:
+            if not zabbixserverassignment.hostid:
+                continue
             # Get the events for this host
             try:
                 with ZabbixConnection(zabbixserverassignment.zabbixserver) as api:

@@ -7,7 +7,8 @@ from django.views.generic import TemplateView
 from django_rq import get_queue
 
 
-from nbxsync.models import ZabbixMaintenance, ZabbixProxy, ZabbixProxyGroup, ZabbixServer
+from nbxsync.models import ZabbixMaintenance, ZabbixProxy, ZabbixProxyGroup, ZabbixServer, ZabbixConfigurationGroup
+from nbxsync.utils.cfggroup.resync_zabbixconfiggroupassignment import resync_zabbixconfigurationgroupassignment
 from nbxsync.constants import OBJECT_TYPE_MODEL_MAP
 
 __all__ = (
@@ -17,15 +18,27 @@ __all__ = (
     'TriggerTemplateSyncJobView',
     'TriggerProxyGroupSyncJobView',
     'TriggerMaintenanceSyncJobView',
+    'TriggerZabbicConfigurationgroupSyncJobView',
 )
 
 
 class ZabbixSyncInfoModalView(TemplateView):
     template_name = 'nbxsync/modals/sync_info.html'
 
+    HOST_MESSAGE = _('This host is missing one or more of the following: Zabbix Server Assignment, Zabbix Host Interface, Zabbix Hostgroup. Please configure these before syncing.')
+
+    MAINTENANCE_MESSAGE = _('This Maintenance object is missing one or more of the following: Time Period, Zabbix Host Group or Device/Virtual Device Context/Virtual Machine. Please configure these before syncing.')
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['missing_requirements'] = _('This host is missing one or more of the following: Zabbix Server Assignment, Zabbix Host Interface, Zabbix Hostgroup. Please configure these before syncing.')
+
+        obj = self.kwargs.get('objtype') or getattr(self, 'objtype', None)
+        if obj.lower() == 'zabbixmaintenance':
+            message = self.MAINTENANCE_MESSAGE
+        else:
+            message = self.HOST_MESSAGE
+
+        context['missing_requirements'] = message
         return context
 
 
@@ -117,6 +130,20 @@ class TriggerMaintenanceSyncJobView(View):
         )
 
         messages.success(request, _('Maintenance window sync job enqueued for %(name)s') % {'name': str(instance)})
+        target = request.headers.get('HX-Current-URL') or request.META.get('HTTP_REFERER') or instance.get_absolute_url()
+        resp = HttpResponse(status=204)
+        resp['HX-Redirect'] = target
+        return resp
+
+
+class TriggerZabbicConfigurationgroupSyncJobView(View):
+    def get(self, request, pk):
+        instance = get_object_or_404(ZabbixConfigurationGroup, pk=pk)
+
+        for assignment in instance.zabbixconfigurationgroupassignment.all():
+            resync_zabbixconfigurationgroupassignment(assignment)
+
+        messages.success(request, _('Configuration Group sync triggered for %(name)s') % {'name': str(instance)})
         target = request.headers.get('HX-Current-URL') or request.META.get('HTTP_REFERER') or instance.get_absolute_url()
         resp = HttpResponse(status=204)
         resp['HX-Redirect'] = target

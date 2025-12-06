@@ -33,7 +33,7 @@ class ZabbixSyncBase:
             return cls.zabbixserver_path(obj)
         return resolve_zabbixserver(obj, fallback_path=cls.zabbixserver_path)
 
-    def sync(self) -> None:
+    def sync(self):
         obj_id = self.get_id()
         found = None
 
@@ -78,7 +78,7 @@ class ZabbixSyncBase:
             self.obj.save()
             self.obj.update_sync_info(success=True)
 
-    def try_create(self) -> str:
+    def try_create(self):
         try:
             # print('Create params:')
             # print(self.get_create_params())
@@ -101,7 +101,7 @@ class ZabbixSyncBase:
         id_key = self.get_id_key()
         return self.api_object().get(**{f'{id_key}s': self.get_id()})
 
-    def handle_found(self, data: dict) -> str:
+    def handle_found(self, data):
         object_id = data[self.get_id_key()]
 
         if self.sot == SyncSOT.ZABBIX:
@@ -111,16 +111,16 @@ class ZabbixSyncBase:
         logger.debug(f'Found and synced {self.__class__.__name__} ID: {object_id}')
         return object_id
 
-    def sync_from_zabbix(self, data: dict) -> None:
+    def sync_from_zabbix(self, data):
         raise NotImplementedError
 
-    def sync_to_zabbix(self, object_id: str) -> None:
+    def sync_to_zabbix(self, object_id):
         self.set_id(object_id)
         self.obj.save()
         self.obj.update_sync_info(success=True)
         self.update_in_zabbix(object_id=object_id)
 
-    def update_in_zabbix(self, **kwargs) -> None:
+    def update_in_zabbix(self, **kwargs):
         # print('Update params:')
         # print(self.get_update_params(object_id=kwargs.get('object_id', None)))
         result = self.api_object().update(**self.get_update_params(object_id=kwargs.get('object_id', None)))
@@ -129,7 +129,7 @@ class ZabbixSyncBase:
 
     # --- Object-specific methods to override per implementation ---
 
-    def delete(self) -> None:
+    def delete(self):
         raise NotImplementedError
 
     def api_object(self):
@@ -154,13 +154,13 @@ class ZabbixSyncBase:
             if hasattr(parent_obj, 'save'):
                 parent_obj.save()
 
-    def get_create_params(self, **kwargs) -> dict:
+    def get_create_params(self, **kwargs):
         raise NotImplementedError
 
-    def get_update_params(self, **kwarg) -> dict:
+    def get_update_params(self, **kwarg):
         raise NotImplementedError
 
-    def result_key(self) -> str:
+    def result_key(self):
         """Return key in result dict, e.g., 'proxy_groupids'."""
         raise NotImplementedError
 

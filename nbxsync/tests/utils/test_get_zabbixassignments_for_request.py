@@ -3,23 +3,8 @@ from django.test import RequestFactory, TestCase
 
 from utilities.testing import create_test_user, create_test_virtualmachine
 
-from nbxsync.models import (
-    ZabbixHostgroup,
-    ZabbixHostgroupAssignment,
-    ZabbixMacro,
-    ZabbixMacroAssignment,
-    ZabbixServer,
-    ZabbixTag,
-    ZabbixTagAssignment,
-    ZabbixTemplate,
-    ZabbixTemplateAssignment,
-)
-from nbxsync.tables import (
-    ZabbixHostgroupAssignmentObjectViewTable,
-    ZabbixMacroAssignmentObjectViewTable,
-    ZabbixTagAssignmentObjectViewTable,
-    ZabbixTemplateAssignmentObjectViewTable,
-)
+from nbxsync.models import ZabbixHostgroup, ZabbixHostgroupAssignment, ZabbixMacro, ZabbixMacroAssignment, ZabbixServer, ZabbixTag, ZabbixTagAssignment, ZabbixTemplate, ZabbixTemplateAssignment
+from nbxsync.tables import ZabbixHostgroupAssignmentObjectViewTable, ZabbixMacroAssignmentObjectViewTable, ZabbixTagAssignmentObjectViewTable, ZabbixTemplateAssignmentObjectViewTable
 from nbxsync.utils.inheritance import get_zabbixassignments_for_request
 
 

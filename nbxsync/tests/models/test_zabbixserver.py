@@ -6,13 +6,7 @@ from nbxsync.models import ZabbixServer
 
 class ZabbixServerTestCase(TestCase):
     def setUp(self):
-        self.valid_data = {
-            'name': 'Test Server',
-            'description': 'Test Description',
-            'url': 'http://127.0.0.1',
-            'token': 's3cr3t-t0ken',
-            'validate_certs': False,
-        }
+        self.valid_data = {'name': 'Test Server', 'description': 'Test Description', 'url': 'http://127.0.0.1', 'token': 's3cr3t-t0ken', 'validate_certs': False}
 
     def test_valid_zabbixserver_creation(self):
         server = ZabbixServer(**self.valid_data)
@@ -33,13 +27,15 @@ class ZabbixServerTestCase(TestCase):
         data = self.valid_data.copy()
         data['description'] = ''
         server = ZabbixServer(**data)
-        server.full_clean()  # Should not raise
+        server.full_clean()
 
     def test_name_uniqueness_constraint(self):
         ZabbixServer.objects.create(**self.valid_data)
         duplicate = ZabbixServer(**self.valid_data)
+
         with self.assertRaises(ValidationError) as cm:
             duplicate.full_clean()
+
         self.assertIn('__all__', cm.exception.message_dict)
         self.assertIn('The Zabbix Server name must be unique', cm.exception.message_dict['__all__'])
 

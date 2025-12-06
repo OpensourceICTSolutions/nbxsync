@@ -1,5 +1,5 @@
 from django.db.models import Q
-from django_filters import CharFilter, ModelChoiceFilter
+from django_filters import CharFilter, ModelChoiceFilter, NumberFilter
 
 from netbox.filtersets import NetBoxModelFilterSet
 
@@ -11,8 +11,9 @@ __all__ = ('ZabbixProxyFilterSet',)
 class ZabbixProxyFilterSet(NetBoxModelFilterSet):
     q = CharFilter(method='search', label='Search')
     name = CharFilter(lookup_expr='icontains')
-    proxygroup_name = CharFilter(field_name='proxygroup__name', lookup_expr='icontains')
-    proxygroup = ModelChoiceFilter(field_name='proxygroup', queryset=ZabbixProxy.objects.all(), required=True)
+    proxygroup_name = CharFilter(field_name='proxygroup__name', lookup_expr='icontains', required=False)
+    proxygroup = ModelChoiceFilter(field_name='proxygroup', queryset=ZabbixProxy.objects.all(), required=False)
+    proxygroup_id = NumberFilter(field_name='proxygroup__proxy_groupid')
     zabbixserver = ModelChoiceFilter(field_name='zabbixserver', queryset=ZabbixServer.objects.all(), required=False)
 
     class Meta:
@@ -22,7 +23,7 @@ class ZabbixProxyFilterSet(NetBoxModelFilterSet):
             'name',
             'zabbixserver',
             'proxyid',
-            'proxygroup',
+            'proxygroup_id',
             'operating_mode',
             'address',
             'port',

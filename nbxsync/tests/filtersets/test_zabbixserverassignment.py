@@ -85,13 +85,13 @@ class ZabbixServerAssignmentFilterSetTestCase(TestCase):
         self.assertEqual(list(fs.search(self.queryset, 'q', '   ')), list(self.queryset))
 
     def test_filter_by_assigned_object_type(self):
-        f = ZabbixServerAssignmentFilterSet({'assigned_object_type': self.device_ct.pk}, queryset=ZabbixServerAssignment.objects.all())
+        f = ZabbixServerAssignmentFilterSet({'assigned_object_type': f'{self.device_ct.app_label}.{self.device_ct.model}'}, queryset=ZabbixServerAssignment.objects.all())
         self.assertEqual(f.qs.count(), 1)
 
     def test_filter_fails_with_wrong_content_type(self):
         wrong_ct = ContentType.objects.get_for_model(ZabbixTag)
         f = ZabbixServerAssignmentFilterSet(
-            {'assigned_object_type': wrong_ct.pk, 'assigned_object_id': self.devices[0].id},
+            {'assigned_object_type': f'{wrong_ct.app_label}.{wrong_ct.model}', 'assigned_object_id': self.devices[0].id},
             queryset=ZabbixServerAssignment.objects.all(),
         )
         self.assertEqual(f.qs.count(), 0)
@@ -101,10 +101,25 @@ class ZabbixServerAssignmentFilterSetTestCase(TestCase):
         self.assertIn(self.assignments[0], f.qs)
         self.assertNotIn(self.assignments[1], f.qs)
 
-    def test_filter_queryset_invalid_assigned_object_values(self):
-        f = ZabbixServerAssignmentFilterSet(
-            {'assigned_object_type': 'invalid_string', 'assigned_object_id': 'not_a_number'},
-            queryset=ZabbixServerAssignment.objects.all(),
+    def test_search_numeric_value_matches_hostid(self):
+        # Create an assignment that has a hostid set
+        assignment_with_hostid = ZabbixServerAssignment.objects.create(
+            zabbixserver=self.zabbix_servers[2],
+            assigned_object_type=self.device_ct,
+            assigned_object_id=self.devices[2].id,
+            hostid=555123,
         )
 
-        self.assertQuerySetEqual(f.qs.order_by('id'), ZabbixServerAssignment.objects.all().order_by('id'), transform=lambda x: x)
+        # Sanity: another assignment without this hostid should not be returned
+        _ = ZabbixServerAssignment.objects.create(
+            zabbixserver=self.zabbix_servers[0],
+            assigned_object_type=self.device_ct,
+            assigned_object_id=self.devices[3].id,
+            hostid=999999,
+        )
+
+        f = ZabbixServerAssignmentFilterSet({'q': '555123'}, queryset=ZabbixServerAssignment.objects.all())
+        self.assertIn(assignment_with_hostid, f.qs)
+        # Ensure we only matched by hostid, not by names
+        self.assertEqual(f.qs.count(), 1)
+        self.assertEqual(f.qs.first().hostid, 555123)

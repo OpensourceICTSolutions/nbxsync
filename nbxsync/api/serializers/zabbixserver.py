@@ -10,6 +10,7 @@ __all__ = ('ZabbixServerSerializer',)
 
 class ZabbixServerSerializer(SyncInfoSerializerMixin, NetBoxModelSerializer):
     url = serializers.HyperlinkedIdentityField(view_name='plugins-api:nbxsync-api:zabbixserver-detail')
+    zabbixurl = serializers.CharField(source='url', read_only=False)
 
     class Meta:
         model = ZabbixServer
@@ -19,7 +20,7 @@ class ZabbixServerSerializer(SyncInfoSerializerMixin, NetBoxModelSerializer):
             'display',
             'name',
             'description',
-            'url',
+            'zabbixurl',
             'token',
             'validate_certs',
             'last_sync',

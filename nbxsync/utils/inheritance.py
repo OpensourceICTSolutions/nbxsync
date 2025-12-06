@@ -1,23 +1,13 @@
 from collections import OrderedDict
 
+from django.db.models import Model, QuerySet
+from django.db.models.manager import BaseManager
 from django.contrib.contenttypes.models import ContentType
 
 from nbxsync.constants import PATH_LABELS
-from nbxsync.models import (
-    ZabbixHostgroupAssignment,
-    ZabbixHostInterface,
-    ZabbixHostInventory,
-    ZabbixMacroAssignment,
-    ZabbixTagAssignment,
-    ZabbixTemplateAssignment,
-)
+from nbxsync.models import ZabbixHostgroupAssignment, ZabbixHostInterface, ZabbixHostInventory, ZabbixMacroAssignment, ZabbixTagAssignment, ZabbixTemplateAssignment, ZabbixConfigurationGroupAssignment
 from nbxsync.settings import get_plugin_settings
-from nbxsync.tables import (
-    ZabbixHostgroupAssignmentObjectViewTable,
-    ZabbixMacroAssignmentObjectViewTable,
-    ZabbixTagAssignmentObjectViewTable,
-    ZabbixTemplateAssignmentObjectViewTable,
-)
+from nbxsync.tables import ZabbixHostgroupAssignmentObjectViewTable, ZabbixMacroAssignmentObjectViewTable, ZabbixTagAssignmentObjectViewTable, ZabbixTemplateAssignmentObjectViewTable
 
 
 def get_zabbixassignments_for_request(instance, request):
@@ -58,6 +48,7 @@ def get_assigned_zabbixobjects(instance):
     direct_hostgroups = list(ZabbixHostgroupAssignment.objects.filter(assigned_object_type=content_type, assigned_object_id=instance.id).select_related('zabbixhostgroup'))
     hostinterfaces = list(ZabbixHostInterface.objects.filter(assigned_object_type=content_type, assigned_object_id=instance.id))
     hostinventory = ZabbixHostInventory.objects.filter(assigned_object_type=content_type, assigned_object_id=instance.id).first()
+    configurationgroup = ZabbixConfigurationGroupAssignment.objects.filter(assigned_object_type=content_type, assigned_object_id=instance.id).first()
 
     inherited = resolve_inherited_zabbix_assignments(instance)
 
@@ -73,6 +64,7 @@ def get_assigned_zabbixobjects(instance):
         'hostgroups': merge(direct_hostgroups, inherited['hostgroups'], 'zabbixhostgroup_id'),
         'hostinterfaces': hostinterfaces,
         'hostinventory': hostinventory,
+        'configurationgroup': configurationgroup,
     }
 
 
@@ -81,17 +73,26 @@ def resolve_inherited_zabbix_assignments(assigned_object):
     resolved_macros = OrderedDict()
     resolved_tags = OrderedDict()
     resolved_hostgroups = OrderedDict()
+    resolved_configurationgroups = OrderedDict()
     seen_template_ids = set()
     seen_macro_ids = set()
     seen_tag_ids = set()
     seen_hostgroup_ids = set()
+    seen_configurationgroup_ids = set()
 
     def resolve_path(obj, path):
+        cur = obj
         for attr in path:
-            obj = getattr(obj, attr, None)
-            if obj is None:
+            cur = getattr(cur, attr, None)
+            if cur is None:
                 return None
-        return obj
+            # If the attribute is a manager or queryset, take the first related object
+            if isinstance(cur, (BaseManager, QuerySet)):
+                cur = cur.first()
+            # If it’s something that still isn’t a model instance after collapsing, bail
+            if cur is None:
+                return None
+        return cur
 
     pluginsettings = get_plugin_settings()
     for path in pluginsettings.inheritance_chain:
@@ -108,8 +109,9 @@ def resolve_inherited_zabbix_assignments(assigned_object):
 
         tags = ZabbixTagAssignment.objects.filter(assigned_object_type=ct, assigned_object_id=related_obj.pk).select_related('zabbixtag')
         hostgroups = ZabbixHostgroupAssignment.objects.filter(assigned_object_type=ct, assigned_object_id=related_obj.pk).select_related('zabbixhostgroup')
+        configurationgroups = ZabbixConfigurationGroupAssignment.objects.filter(assigned_object_type=ct, assigned_object_id=related_obj.pk).select_related('zabbixconfigurationgroup')
 
-        # print(f'[Resolved from {label}] {related_obj}: inherited {len(templates)} templates, {len(macros)} macros, {len(tags)} tags,')
+        # print(f'[Resolved from {label}] {related_obj}: inherited {len(templates)} templates, {len(macros)} macros, {len(tags)} tags, {len(hostgroups)} hostgroups, {len(configurationgroups)} configurationgroups,')
 
         for template in templates:
             if template.zabbixtemplate_id not in seen_template_ids:
@@ -135,9 +137,16 @@ def resolve_inherited_zabbix_assignments(assigned_object):
                 resolved_hostgroups[hostgroup.zabbixhostgroup_id] = hostgroup
                 seen_hostgroup_ids.add(hostgroup.zabbixhostgroup_id)
 
+        for configurationgroup in configurationgroups:
+            if configurationgroup.zabbixconfigurationgroup_id not in seen_configurationgroup_ids:
+                configurationgroup._inherited_from = PATH_LABELS.get(path, '.'.join(path))
+                resolved_configurationgroups[configurationgroup.zabbixconfigurationgroup_id] = configurationgroup
+                seen_configurationgroup_ids.add(configurationgroup.zabbixconfigurationgroup_id)
+
     return {
         'templates': resolved_templates,
         'macros': resolved_macros,
         'tags': resolved_tags,
         'hostgroups': resolved_hostgroups,
+        'configurationgroups': resolved_configurationgroups,
     }

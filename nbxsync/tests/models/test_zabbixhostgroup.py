@@ -6,13 +6,7 @@ from nbxsync.models import ZabbixHostgroup, ZabbixServer
 
 class ZabbixHostgroupTestCase(TestCase):
     def setUp(self):
-        self.zabbixserver = ZabbixServer.objects.create(
-            name='Main Server',
-            description='Main testing server',
-            url='http://127.0.0.1',
-            token='supersecrettoken',
-            validate_certs=True,
-        )
+        self.zabbixserver = ZabbixServer.objects.create(name='Main Server', description='Main testing server', url='http://127.0.0.1', token='supersecrettoken', validate_certs=True)
 
         self.valid_data = {
             'zabbixserver': self.zabbixserver,
@@ -43,7 +37,7 @@ class ZabbixHostgroupTestCase(TestCase):
         data['value'] = ''
         data['groupid'] = None
         hostgroup = ZabbixHostgroup(**data)
-        hostgroup.full_clean()  # Should not raise
+        hostgroup.full_clean()
 
     def test_name_uniqueness_per_zabbixserver(self):
         ZabbixHostgroup.objects.create(**self.valid_data)
@@ -70,23 +64,15 @@ class ZabbixHostgroupTestCase(TestCase):
         self.assertEqual(result, expected)
 
     def test_uniqueness_constraints_with_different_servers(self):
-        another_server = ZabbixServer.objects.create(
-            name='Secondary Server',
-            description='Second server',
-            url='http://127.0.0.2',
-            token='another-token',
-            validate_certs=False,
-        )
+        another_server = ZabbixServer.objects.create(name='Secondary Server', description='Second server', url='http://127.0.0.2', token='another-token', validate_certs=False)
         ZabbixHostgroup.objects.create(**self.valid_data)
 
-        # Same name and groupid on a different server should be allowed
         new_data = self.valid_data.copy()
         new_data['zabbixserver'] = another_server
         hostgroup = ZabbixHostgroup(**new_data)
         hostgroup.full_clean()  # Should not raise
 
     def test_is_template_true_when_value_contains_jinja(self):
-        # Uses a Jinja-style variable pattern: {{ hostname }}
         hostgroup = ZabbixHostgroup.objects.create(
             **{
                 **self.valid_data,
@@ -96,7 +82,6 @@ class ZabbixHostgroupTestCase(TestCase):
         self.assertTrue(hostgroup.is_template())
 
     def test_is_template_false_when_value_is_plain_text(self):
-        # Different name/groupid to satisfy uniqueness
         hostgroup = ZabbixHostgroup.objects.create(
             **{
                 **self.valid_data,

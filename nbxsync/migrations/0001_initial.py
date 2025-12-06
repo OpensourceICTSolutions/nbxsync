@@ -6,7 +6,6 @@ import django.db.models.deletion
 import nbxsync.models.zabbixhostinterface
 import nbxsync.models.zabbixproxy
 import nbxsync.models.zabbixtemplate
-import netbox.models.deletion
 import taggit.managers
 import utilities.json
 from django.db import migrations, models
@@ -42,7 +41,7 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'Zabbix Macros',
                 'ordering': ('-created',),
             },
-            bases=(netbox.models.deletion.DeleteMixin, models.Model),
+            bases=(models.Model,),
         ),
         migrations.CreateModel(
             name='ZabbixMacroAssignment',
@@ -68,7 +67,7 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'Zabbix Macro Assignments',
                 'ordering': ('-created',),
             },
-            bases=(netbox.models.deletion.DeleteMixin, models.Model),
+            bases=(models.Model,),
         ),
         migrations.CreateModel(
             name='ZabbixMaintenance',
@@ -94,7 +93,7 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'Zabbix Maintenance windows',
                 'ordering': ('-created',),
             },
-            bases=(netbox.models.deletion.DeleteMixin, models.Model),
+            bases=(models.Model,),
         ),
         migrations.CreateModel(
             name='ZabbixMaintenanceObjectAssignment',
@@ -113,7 +112,7 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'Zabbix Maintenance Object Assignments',
                 'ordering': ('-created',),
             },
-            bases=(netbox.models.deletion.DeleteMixin, models.Model),
+            bases=(models.Model,),
         ),
         migrations.CreateModel(
             name='ZabbixMaintenancePeriod',
@@ -138,7 +137,7 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'Zabbix Maintenance Periods',
                 'ordering': ('-created',),
             },
-            bases=(netbox.models.deletion.DeleteMixin, models.Model),
+            bases=(models.Model,),
         ),
         migrations.CreateModel(
             name='ZabbixServer',
@@ -162,7 +161,7 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'Zabbix Servers',
                 'ordering': ('-created',),
             },
-            bases=(netbox.models.deletion.DeleteMixin, models.Model),
+            bases=(models.Model,),
         ),
         migrations.CreateModel(
             name='ZabbixProxyGroup',
@@ -187,7 +186,7 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'Zabbix Proxy Groups',
                 'ordering': ('-created',),
             },
-            bases=(netbox.models.deletion.DeleteMixin, models.Model),
+            bases=(models.Model,),
         ),
         migrations.CreateModel(
             name='ZabbixProxy',
@@ -234,7 +233,7 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'Zabbix Proxies',
                 'ordering': ('-created',),
             },
-            bases=(netbox.models.deletion.DeleteMixin, models.Model),
+            bases=(models.Model,),
         ),
         migrations.AddField(
             model_name='zabbixmaintenance',
@@ -288,7 +287,7 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'Zabbix Host Interfaces',
                 'ordering': ('-created',),
             },
-            bases=(netbox.models.deletion.DeleteMixin, models.Model),
+            bases=(models.Model,),
         ),
         migrations.CreateModel(
             name='ZabbixHostgroup',
@@ -309,7 +308,7 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'Zabbix Hostgroups',
                 'ordering': ('-created',),
             },
-            bases=(netbox.models.deletion.DeleteMixin, models.Model),
+            bases=(models.Model,),
         ),
         migrations.CreateModel(
             name='ZabbixServerAssignment',
@@ -334,7 +333,7 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'Zabbix Server Assignments',
                 'ordering': ('-created',),
             },
-            bases=(netbox.models.deletion.DeleteMixin, models.Model),
+            bases=(models.Model,),
         ),
         migrations.CreateModel(
             name='ZabbixTag',
@@ -354,7 +353,7 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'Zabbix Tags',
                 'ordering': ('-created',),
             },
-            bases=(netbox.models.deletion.DeleteMixin, models.Model),
+            bases=(models.Model,),
         ),
         migrations.CreateModel(
             name='ZabbixMaintenanceTagAssignment',
@@ -374,7 +373,7 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'Zabbix Maintenance Tag Assignments',
                 'ordering': ('-created',),
             },
-            bases=(netbox.models.deletion.DeleteMixin, models.Model),
+            bases=(models.Model,),
         ),
         migrations.CreateModel(
             name='ZabbixTagAssignment',
@@ -393,7 +392,7 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'Zabbix Tag Assignments',
                 'ordering': ('-created',),
             },
-            bases=(netbox.models.deletion.DeleteMixin, models.Model),
+            bases=(models.Model,),
         ),
         migrations.CreateModel(
             name='ZabbixTemplate',
@@ -413,7 +412,7 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'Zabbix Templates',
                 'ordering': ('-created',),
             },
-            bases=(netbox.models.deletion.DeleteMixin, models.Model),
+            bases=(models.Model,),
         ),
         migrations.CreateModel(
             name='ZabbixTemplateAssignment',
@@ -432,7 +431,7 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'Zabbix Template Assignments',
                 'ordering': ('-created',),
             },
-            bases=(netbox.models.deletion.DeleteMixin, models.Model),
+            bases=(models.Model,),
         ),
         migrations.CreateModel(
             name='ZabbixHostgroupAssignment',
@@ -455,7 +454,7 @@ class Migration(migrations.Migration):
                 'ordering': ('-created',),
                 'constraints': [models.UniqueConstraint(fields=('zabbixhostgroup', 'assigned_object_type', 'assigned_object_id'), name='nbxsync_zabbixhostgroupassignment_unique__hostgroupassignment_per_object', violation_error_message='Hostgroup can only be assigned once to a given object')],
             },
-            bases=(netbox.models.deletion.DeleteMixin, models.Model),
+            bases=(models.Model,),
         ),
         migrations.CreateModel(
             name='ZabbixHostInventory',
@@ -545,7 +544,7 @@ class Migration(migrations.Migration):
                 'ordering': ('-created',),
                 'constraints': [models.UniqueConstraint(fields=('assigned_object_type', 'assigned_object_id'), name='nbxsync_zabbixhostinventory_unique_assigned_object', violation_error_message='Only one inventory entry is allowed per assigned object.')],
             },
-            bases=(netbox.models.deletion.DeleteMixin, models.Model),
+            bases=(models.Model,),
         ),
         migrations.AddConstraint(
             model_name='zabbixmacro',

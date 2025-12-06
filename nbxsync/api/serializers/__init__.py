@@ -1,5 +1,8 @@
 from .sync_info import *
 from .zabbixserver import *
+from .zabbixconfigurationgroup import *
+from .zabbixconfigurationgroupassignment import *
+
 from .zabbixserverassignment import *
 from .zabbixtemplate import *
 from .zabbixtemplateassignment import *

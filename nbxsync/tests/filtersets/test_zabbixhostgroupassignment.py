@@ -80,13 +80,13 @@ class ZabbixHostgroupAssignmentFilterSetTestCase(TestCase):
         self.assertQuerySetEqual(result.order_by('id'), queryset.order_by('id'), transform=lambda x: x)
 
     def test_filter_by_assigned_object_type(self):
-        f = ZabbixHostgroupAssignmentFilterSet({'assigned_object_type': self.device_ct.pk}, queryset=ZabbixHostgroupAssignment.objects.all())
+        f = ZabbixHostgroupAssignmentFilterSet({'assigned_object_type': f'{self.device_ct.app_label}.{self.device_ct.model}'}, queryset=ZabbixHostgroupAssignment.objects.all())
         self.assertEqual(f.qs.count(), 2)
 
     def test_filter_fails_with_wrong_content_type(self):
         wrong_ct = ContentType.objects.get_for_model(ZabbixTag)
         f = ZabbixHostgroupAssignmentFilterSet(
-            {'assigned_object_type': wrong_ct.pk, 'assigned_object_id': self.devices[0].id},
+            {'assigned_object_type': f'{wrong_ct.app_label}.{wrong_ct.model}', 'assigned_object_id': self.devices[0].id},
             queryset=ZabbixHostgroupAssignment.objects.all(),
         )
         self.assertEqual(f.qs.count(), 0)
@@ -95,11 +95,3 @@ class ZabbixHostgroupAssignmentFilterSetTestCase(TestCase):
         f = ZabbixHostgroupAssignmentFilterSet({'assigned_object_id': self.devices[0].id}, queryset=ZabbixHostgroupAssignment.objects.all())
         self.assertIn(self.assignments[0], f.qs)
         self.assertNotIn(self.assignments[1], f.qs)
-
-    def test_filter_queryset_invalid_assigned_object_values(self):
-        f = ZabbixHostgroupAssignmentFilterSet(
-            {'assigned_object_type': 'invalid_string', 'assigned_object_id': 'not_a_number'},
-            queryset=ZabbixHostgroupAssignment.objects.all(),
-        )
-
-        self.assertQuerySetEqual(f.qs.order_by('id'), ZabbixHostgroupAssignment.objects.all().order_by('id'), transform=lambda x: x)

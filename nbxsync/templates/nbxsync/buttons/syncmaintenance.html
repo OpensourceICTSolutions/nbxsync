@@ -4,7 +4,7 @@
     </div>
 </div>
 <a href="#"
-   hx-get="{% url 'plugins:nbxsync:zabbixmaintenance_sync' pk=object.pk %}"
+   hx-get="{% if can_sync %} {% url 'plugins:nbxsync:zabbixmaintenance_sync' pk=object.pk %} {% else %} {% url 'plugins:nbxsync:zabbixhost_info' objtype=object|meta:'model_name' pk=object.pk %} {% endif %}"
    hx-target="#htmx-modal"
    data-bs-toggle="modal"
    data-bs-target="#htmx-modal"

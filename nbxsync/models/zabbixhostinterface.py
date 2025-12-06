@@ -23,8 +23,8 @@ from nbxsync.choices import (
     ZabbixTLSChoices,
 )
 
-from nbxsync.constants import DEVICE_OR_VM_ASSIGNMENT_MODELS
-from nbxsync.models import SyncInfoModel
+from nbxsync.constants import DEVICE_OR_VM_ASSIGNMENT_MODELS, CONFIGGROUP_OBJECTS
+from nbxsync.models import SyncInfoModel, ZabbixConfigurationGroup
 
 
 def default_tls_accept():
@@ -33,6 +33,8 @@ def default_tls_accept():
 
 class ZabbixHostInterface(SyncInfoModel, NetBoxModel):
     zabbixserver = models.ForeignKey(to='nbxsync.ZabbixServer', on_delete=models.CASCADE, verbose_name=_('Zabbix Server'))
+    zabbixconfigurationgroup = models.ForeignKey('nbxsync.ZabbixConfigurationGroup', on_delete=models.SET_NULL, blank=True, null=True, related_name='zabbixconfigurationgroup')
+
     type = models.IntegerField(choices=ZabbixHostInterfaceTypeChoices, default=ZabbixHostInterfaceTypeChoices.AGENT, verbose_name=_('Host interface type'))
     interfaceid = models.IntegerField(blank=True, null=True)
     useip = models.IntegerField(choices=ZabbixInterfaceUseChoices, default=ZabbixInterfaceUseChoices.IP, verbose_name=_('Connect via'))
@@ -41,9 +43,11 @@ class ZabbixHostInterface(SyncInfoModel, NetBoxModel):
     ip = models.ForeignKey(to=IPAddress, on_delete=models.SET_NULL, null=True, blank=True, verbose_name=_('IP Address'), related_name='zabbix_hostinterfaces')
     port = models.IntegerField(blank=False, null=False, verbose_name=_('Port number'))
 
-    assigned_object_type = models.ForeignKey(to=ContentType, limit_choices_to=DEVICE_OR_VM_ASSIGNMENT_MODELS, on_delete=models.CASCADE, related_name='+', blank=True, null=True)
+    assigned_object_type = models.ForeignKey(to=ContentType, limit_choices_to=(DEVICE_OR_VM_ASSIGNMENT_MODELS | CONFIGGROUP_OBJECTS), on_delete=models.CASCADE, related_name='+', blank=True, null=True)
     assigned_object_id = models.PositiveBigIntegerField(blank=True, null=True)
     assigned_object = GenericForeignKey(ct_field='assigned_object_type', fk_field='assigned_object_id')
+
+    parent = models.ForeignKey('self', null=True, blank=True, related_name='children', on_delete=models.SET_NULL)
 
     # Agent-specific fields
     tls_connect = models.PositiveSmallIntegerField(choices=ZabbixTLSChoices, default=ZabbixTLSChoices.NO_ENCRYPTION, blank=True, null=True)
@@ -51,16 +55,10 @@ class ZabbixHostInterface(SyncInfoModel, NetBoxModel):
     tls_issuer = models.CharField(max_length=255, blank=True)
     tls_subject = models.CharField(max_length=255, blank=True)
     tls_psk_identity = models.CharField(max_length=255, blank=True)
-    tls_psk = models.CharField(max_length=255, blank=True)
+    tls_psk = models.CharField(max_length=1024, blank=True)
 
     # SNMP (v1/v2/v3)
-    snmp_version = models.IntegerField(
-        choices=ZabbixHostInterfaceSNMPVersionChoices,
-        default=ZabbixHostInterfaceSNMPVersionChoices.SNMPV2,
-        blank=True,
-        null=True,
-        verbose_name=_('SNMP Version'),
-    )
+    snmp_version = models.IntegerField(choices=ZabbixHostInterfaceSNMPVersionChoices, default=ZabbixHostInterfaceSNMPVersionChoices.SNMPV2, blank=True, null=True, verbose_name=_('SNMP Version'))
     snmp_usebulk = models.BooleanField(default=True, verbose_name=_('SNMP Combined requests'))
 
     # SNMPv1/2-specific fields
@@ -69,46 +67,16 @@ class ZabbixHostInterface(SyncInfoModel, NetBoxModel):
     # SNMPv3-specific fields
     snmpv3_context_name = models.CharField(max_length=50, blank=True, verbose_name=_('Context Name'))
     snmpv3_security_name = models.CharField(max_length=50, blank=True, verbose_name=_('Security Name'))
-    snmpv3_security_level = models.IntegerField(
-        choices=ZabbixInterfaceSNMPV3SecurityLevelChoices,
-        default=ZabbixInterfaceSNMPV3SecurityLevelChoices.NOAUTHNOPRIV,
-        blank=True,
-        null=True,
-        verbose_name=_('Security Level'),
-    )
+    snmpv3_security_level = models.IntegerField(choices=ZabbixInterfaceSNMPV3SecurityLevelChoices, default=ZabbixInterfaceSNMPV3SecurityLevelChoices.NOAUTHNOPRIV, blank=True, null=True, verbose_name=_('Security Level'))
     snmpv3_authentication_passphrase = models.CharField(max_length=50, blank=True, verbose_name=_('Authentication passphrase'))
-    snmpv3_authentication_protocol = models.IntegerField(
-        choices=ZabbixInterfaceSNMPV3AuthProtoChoices,
-        default=ZabbixInterfaceSNMPV3AuthProtoChoices.MD5,
-        blank=True,
-        null=True,
-        verbose_name=_('Authentication protocol'),
-    )
+    snmpv3_authentication_protocol = models.IntegerField(choices=ZabbixInterfaceSNMPV3AuthProtoChoices, default=ZabbixInterfaceSNMPV3AuthProtoChoices.MD5, blank=True, null=True, verbose_name=_('Authentication protocol'))
     snmpv3_privacy_passphrase = models.CharField(max_length=50, blank=True, verbose_name=_('Privacy passphrase'))
-    snmpv3_privacy_protocol = models.IntegerField(
-        choices=ZabbixInterfaceSNMPV3PrivProtoChoices,
-        default=ZabbixInterfaceSNMPV3PrivProtoChoices.DES,
-        blank=True,
-        null=True,
-        verbose_name=_('Privacy protocol'),
-    )
+    snmpv3_privacy_protocol = models.IntegerField(choices=ZabbixInterfaceSNMPV3PrivProtoChoices, default=ZabbixInterfaceSNMPV3PrivProtoChoices.DES, blank=True, null=True, verbose_name=_('Privacy protocol'))
 
     # IPMI
-    ipmi_authtype = models.IntegerField(
-        choices=IPMIAuthTypeChoices,
-        default=IPMIAuthTypeChoices.DEFAULT,
-        blank=True,
-        null=True,
-        verbose_name=_('Auth type'),
-    )
+    ipmi_authtype = models.IntegerField(choices=IPMIAuthTypeChoices, default=IPMIAuthTypeChoices.DEFAULT, blank=True, null=True, verbose_name=_('Auth type'))
     ipmi_password = models.CharField(max_length=255, blank=True, verbose_name=_('Password'))
-    ipmi_privilege = models.IntegerField(
-        choices=IPMIPrivilegeChoices,
-        default=IPMIPrivilegeChoices.USER,
-        blank=True,
-        null=True,
-        verbose_name=_('Privilege'),
-    )
+    ipmi_privilege = models.IntegerField(choices=IPMIPrivilegeChoices, default=IPMIPrivilegeChoices.USER, blank=True, null=True, verbose_name=_('Privilege'))
     ipmi_username = models.CharField(max_length=50, blank=True, verbose_name=_('Username'))
 
     prerequisite_models = ('nbxsync.ZabbixServer',)
@@ -123,9 +91,9 @@ class ZabbixHostInterface(SyncInfoModel, NetBoxModel):
 
         constraints = [
             models.UniqueConstraint(
-                fields=['zabbixserver', 'type', 'assigned_object_type', 'assigned_object_id'],
+                fields=['zabbixserver', 'interface_type', 'type', 'assigned_object_type', 'assigned_object_id'],
                 name='%(app_label)s_%(class)s_unique__server_type_object',
-                violation_error_message='A Hostinterface with this type has already been defined',
+                violation_error_message='A Hostinterface with this type and has already been defined',
             )
         ]
 
@@ -138,15 +106,6 @@ class ZabbixHostInterface(SyncInfoModel, NetBoxModel):
 
         if self.zabbixserver_id is None:
             errors['zabbixserver'] = _('A hostinterface must always be assigned to a Zabbix Server')
-
-        # Validate based on connection method
-        if self.useip == ZabbixInterfaceUseChoices.IP:
-            if not self.ip:
-                errors['ip'] = _('An IP address is required when "Connect via" is set to IP.')
-
-        if self.useip == ZabbixInterfaceUseChoices.DNS:
-            if not self.dns:
-                errors['dns'] = _('A DNS name is required when "Connect via" is set to DNS.')
 
         # Validate TLS PSK requirement
         if self.tls_connect == ZabbixTLSChoices.PSK or ZabbixTLSChoices.PSK in self.tls_accept:
@@ -168,6 +127,23 @@ class ZabbixHostInterface(SyncInfoModel, NetBoxModel):
 
             if self.snmpv3_privacy_passphrase and len(self.snmpv3_privacy_passphrase) < 8:
                 errors['snmpv3_privacy_passphrase'] = _('Privacy passphrase must be at least 8 characters long.')
+
+        # If the assigned object type is *not* a ZabbixConfigurationGroup, we validate the IP and/or DNS entry
+        if self.assigned_object_type != ContentType.objects.get_for_model(ZabbixConfigurationGroup):
+            # Validate based on connection method
+            if self.useip == ZabbixInterfaceUseChoices.IP:
+                if not self.ip:
+                    errors['ip'] = _('An IP address is required when "Connect via" is set to IP.')
+
+            if self.useip == ZabbixInterfaceUseChoices.DNS:
+                if not self.dns:
+                    errors['dns'] = _('A DNS name is required when "Connect via" is set to DNS.')
+
+        # # If ZbxConfigGroup, ensure neither IP and DNS are set, as we cannot support this
+        # # The IP will be set upon assignment!
+        if self.assigned_object_type == ContentType.objects.get_for_model(ZabbixConfigurationGroup):
+            self.ip = None
+            self.dns = ''
 
         if errors:
             raise ValidationError(errors)

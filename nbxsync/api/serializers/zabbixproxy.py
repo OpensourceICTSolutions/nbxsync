@@ -11,10 +11,10 @@ class ZabbixProxySerializer(SyncInfoSerializerMixin, NetBoxModelSerializer):
     url = serializers.HyperlinkedIdentityField(view_name='plugins-api:nbxsync-api:zabbixproxy-detail')
 
     zabbixserver = ZabbixServerSerializer(nested=True)
-    zabbixserver_id = serializers.PrimaryKeyRelatedField(queryset=ZabbixServer.objects.all(), source='zabbixserver', write_only=True)
+    zabbixserver_id = serializers.PrimaryKeyRelatedField(queryset=ZabbixServer.objects.all(), source='zabbixserver', write_only=True, required=False)
 
-    proxygroup = ZabbixProxyGroupSerializer(nested=True)
-    proxygroup_id = serializers.PrimaryKeyRelatedField(queryset=ZabbixProxyGroup.objects.all(), source='proxygroup', write_only=True)
+    proxygroup = ZabbixProxyGroupSerializer(nested=True, required=False)
+    proxygroup_id = serializers.PrimaryKeyRelatedField(queryset=ZabbixProxyGroup.objects.all(), source='proxygroup', write_only=True, required=False)
 
     class Meta:
         model = ZabbixProxy
