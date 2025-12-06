@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nbxsync"
-version = "1.0.0"
+version = "1.0.1"
 authors = [
   { name="Opensource ICT Solutions", email="info@oicts.com" },
 ]
