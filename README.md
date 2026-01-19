@@ -2,8 +2,8 @@
 
 **Integrate Netbox as Source of Truth with Zabbix as Monitoring Solution**
 
-![CI](https://github.com/OpensourceICTSolutions/nbxsync/actions/workflows/ci.yaml/badge.svg)
-![Coverage](https://img.shields.io/endpoint?url=https://gist.github.com/bvbaekel/1a1cf04e63a52d5497edd6e0a564ec2b/cov.json)
+![CI](https://github.com/OpensourceICTSolutions/nbxsync/actions/workflows/ci.yml/badge.svg)
+![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/bvbaekel/1a1cf04e63a52d5497edd6e0a564ec2b/raw/4a293f964b246091d1fd943629408dbb7d9f597f/cov.json)
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
 ![NetBox](https://img.shields.io/badge/NetBox-4.2|4.3|4.4|4.5-blue.svg)
 
@@ -36,7 +36,8 @@ This plugin bridges the gap between network/source-of-truth documentation and in
 
 ### 1. Install the plugin
 
-Note: the steps below are for a non-dockerized setup. If you run Netbox in Docker containers, please see [their installation instructions](https://netboxlabs.com/docs/netbox/installation/)
+> [!IMPORTANT]
+> The steps below are for a non-dockerized setup. If you run Netbox in Docker containers, please see [their installation instructions](https://netboxlabs.com/docs/netbox/installation/)
 
 Install using pip
 
@@ -65,13 +66,15 @@ python3 manage.py collectstatic
 ### 4. Restart NetBox
 
 ```bash
-sudo systemctl restart netbox
+sudo systemctl restart netbox netbox-rq
 ```
 
 ---
 
 ## Screenshots
 
-## ![Screenshot 1](docs/assets/img/screenshot1.png "Device Zabbix overview")
+![Screenshot 1](docs/assets/img/screenshot1.png "Device Zabbix overview")
+---
 
-## ![Screenshot 2](docs/assets/img/screenshot2.png "Device Zabbix Ops overview")
+![Screenshot 2](docs/assets/img/screenshot2.png "Device Zabbix Ops overview")
+---
