@@ -27,9 +27,9 @@ class StatusMapping(BaseModel):
 
 
 class SNMPConfig(BaseModel):
-    snmp_community: str = Field(default='{$SNMP_COMMUNITY}')
-    snmp_authpass: str = Field(default='{$SNMP_AUTHPASS}')
-    snmp_privpass: str = Field(default='{$SNMP_PRIVPASS}')
+    snmp_community: str = Field(default='{$MY.SNMPV3.AUTHPASS}')
+    snmp_authpass: str = Field(default='{$MY.SNMPV3.AUTHPASS}')
+    snmp_privpass: str = Field(default='{$MY.SNMPV3.PRIVPASS}')
 
     @field_validator('snmp_community', 'snmp_authpass', 'snmp_privpass', mode='before')
     def validate_macro_format(cls, v: str) -> str:
@@ -107,6 +107,9 @@ class PluginSettingsModel(BaseModel):
     no_alerting_tag: str = Field(default='NO_ALERTING')
     no_alerting_tag_value: str = Field(default='1')
     maintenance_window_duration: int = Field(default=3600)
+    attach_objtag: bool = Field(default=True)
+    objtag_type: str = Field(default="nb_type")
+    objtag_id: str = Field(default="nb_id")
 
 
 # Helper function

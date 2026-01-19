@@ -71,9 +71,9 @@ class nbxSync(PluginConfig):
             },
         },
         'snmpconfig': {
-            'snmp_community': '{$SNMP_COMMUNITY}',
-            'snmp_authpass': '{$SNMP_AUTHPASS}',
-            'snmp_privpass': '{$SNMP_PRIVPASS}',
+            'snmp_community': '{$MY.SNMPV3.AUTHPASS}',
+            'snmp_authpass': '{$MY.SNMPV3.AUTHPASS}',
+            'snmp_privpass': '{$MY.SNMPV3.PRIVPASS}',
         },
         'inheritance_chain': [
             ['device'],
@@ -114,6 +114,9 @@ class nbxSync(PluginConfig):
         'no_alerting_tag': 'NO_ALERTING',
         'no_alerting_tag_value': '1',
         'maintenance_window_duration': 3600,
+        'attach_objtag': False,
+        'objtag_type': 'nb_type',
+        'objtag_id': 'nb_id'
     }
     queues = []
     validated_config = None

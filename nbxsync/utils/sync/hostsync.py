@@ -20,8 +20,11 @@ class HostSync(ZabbixSyncBase):
         return self.api.host
 
     def get_name_value(self):
+        # If the object has the "name" attribute, only return that (Device). If not (cornercase?), return the display string
+        if hasattr(self.obj.assigned_object, "name"):
+            return self.obj.assigned_object.name
+        
         return str(self.obj.assigned_object)
-        # return self.obj.assigned_object.name
 
     def get_create_params(self) -> dict:
         status = self.obj.assigned_object.status
@@ -40,6 +43,7 @@ class HostSync(ZabbixSyncBase):
             'name': str(self.obj.assigned_object),
             'groups': self.get_groups(),
             'status': host_status,
+            'description': self.obj.assigned_object.description or '',
             **self.get_proxy_or_proxygroup(),
             **self.get_hostinterface_attributes(),
             **self.get_tag_attributes(),
@@ -133,37 +137,40 @@ class HostSync(ZabbixSyncBase):
                 ZabbixHostInterfaceSNMPVersionChoices.SNMPV1,
                 ZabbixHostInterfaceSNMPVersionChoices.SNMPV2,
             ]:
-                result.append(
-                    {
-                        'macro': snmpconf.snmp_community,
-                        'value': hostinterface.snmp_community,
-                        'description': 'SNMPv2 Community',
-                        'type': 1,  # Secret macro
-                    }
-                )
+                if hostinterface.snmp_pushcommunity:
+                    result.append(
+                        {
+                            'macro': snmpconf.snmp_community,
+                            'value': hostinterface.snmp_community,
+                            'description': 'SNMPv2 Community',
+                            'type': 1,  # Secret macro
+                        }
+                    )
 
             if hostinterface.snmp_version == ZabbixHostInterfaceSNMPVersionChoices.SNMPV3:
                 if hostinterface.snmpv3_security_level in [
                     ZabbixInterfaceSNMPV3SecurityLevelChoices.AUTHNOPRIV,
                     ZabbixInterfaceSNMPV3SecurityLevelChoices.AUTHPRIV,
                 ]:
-                    result.append(
-                        {
-                            'macro': snmpconf.snmp_authpass,
-                            'value': hostinterface.snmpv3_authentication_passphrase,
-                            'description': 'SNMPv3 Authentication Passphrase',
-                            'type': 1,  # Secret macro
-                        }
-                    )
+                    if hostinterface.snmp_pushcommunity:
+                        result.append(
+                            {
+                                'macro': snmpconf.snmp_authpass,
+                                'value': hostinterface.snmpv3_authentication_passphrase,
+                                'description': 'SNMPv3 Authentication Passphrase',
+                                'type': 1,  # Secret macro
+                            }
+                        )
                 if hostinterface.snmpv3_security_level == ZabbixInterfaceSNMPV3SecurityLevelChoices.AUTHPRIV:
-                    result.append(
-                        {
-                            'macro': snmpconf.snmp_privpass,
-                            'value': hostinterface.snmpv3_privacy_passphrase,
-                            'description': 'SNMPv3 Privacy Passphrase',
-                            'type': 1,  # Secret macro
-                        }
-                    )
+                    if hostinterface.snmp_pushcommunity:
+                        result.append(
+                            {
+                                'macro': snmpconf.snmp_privpass,
+                                'value': hostinterface.snmpv3_privacy_passphrase,
+                                'description': 'SNMPv3 Privacy Passphrase',
+                                'type': 1,  # Secret macro
+                            }
+                        )
 
         return result
 
@@ -284,11 +291,16 @@ class HostSync(ZabbixSyncBase):
 
         result = []
         for assigned_tag in self.context.get('all_objects').get('tags'):
-            value, _status = assigned_tag.render()
+            value, _ = assigned_tag.render()
             result.append({'tag': assigned_tag.zabbixtag.tag, 'value': value})
 
         if zabbix_status == ZabbixHostStatus.ENABLED_NO_ALERTING:
-            result.append({'tag': f'${{{self.pluginsettings.no_alerting_tag}}}', 'value': str(self.pluginsettings.no_alerting_tag_value)})
+            result.append({'tag': self.pluginsettings.no_alerting_tag, 'value': str(self.pluginsettings.no_alerting_tag_value)})
+
+        if self.pluginsettings.attach_objtag:
+            result.append({'tag': self.pluginsettings.objtag_type, 'value': str(type(self.obj.assigned_object).__name__).lower()})
+            result.append({'tag': self.pluginsettings.objtag_id, 'value': str(self.obj.assigned_object.id)})
+
 
         return {'tags': result}
 

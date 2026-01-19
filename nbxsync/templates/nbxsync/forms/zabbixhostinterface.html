@@ -76,6 +76,7 @@
         <div class="field-group">
             {% render_field form.snmp_version %}
             {% render_field form.snmp_usebulk %}
+            {% render_field form.snmp_pushcommunity %}
         </div>
     </div>
     <div id="snmpv2-wrapper" class="field-group my-5">
@@ -106,9 +107,8 @@
     </div>
     <div class="field-group my-5">
         <div class="row mb-2">
-            {% trans "Assignment" as assignment_label %}
             {% for fieldset in form.fieldsets %}
-                {% if fieldset.name == assignment_label %}
+                {% if fieldset.name == "Assignment" %}
                     {% render_fieldset form fieldset %}
                 {% endif %}
             {% endfor %}

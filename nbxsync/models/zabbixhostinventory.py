@@ -34,8 +34,8 @@ class ZabbixHostInventory(NetBoxModel):
     hw_arch = models.CharField(max_length=32, blank=True, verbose_name=_('HW architecture'))
     installer_name = models.CharField(max_length=64, blank=True, verbose_name=_('Installer name'))
     location = models.TextField(blank=True, verbose_name=_('Location '))
-    location_lat = models.CharField(max_length=16, blank=True, verbose_name=_('Location latitude'))
-    location_lon = models.CharField(max_length=16, blank=True, verbose_name=_('Location longitude'))
+    location_lat = models.CharField(max_length=30, blank=True, verbose_name=_('Location latitude'))
+    location_lon = models.CharField(max_length=30, blank=True, verbose_name=_('Location longitude'))
     macaddress_a = models.CharField(max_length=64, blank=True, verbose_name=_('MAC address A'))
     macaddress_b = models.CharField(max_length=64, blank=True, verbose_name=_('MAC address B'))
     model_field = models.CharField(max_length=64, blank=True, verbose_name=_('Model'))
@@ -116,7 +116,7 @@ class ZabbixHostInventory(NetBoxModel):
     def get_inventory_mode(self):
         return ZabbixHostInventoryModeChoices(self.inventory_mode).label
 
-    def render_field(self, field_name: str, **context) -> tuple[str, bool]:
+    def render_field(self, field_name, **context):
         """
         Render a single field using Jinja2.
         Returns a tuple of (rendered_value, success_flag).
@@ -138,7 +138,7 @@ class ZabbixHostInventory(NetBoxModel):
             pass
         return '', False
 
-    def render_all_fields(self, **context) -> dict[str, tuple[str, bool]]:
+    def render_all_fields(self, **context):
         """
         Render all string-based fields that might contain templates.
         Returns a dict mapping field names to (rendered_value, success).

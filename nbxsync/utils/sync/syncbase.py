@@ -95,7 +95,7 @@ class ZabbixSyncBase:
         if self.name_field:
             name_key = self.name_field.split('.')[-1]
 
-        return self.api_object().get(search={name_key: self.get_name_value()})
+        return self.api_object().get(filter={name_key: self.get_name_value()})
 
     def find_by_id(self):
         id_key = self.get_id_key()

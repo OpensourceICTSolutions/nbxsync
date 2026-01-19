@@ -140,6 +140,9 @@ class HostSyncTestCase(TestCase):
                 hosttemplate = SyncSOT.NETBOX
 
             sot = SOT()
+            attach_objtag = True
+            objtag_type= "nb_type"
+            objtag_id = "nb_id"
 
         self.sync.pluginsettings = PluginSettings()
 
@@ -402,7 +405,6 @@ class HostSyncTestCase(TestCase):
 
         class DummyAssignedTag:
             def __init__(self):
-                self.zabbiixtag = DummyZabbixTag('env')
                 self.zabbixtag = DummyZabbixTag('env')
 
             def render(self):
@@ -413,7 +415,12 @@ class HostSyncTestCase(TestCase):
         self.sync.context['all_objects']['tags'] = [dummy_tag]
 
         result = self.sync.get_tag_attributes()
-        self.assertEqual(result, {'tags': [{'tag': 'env', 'value': 'production'}]})
+        self.assertEqual(result, {'tags': [
+                                            {'tag': 'env', 'value': 'production'},
+                                            {'tag': 'nb_type', 'value': str(type(self.device).__name__).lower()},
+                                            {'tag': 'nb_id', 'value': str(self.device.id)}
+                                        ]
+                                  })
 
     def test_get_groups(self):
         class DummyZabbixHostGroup:
