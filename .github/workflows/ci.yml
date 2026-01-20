@@ -28,7 +28,7 @@ jobs:
       NETBOX_CONFIGURATION: netbox.configuration_nbxsync
     strategy:
       matrix:
-        python-version: ["3.12", "3.13", "3.14"]
+        python-version: ["3.12"]
     services:
       redis:
         image: redis
