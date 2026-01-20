@@ -14,7 +14,7 @@ class HostInterfaceSync(ZabbixSyncBase):
     def get_name_value(self):
         return self.obj.assigned_object.name
 
-    def get_create_params(self) -> dict:
+    def get_create_params(self):
         hostid = self.context.get('hostid', None)
         zbxserverassignment = None
 
@@ -72,15 +72,15 @@ class HostInterfaceSync(ZabbixSyncBase):
 
         return result
 
-    def get_update_params(self, **kwargs) -> dict:
+    def get_update_params(self, **kwargs):
         params = self.get_create_params()
         params['interfaceid'] = self.obj.interfaceid
         return params
 
-    def result_key(self) -> str:
+    def result_key(self):
         return 'interfaceids'
 
-    def sync_from_zabbix(self, data: dict) -> None:
+    def sync_from_zabbix(self, data):
         try:
             self.obj.interfaceid = int(data['interfaceid'])
             self.obj.type = int(data.get('type', self.obj.type))

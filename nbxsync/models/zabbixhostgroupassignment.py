@@ -84,7 +84,7 @@ class ZabbixHostgroupAssignment(SyncInfoModel, NetBoxModel):
             error_msg = f"Unexpected error rendering template '{self.zabbixhostgroup.value}': {str(err)}"
             return error_msg, False
 
-    def is_template(self) -> bool:
+    def is_template(self):
         return bool(TEMPLATE_PATTERN.search(self.zabbixhostgroup.value))
 
     def __str__(self):

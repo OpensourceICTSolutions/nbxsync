@@ -35,7 +35,7 @@ class ZabbixHostgroup(NetBoxModel):
             ),
         ]
 
-    def is_template(self) -> bool:
+    def is_template(self):
         return bool(TEMPLATE_PATTERN.search(self.value))
 
     def __str__(self):

@@ -104,7 +104,7 @@ class ZabbixHostInventory(NetBoxModel):
             )
         ]
 
-    def get_context(self, **extra_context) -> dict:
+    def get_context(self, **extra_context):
         """
         Provide the rendering context for Jinja2 templates.
         Override or extend as needed.
