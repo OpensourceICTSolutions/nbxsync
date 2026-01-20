@@ -4,7 +4,7 @@
 
 ![CI](https://github.com/OpensourceICTSolutions/nbxsync/actions/workflows/ci.yml/badge.svg)
 ![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/bvbaekel/1a1cf04e63a52d5497edd6e0a564ec2b/raw/4a293f964b246091d1fd943629408dbb7d9f597f/cov.json)
-![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
+![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)
 ![NetBox](https://img.shields.io/badge/NetBox-4.1|4.2|4.3|4.4-blue.svg)
 
 ---
