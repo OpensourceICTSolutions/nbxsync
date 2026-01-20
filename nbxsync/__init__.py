@@ -73,7 +73,7 @@ class nbxSync(PluginConfig):
         'snmpconfig': {
             'snmp_community': '{$SNMP_COMMUNITY}',
             'snmp_authpass': '{$SNMP_AUTHPASS}',
-            'snmp_privpass': '{$SNMP.PRIVPASS}',
+            'snmp_privpass': '{$SNMP_PRIVPASS}',
         },
         'inheritance_chain': [
             ['device'],
