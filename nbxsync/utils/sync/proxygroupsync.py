@@ -8,7 +8,7 @@ class ProxyGroupSync(ZabbixSyncBase):
     def api_object(self):
         return self.api.proxygroup
 
-    def get_create_params(self) -> dict:
+    def get_create_params(self):
         return {
             'name': self.obj.name,
             'description': self.obj.description,
@@ -16,7 +16,7 @@ class ProxyGroupSync(ZabbixSyncBase):
             'min_online': self.obj.min_online,
         }
 
-    def get_update_params(self, **kwargs) -> dict:
+    def get_update_params(self, **kwargs):
         return {
             'proxy_groupid': self.obj.proxy_groupid,
             'name': self.obj.name,
@@ -25,10 +25,10 @@ class ProxyGroupSync(ZabbixSyncBase):
             'min_online': self.obj.min_online,
         }
 
-    def result_key(self) -> str:
+    def result_key(self):
         return 'proxy_groupids'
 
-    def sync_from_zabbix(self, data: dict) -> None:
+    def sync_from_zabbix(self, data):
         try:
             self.obj.proxy_groupid = data['proxy_groupid']
             self.obj.name = data.get('name', self.obj.name)

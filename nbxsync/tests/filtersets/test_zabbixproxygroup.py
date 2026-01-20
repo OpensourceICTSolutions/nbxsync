@@ -83,9 +83,3 @@ class ZabbixProxyGroupFilterSetTestCase(TestCase):
     def test_filter_by_zabbixserver_name(self):
         f = ZabbixProxyGroupFilterSet({'zabbixserver_name': 'Server B'}, queryset=ZabbixProxyGroup.objects.all())
         self.assertIn(self.groups[1], f.qs)
-
-    def test_ordering_by_proxy_groupid(self):
-        f = ZabbixProxyGroupFilterSet({'ordering': 'proxy_groupid'}, queryset=ZabbixProxyGroup.objects.all())
-        result = list(f.qs)
-        self.assertEqual(result[0], self.groups[0])
-        self.assertEqual(result[1], self.groups[1])

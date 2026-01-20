@@ -65,7 +65,7 @@ class ZabbixTagAssignment(NetBoxModel):
             error_msg = f"Unexpected error rendering template '{self.zabbixtag.value}': {str(err)}"
             return '', False
 
-    def is_template(self) -> bool:
+    def is_template(self):
         return bool(TEMPLATE_PATTERN.search(self.zabbixtag.value))
 
     def clean(self):

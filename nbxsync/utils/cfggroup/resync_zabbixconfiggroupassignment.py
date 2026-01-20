@@ -121,7 +121,7 @@ def resync_zabbixconfigurationgroupassignment(instance):
                 defaults = build_defaults_from_instance(
                     parent,
                     exclude=DEFAULT_EXCLUDE_HOSTINTERFACE,
-                    extra={'ip': primary_ip, 'zabbixconfigurationgroup': configgroup, 'parent': parent},
+                    extra={'ip': primary_ip, 'dns': primary_ip.dns_name, 'useip': parent.useip, 'zabbixconfigurationgroup': configgroup, 'parent': parent},
                 )
 
                 ZabbixHostInterface.objects.update_or_create(**lookup, defaults=defaults)

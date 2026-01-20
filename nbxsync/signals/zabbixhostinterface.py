@@ -1,5 +1,3 @@
-# signals_zabbix_hostinterface.py
-
 from django.db import IntegrityError, transaction
 from django.db.models.signals import post_save, pre_delete
 from django.dispatch import receiver
@@ -51,11 +49,7 @@ def handle_postcreate_zabbixhostinterface(sender, instance, created, **kwargs):
             defaults = build_defaults_from_instance(
                 instance,
                 exclude=DEFAULT_EXCLUDE_FIELDS,
-                extra={
-                    'ip': primary_ip,
-                    'zabbixconfigurationgroup': instance.assigned_object,
-                    'parent': instance,
-                },
+                extra={'ip': primary_ip, 'dns': primary_ip.dns_name, 'useip': instance.useip, 'zabbixconfigurationgroup': instance.assigned_object, 'parent': instance},
             )
 
             try:
@@ -72,10 +66,10 @@ def handle_postsave_zabbixhostinterface(sender, instance, created, **kwargs):
         return
 
     def _update_children():
-        # Base updates from parent for all children (no ip, parent, etc.)
+        # Base updates from parent for all children
         base_updates = build_defaults_from_instance(instance, exclude=DEFAULT_EXCLUDE_FIELDS)
 
-        # Children that are still linked to a configgroup (same pattern as MacroAssignment)
+        # Children that are still linked to a configgroup
         children = instance.children.exclude(zabbixconfigurationgroup__isnull=True)
 
         with transaction.atomic():
@@ -87,6 +81,8 @@ def handle_postsave_zabbixhostinterface(sender, instance, created, **kwargs):
 
                 updates = dict(base_updates)
                 updates['ip'] = primary_ip
+                updates['dns'] = primary_ip.dns_name
+                updates['useip'] = instance.useip
 
                 ZabbixHostInterface.objects.filter(pk=child.pk).update(**updates)
 

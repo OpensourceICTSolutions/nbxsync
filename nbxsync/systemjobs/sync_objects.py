@@ -2,7 +2,7 @@ from django_rq import get_queue
 
 from netbox.jobs import JobRunner, system_job
 
-from nbxsync.models import ZabbixServerAssignment
+from nbxsync.models import ZabbixServerAssignment, ZabbixConfigurationGroup
 from nbxsync.settings import get_plugin_settings
 
 
@@ -19,6 +19,10 @@ class SyncObjectsJob(JobRunner):
     def run(self, *args, **kwargs):
         synced_objects = []
         for obj in ZabbixServerAssignment.objects.all():
+            # dont try to sync ZabbixConfigurationGroups
+            if isinstance(obj.assigned_object, ZabbixConfigurationGroup):
+                continue
+
             if obj.assigned_object in synced_objects:
                 return
             else:

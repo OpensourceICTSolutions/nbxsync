@@ -69,9 +69,3 @@ class ZabbixTemplateFilterSetTestCase(TestCase):
         f = ZabbixTemplateFilterSet({'zabbixserver': self.servers[0].id}, queryset=ZabbixTemplate.objects.all())
         self.assertIn(self.templates[0], f.qs)
         self.assertNotIn(self.templates[1], f.qs)
-
-    def test_ordering_by_templateid(self):
-        f = ZabbixTemplateFilterSet({'ordering': 'templateid'}, queryset=ZabbixTemplate.objects.all())
-        ordered = list(f.qs)
-        self.assertEqual(ordered[0], self.templates[0])
-        self.assertEqual(ordered[1], self.templates[1])

@@ -114,6 +114,9 @@ class nbxSync(PluginConfig):
         'no_alerting_tag': 'NO_ALERTING',
         'no_alerting_tag_value': '1',
         'maintenance_window_duration': 3600,
+        'attach_objtag': False,
+        'objtag_type': 'nb_type',
+        'objtag_id': 'nb_id',
     }
     queues = []
     validated_config = None
@@ -160,8 +163,8 @@ class nbxSync(PluginConfig):
 
             # Evaluate a (simple) Q tree on a model using only app_label/model_name,
             # supporting AND/OR, negation, exact and __in on those two fields.
-            def q_matches_model(q: Q, model) -> bool:
-                def eval_node(node: Q) -> bool:
+            def q_matches_model(q, model):
+                def eval_node(node):
                     # Start with neutral element for connector
                     result = None
                     for child in node.children:

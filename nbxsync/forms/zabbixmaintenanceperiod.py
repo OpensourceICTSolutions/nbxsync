@@ -66,11 +66,11 @@ class ZabbixMaintenancePeriodForm(NetBoxModelForm):
         )
 
     @staticmethod
-    def _seconds_from_hms(days: int, hours: int, minutes: int) -> int:
+    def _seconds_from_hms(days, hours, minutes):
         return days * 86_400 + hours * 3_600 + minutes * 60
 
     @staticmethod
-    def _seconds_from_timeobj(t: _time | None) -> int | None:
+    def _seconds_from_timeobj(t):
         if t is None:
             return None
         return t.hour * 3600 + t.minute * 60 + t.second

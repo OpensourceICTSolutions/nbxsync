@@ -1,5 +1,3 @@
-# nbxsync/signals/zabbix_configgroup_assignment.py
-
 from django.db import transaction
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver

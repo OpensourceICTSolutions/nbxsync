@@ -5,6 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 
 from netbox.models import NetBoxModel
@@ -49,6 +50,7 @@ class ZabbixHostInterface(SyncInfoModel, NetBoxModel):
 
     parent = models.ForeignKey('self', null=True, blank=True, related_name='children', on_delete=models.SET_NULL)
 
+
     # Agent-specific fields
     tls_connect = models.PositiveSmallIntegerField(choices=ZabbixTLSChoices, default=ZabbixTLSChoices.NO_ENCRYPTION, blank=True, null=True)
     tls_accept = ArrayField(base_field=models.PositiveSmallIntegerField(choices=ZabbixTLSChoices), default=default_tls_accept, blank=True)
@@ -63,6 +65,7 @@ class ZabbixHostInterface(SyncInfoModel, NetBoxModel):
 
     # SNMPv1/2-specific fields
     snmp_community = models.CharField(max_length=75, blank=True, verbose_name=_('SNMPv1/2 Community'))
+    snmp_pushcommunity = models.BooleanField(default=True)
 
     # SNMPv3-specific fields
     snmpv3_context_name = models.CharField(max_length=50, blank=True, verbose_name=_('Context Name'))
@@ -88,13 +91,14 @@ class ZabbixHostInterface(SyncInfoModel, NetBoxModel):
         verbose_name = 'Zabbix Host Interface'
         verbose_name_plural = 'Zabbix Host Interfaces'
         ordering = ('-created',)
-
         constraints = [
+            # Only ONE default interface per (server, type, assigned object)
             models.UniqueConstraint(
-                fields=['zabbixserver', 'interface_type', 'type', 'assigned_object_type', 'assigned_object_id'],
-                name='%(app_label)s_%(class)s_unique__server_type_object',
-                violation_error_message='A Hostinterface with this type and has already been defined',
-            )
+                fields=["zabbixserver", "type", "assigned_object_type", "assigned_object_id"],
+                condition=Q(interface_type=ZabbixInterfaceTypeChoices.DEFAULT),
+                name="%(app_label)s_%(class)s_unique_default__server_type_object",
+                violation_error_message="A default Hostinterface of this type has already been defined for this object.",
+            ),
         ]
 
     def clean(self):

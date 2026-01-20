@@ -35,7 +35,7 @@ class DummySync(ZabbixSyncBase):
     def get_update_params(self, **kwargs):
         return {'id': self.obj.id, 'name': 'updated'}
 
-    def result_key(self) -> str:
+    def result_key(self):
         return 'dummyids'
 
     def sync_from_zabbix(self, data):
