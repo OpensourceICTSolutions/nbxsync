@@ -23,9 +23,8 @@
                 {% endif %}
             </div>
         </div>
-        {% trans "Assignment" as assignment_label %}
         {% for fieldset in form.fieldsets %}
-            {% if fieldset.name == assignment_label %}
+            {% if fieldset.name == "Assignment" %}
                 {% render_fieldset form fieldset %}
             {% endif %}
         {% endfor %}

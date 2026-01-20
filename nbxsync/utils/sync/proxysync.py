@@ -11,10 +11,10 @@ class ProxySync(ZabbixSyncBase):
     def api_object(self):
         return self.api.proxy
 
-    def result_key(self) -> str:
+    def result_key(self):
         return 'proxyids'
 
-    def get_create_params(self) -> dict:
+    def get_create_params(self):
         create_params = {
             'name': self.obj.name,
             'description': self.obj.description,
@@ -73,7 +73,7 @@ class ProxySync(ZabbixSyncBase):
 
         return create_params
 
-    def get_update_params(self, **kwargs) -> dict:
+    def get_update_params(self, **kwargs):
         params = self.get_create_params()
         params['proxyid'] = self.obj.proxyid
         return params
@@ -81,7 +81,7 @@ class ProxySync(ZabbixSyncBase):
     def decode_bitmask(self, value, flags=(1, 2, 4)):
         return [flag for flag in flags if value & flag]
 
-    def sync_from_zabbix(self, data: dict) -> None:
+    def sync_from_zabbix(self, data):
         tls_accept = [1]  # Default to 'No Encryption'
         if data.get('tls_accept', 1):
             flags = (1, 2, 4)

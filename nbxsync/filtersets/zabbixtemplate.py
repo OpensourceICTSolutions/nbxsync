@@ -1,5 +1,5 @@
 from django.db.models import Q
-from django_filters import CharFilter, NumberFilter, OrderingFilter
+from django_filters import CharFilter, NumberFilter
 
 from netbox.filtersets import NetBoxModelFilterSet
 
@@ -13,15 +13,6 @@ class ZabbixTemplateFilterSet(NetBoxModelFilterSet):
     name = CharFilter(lookup_expr='icontains')
     templateid = NumberFilter()
     zabbixserver_name = CharFilter(field_name='zabbixserver__name', lookup_expr='icontains')
-
-    ordering = OrderingFilter(
-        fields=(
-            ('id', 'id'),
-            ('name', 'name'),
-            ('templateid', 'templateid'),
-            ('zabbixserver__name', 'zabbixserver_name'),
-        )
-    )
 
     class Meta:
         model = ZabbixTemplate

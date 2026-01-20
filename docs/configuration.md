@@ -76,6 +76,9 @@ The plugin is configuration to do exactly what you want, by means of the plugin 
     },
     'no_alerting_tag': 'NO_ALERTING',
     'no_alerting_tag_value': '1',
+    'attach_objtag': True,
+    'objtag_type': 'nb_type',
+    'objtag_id': 'nb_id'
 }
 ```
 

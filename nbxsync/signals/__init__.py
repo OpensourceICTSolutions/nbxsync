@@ -9,3 +9,4 @@ from .zabbixhostinterface import *  # noqa
 from .zabbixmaintenance import *  # noqa
 from .zabbixserver import *  # noqa
 from .zabbixtemplate import *  # noqa
+from .ipaddress import *  # noqa

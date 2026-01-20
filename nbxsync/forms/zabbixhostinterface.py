@@ -41,6 +41,9 @@ class ZabbixHostInterfaceForm(NetBoxModelForm):
     ipmi_privilege = forms.TypedChoiceField(choices=IPMIPrivilegeChoices, required=False, coerce=int, empty_value=None, initial=2, label=_('Privilege'))
 
     ipmi_password = forms.CharField(required=False, label=_('Password'), widget=forms.PasswordInput(render_value=True))
+    snmp_pushcommunity = forms.BooleanField(required=False, label=_('Push SNMP Community'), help_text=_('Should the SNMP Credentials be pushed from NetBox or should the existing Zabbix macro be used?'))
+    snmpv3_authentication_passphrase = forms.CharField(required=False, label=_('Authentication passphrase'), widget=forms.PasswordInput(render_value=True))
+    snmpv3_privacy_passphrase = forms.CharField(required=False, label=_('Privacy passphrase '), widget=forms.PasswordInput(render_value=True))
 
     fieldsets = (
         FieldSet(
@@ -78,7 +81,7 @@ class ZabbixHostInterfaceForm(NetBoxModelForm):
         FieldSet(
             'snmp_version',
             'snmp_usebulk',
-            'snmpv3_context_name',
+            'snmp_pushcommunitysnmpv3_context_name',
             'snmpv3_security_name',
             'snmpv3_security_level',
             'snmpv3_authentication_passphrase',
@@ -119,6 +122,7 @@ class ZabbixHostInterfaceForm(NetBoxModelForm):
             'snmp_version',
             'snmp_usebulk',
             'snmp_community',
+            'snmp_pushcommunity',
             'snmpv3_context_name',
             'snmpv3_security_name',
             'snmpv3_security_level',

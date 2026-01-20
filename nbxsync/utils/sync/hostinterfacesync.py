@@ -14,7 +14,7 @@ class HostInterfaceSync(ZabbixSyncBase):
     def get_name_value(self):
         return self.obj.assigned_object.name
 
-    def get_create_params(self) -> dict:
+    def get_create_params(self):
         hostid = self.context.get('hostid', None)
         zbxserverassignment = None
 
@@ -59,24 +59,26 @@ class HostInterfaceSync(ZabbixSyncBase):
                 snmp_dict['contextname'] = self.obj.snmpv3_context_name
                 snmp_dict['securityname'] = self.obj.snmpv3_security_name
                 snmp_dict['securitylevel'] = self.obj.snmpv3_security_level
-                snmp_dict['authpassphrase'] = snmp_authpass_macro
-                snmp_dict['privpassphrase'] = snmp_privpass_macro
                 snmp_dict['authprotocol'] = self.obj.snmpv3_authentication_protocol
                 snmp_dict['privprotocol'] = self.obj.snmpv3_privacy_protocol
+
+                if self.obj.snmp_pushcommunity:
+                    snmp_dict['authpassphrase'] = snmp_authpass_macro
+                    snmp_dict['privpassphrase'] = snmp_privpass_macro
 
             result['details'] = snmp_dict
 
         return result
 
-    def get_update_params(self, **kwargs) -> dict:
+    def get_update_params(self, **kwargs):
         params = self.get_create_params()
         params['interfaceid'] = self.obj.interfaceid
         return params
 
-    def result_key(self) -> str:
+    def result_key(self):
         return 'interfaceids'
 
-    def sync_from_zabbix(self, data: dict) -> None:
+    def sync_from_zabbix(self, data):
         try:
             self.obj.interfaceid = int(data['interfaceid'])
             self.obj.type = int(data.get('type', self.obj.type))

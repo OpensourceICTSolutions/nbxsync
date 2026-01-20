@@ -40,7 +40,7 @@ class ZabbixServerAssignmentSerializer(SyncInfoSerializerMixin, NetBoxModelSeria
             'last_sync_message',
         )
 
-    @extend_schema_field(OpenApiTypes.STR)
+    @extend_schema_field(OpenApiTypes.OBJECT)
     def get_assigned_object(self, instance):
         serializer = get_serializer_for_model(instance.assigned_object_type.model_class())
         context = {'request': self.context['request']}

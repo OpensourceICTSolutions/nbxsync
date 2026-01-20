@@ -14,13 +14,13 @@ class HostGroupSync(ZabbixSyncBase):
     def api_object(self):
         return self.api.hostgroup
 
-    def get_create_params(self) -> dict:
+    def get_create_params(self):
         name, _state = self.obj.render()
         return {
             'name': name,
         }
 
-    def get_update_params(self, **kwargs) -> dict:
+    def get_update_params(self, **kwargs):
         params = self.get_create_params()
         object_id = kwargs.get('object_id')
         if object_id is None:
@@ -28,7 +28,7 @@ class HostGroupSync(ZabbixSyncBase):
         params['groupid'] = object_id
         return params
 
-    def result_key(self) -> str:
+    def result_key(self):
         return 'groupids'
 
     # -- Override set_id() and get_id() --

@@ -20,10 +20,13 @@ class HostSync(ZabbixSyncBase):
         return self.api.host
 
     def get_name_value(self):
-        return str(self.obj.assigned_object)
-        # return self.obj.assigned_object.name
+        # If the object has the "name" attribute, only return that (Device). If not (cornercase?), return the display string
+        if hasattr(self.obj.assigned_object, 'name'):
+            return self.obj.assigned_object.name
 
-    def get_create_params(self) -> dict:
+        return str(self.obj.assigned_object)
+
+    def get_create_params(self):
         status = self.obj.assigned_object.status
         object_type = self.obj.assigned_object._meta.model_name  # "device" or "virtualmachine"
         status_mapping = getattr(self.pluginsettings.statusmapping, object_type, {})
@@ -40,6 +43,7 @@ class HostSync(ZabbixSyncBase):
             'name': str(self.obj.assigned_object),
             'groups': self.get_groups(),
             'status': host_status,
+            'description': self.obj.assigned_object.description or '',
             **self.get_proxy_or_proxygroup(),
             **self.get_hostinterface_attributes(),
             **self.get_tag_attributes(),
@@ -47,7 +51,7 @@ class HostSync(ZabbixSyncBase):
             **self.get_hostinventory(),
         }
 
-    def get_update_params(self, **kwargs) -> dict:
+    def get_update_params(self, **kwargs):
         self.templates = self.get_template_attributes()
         templates_clear = self.get_templates_clear_attributes()
 
@@ -63,10 +67,10 @@ class HostSync(ZabbixSyncBase):
 
         return params
 
-    def result_key(self) -> str:
+    def result_key(self):
         return 'hostids'
 
-    def sync_from_zabbix(self, data: dict) -> None:
+    def sync_from_zabbix(self, data):
         return {}
         # TODO: Fix
         # self.obj.proxy_groupid = data['proxy_groupid']
@@ -77,7 +81,7 @@ class HostSync(ZabbixSyncBase):
         # self.obj.save()
         # self.obj.update_sync_info(success=True, message='')
 
-    def get_proxy_or_proxygroup(self) -> dict:
+    def get_proxy_or_proxygroup(self):
         result = {'monitored_by': 0}
         if self.obj.zabbixproxy:
             result['monitored_by'] = 1  # Proxy
@@ -88,7 +92,7 @@ class HostSync(ZabbixSyncBase):
 
         return result
 
-    def get_defined_macros(self) -> list:
+    def get_defined_macros(self):
         result = []
         for macro in self.context.get('all_objects').get('macros'):
             result.append(
@@ -119,7 +123,7 @@ class HostSync(ZabbixSyncBase):
 
         return result
 
-    def get_snmp_macros(self) -> list:
+    def get_snmp_macros(self):
         result = []
         hostinterfaces = self.context.get('all_objects', {}).get('hostinterfaces', [])
         snmpconf = self.pluginsettings.snmpconfig
@@ -133,41 +137,44 @@ class HostSync(ZabbixSyncBase):
                 ZabbixHostInterfaceSNMPVersionChoices.SNMPV1,
                 ZabbixHostInterfaceSNMPVersionChoices.SNMPV2,
             ]:
-                result.append(
-                    {
-                        'macro': snmpconf.snmp_community,
-                        'value': hostinterface.snmp_community,
-                        'description': 'SNMPv2 Community',
-                        'type': 1,  # Secret macro
-                    }
-                )
+                if hostinterface.snmp_pushcommunity:
+                    result.append(
+                        {
+                            'macro': snmpconf.snmp_community,
+                            'value': hostinterface.snmp_community,
+                            'description': 'SNMPv2 Community',
+                            'type': 1,  # Secret macro
+                        }
+                    )
 
             if hostinterface.snmp_version == ZabbixHostInterfaceSNMPVersionChoices.SNMPV3:
                 if hostinterface.snmpv3_security_level in [
                     ZabbixInterfaceSNMPV3SecurityLevelChoices.AUTHNOPRIV,
                     ZabbixInterfaceSNMPV3SecurityLevelChoices.AUTHPRIV,
                 ]:
-                    result.append(
-                        {
-                            'macro': snmpconf.snmp_authpass,
-                            'value': hostinterface.snmpv3_authentication_passphrase,
-                            'description': 'SNMPv3 Authentication Passphrase',
-                            'type': 1,  # Secret macro
-                        }
-                    )
+                    if hostinterface.snmp_pushcommunity:
+                        result.append(
+                            {
+                                'macro': snmpconf.snmp_authpass,
+                                'value': hostinterface.snmpv3_authentication_passphrase,
+                                'description': 'SNMPv3 Authentication Passphrase',
+                                'type': 1,  # Secret macro
+                            }
+                        )
                 if hostinterface.snmpv3_security_level == ZabbixInterfaceSNMPV3SecurityLevelChoices.AUTHPRIV:
-                    result.append(
-                        {
-                            'macro': snmpconf.snmp_privpass,
-                            'value': hostinterface.snmpv3_privacy_passphrase,
-                            'description': 'SNMPv3 Privacy Passphrase',
-                            'type': 1,  # Secret macro
-                        }
-                    )
+                    if hostinterface.snmp_pushcommunity:
+                        result.append(
+                            {
+                                'macro': snmpconf.snmp_privpass,
+                                'value': hostinterface.snmpv3_privacy_passphrase,
+                                'description': 'SNMPv3 Privacy Passphrase',
+                                'type': 1,  # Secret macro
+                            }
+                        )
 
         return result
 
-    def get_macros(self) -> dict:
+    def get_macros(self):
         snmpconf = self.pluginsettings.snmpconfig
 
         all_macros = self.get_defined_macros()
@@ -186,7 +193,7 @@ class HostSync(ZabbixSyncBase):
 
         return {'macros': all_macros + snmp_macros}
 
-    def get_hostinterface_attributes(self) -> dict:
+    def get_hostinterface_attributes(self):
         result = {}
         for hostinterface in self.context.get('all_objects', {}).get('hostinterfaces', []):
             if hostinterface.type == ZabbixHostInterfaceTypeChoices.AGENT:
@@ -207,11 +214,11 @@ class HostSync(ZabbixSyncBase):
                 result['ipmi_username'] = hostinterface.ipmi_username
         return result
 
-    def get_hostinterface_types(self) -> list:
+    def get_hostinterface_types(self):
         hostinterfaces = self.context.get('all_objects', {}).get('hostinterfaces', [])
         return list({interface.type for interface in hostinterfaces})
 
-    def get_templates_clear_attributes(self) -> dict:
+    def get_templates_clear_attributes(self):
         result = []
         if not self.obj.hostid:
             return {}
@@ -247,7 +254,7 @@ class HostSync(ZabbixSyncBase):
                 self.templates['templates'].append(template)
             return {}
 
-    def get_template_attributes(self) -> dict:
+    def get_template_attributes(self):
         result = []
         hostinterface_types = set(self.get_hostinterface_types() or [])
 
@@ -276,7 +283,7 @@ class HostSync(ZabbixSyncBase):
 
         return {'templates': result}
 
-    def get_tag_attributes(self) -> dict:
+    def get_tag_attributes(self):
         status = self.obj.assigned_object.status
         object_type = self.obj.assigned_object._meta.model_name  # "device" or "virtualmachine"
         status_mapping = getattr(self.pluginsettings.statusmapping, object_type, {})
@@ -284,15 +291,19 @@ class HostSync(ZabbixSyncBase):
 
         result = []
         for assigned_tag in self.context.get('all_objects').get('tags'):
-            value, _status = assigned_tag.render()
+            value, _ = assigned_tag.render()
             result.append({'tag': assigned_tag.zabbixtag.tag, 'value': value})
 
         if zabbix_status == ZabbixHostStatus.ENABLED_NO_ALERTING:
-            result.append({'tag': f'${{{self.pluginsettings.no_alerting_tag}}}', 'value': str(self.pluginsettings.no_alerting_tag_value)})
+            result.append({'tag': self.pluginsettings.no_alerting_tag, 'value': str(self.pluginsettings.no_alerting_tag_value)})
+
+        if self.pluginsettings.attach_objtag:
+            result.append({'tag': self.pluginsettings.objtag_type, 'value': str(type(self.obj.assigned_object).__name__).lower()})
+            result.append({'tag': self.pluginsettings.objtag_id, 'value': str(self.obj.assigned_object.id)})
 
         return {'tags': result}
 
-    def get_groups(self) -> list:
+    def get_groups(self):
         groups = []
         for group in self.obj.assigned_objects.get('hostgroups', []):
             # 1) If we already know the Zabbix groupid, use it (fast path).
@@ -321,7 +332,7 @@ class HostSync(ZabbixSyncBase):
 
         return groups
 
-    def get_hostinventory(self) -> dict:
+    def get_hostinventory(self):
         hostinventory = self.context.get('all_objects', {}).get('hostinventory', None)
         inventory = {}
         inventory_mode = 0
@@ -339,7 +350,7 @@ class HostSync(ZabbixSyncBase):
 
         return result
 
-    def verify_maintenancewindow(self) -> None:
+    def verify_maintenancewindow(self):
         status = self.obj.assigned_object.status
         object_type = self.obj.assigned_object._meta.model_name  # "device" or "virtualmachine"
         status_mapping = getattr(self.pluginsettings.statusmapping, object_type, {})
@@ -385,7 +396,7 @@ class HostSync(ZabbixSyncBase):
                 )
             )
 
-    def delete(self) -> None:
+    def delete(self):
         if not self.obj.hostid:
             try:
                 self.obj.update_sync_info(success=False, message='Host already deleted or missing host ID.')
@@ -443,7 +454,7 @@ class HostSync(ZabbixSyncBase):
             self.obj.update_sync_info(success=False, message=f'Failed to delete host: {e}')
             raise RuntimeError(f'Failed to delete host {self.obj.hostid} from Zabbix: {e}')
 
-    def verify_hostinterfaces(self) -> None:
+    def verify_hostinterfaces(self):
         # If there is no hostid, no need to continue - so fail early
         if not self.obj.hostid:
             return {}
@@ -460,7 +471,7 @@ class HostSync(ZabbixSyncBase):
         for id_to_delete in to_be_deleted:
             self.api.hostinterface.delete(id_to_delete)
 
-    def sanitize_string(self, input_str, replacement='_') -> str:
+    def sanitize_string(self, input_str, replacement='_'):
         """
         Replaces all characters in input_str that do NOT match [0-9a-zA-Z_. \\-] with the replacement character.
 

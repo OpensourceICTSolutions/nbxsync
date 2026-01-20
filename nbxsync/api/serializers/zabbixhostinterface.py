@@ -14,6 +14,12 @@ from nbxsync.models import ZabbixHostInterface, ZabbixServer, ZabbixConfiguratio
 class NestedZabbixHostInterfaceSerializer(NetBoxModelSerializer):
     url = serializers.HyperlinkedIdentityField(view_name='plugins-api:nbxsync-api:zabbixhostinterface-detail')
 
+    zabbixconfigurationgroup = ZabbixConfigurationGroupSerializer(nested=True, read_only=True, required=False)
+    zabbixconfigurationgroup_id = serializers.PrimaryKeyRelatedField(queryset=ZabbixConfigurationGroup.objects.all(), source='zabbixconfigurationgroup', write_only=True, required=False)
+
+    assigned_object_type = ContentTypeField(queryset=ContentType.objects.all())
+    assigned_object = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = ZabbixHostInterface
         fields = (
@@ -42,6 +48,7 @@ class NestedZabbixHostInterfaceSerializer(NetBoxModelSerializer):
             'tls_psk',
             'snmp_version',
             'snmp_usebulk',
+            'snmp_pushcommunity',
             'snmp_community',
             'snmpv3_context_name',
             'snmpv3_security_name',
@@ -83,6 +90,7 @@ class NestedZabbixHostInterfaceSerializer(NetBoxModelSerializer):
             'tls_psk',
             'snmp_version',
             'snmp_usebulk',
+            'snmp_pushcommunity',
             'snmp_community',
             'snmpv3_context_name',
             'snmpv3_security_name',
@@ -99,6 +107,12 @@ class NestedZabbixHostInterfaceSerializer(NetBoxModelSerializer):
             'last_sync_message',
         )
 
+    @extend_schema_field(OpenApiTypes.OBJECT)
+    def get_assigned_object(self, instance):
+        serializer = get_serializer_for_model(instance.assigned_object_type.model_class())
+        context = {'request': self.context['request']}
+        return serializer(instance.assigned_object, context=context).data
+
 
 class ZabbixHostInterfaceSerializer(SyncInfoSerializerMixin, NetBoxModelSerializer):
     url = serializers.HyperlinkedIdentityField(view_name='plugins-api:nbxsync-api:zabbixhostinterface-detail')
@@ -107,7 +121,7 @@ class ZabbixHostInterfaceSerializer(SyncInfoSerializerMixin, NetBoxModelSerializ
     zabbixserver_id = serializers.PrimaryKeyRelatedField(queryset=ZabbixServer.objects.all(), source='zabbixserver', write_only=True, required=False)
 
     zabbixconfigurationgroup = ZabbixConfigurationGroupSerializer(nested=True, read_only=True, required=False)
-    zabbixconfigurationgroup_id = serializers.PrimaryKeyRelatedField(queryset=ZabbixConfigurationGroup.objects.all(), source='zabbixconfigurationgroup', required=False)
+    zabbixconfigurationgroup_id = serializers.PrimaryKeyRelatedField(queryset=ZabbixConfigurationGroup.objects.all(), source='zabbixconfigurationgroup', write_only=True, required=False)
 
     assigned_object_type = ContentTypeField(queryset=ContentType.objects.all())
     assigned_object = serializers.SerializerMethodField(read_only=True)
@@ -143,6 +157,7 @@ class ZabbixHostInterfaceSerializer(SyncInfoSerializerMixin, NetBoxModelSerializ
             'tls_psk',
             'snmp_version',
             'snmp_usebulk',
+            'snmp_pushcommunity',
             'snmp_community',
             'snmpv3_context_name',
             'snmpv3_security_name',
@@ -161,7 +176,7 @@ class ZabbixHostInterfaceSerializer(SyncInfoSerializerMixin, NetBoxModelSerializ
             'last_sync_message',
         )
 
-    @extend_schema_field(OpenApiTypes.STR)
+    @extend_schema_field(OpenApiTypes.OBJECT)
     def get_assigned_object(self, instance):
         serializer = get_serializer_for_model(instance.assigned_object_type.model_class())
         context = {'request': self.context['request']}

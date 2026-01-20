@@ -20,10 +20,10 @@ class MaintenanceSync(ZabbixSyncBase):
     def api_object(self):
         return self.api.maintenance
 
-    def result_key(self) -> str:
+    def result_key(self):
         return 'maintenanceids'
 
-    def get_create_params(self) -> dict:
+    def get_create_params(self):
         create_params = {
             'name': self.obj.name,
             'description': self.obj.description,
@@ -41,19 +41,19 @@ class MaintenanceSync(ZabbixSyncBase):
 
         return create_params
 
-    def get_update_params(self, **kwargs) -> dict:
+    def get_update_params(self, **kwargs):
         params = self.get_create_params()
         params['maintenanceid'] = self.obj.maintenanceid
         return params
 
-    def sync_from_zabbix(self, data: dict) -> None:
+    def sync_from_zabbix(self, data):
         try:
             self.obj.save()
             self.obj.update_sync_info(success=True, message='')
         except Exception as _err:
             self.obj.update_sync_info(success=False, message=str(_err))
 
-    def delete(self) -> None:
+    def delete(self):
         if not self.obj.maintenanceid:
             try:
                 self.obj.update_sync_info(success=False, message='Maintenance already deleted or missing host ID.')
@@ -71,7 +71,7 @@ class MaintenanceSync(ZabbixSyncBase):
             self.obj.update_sync_info(success=False, message=f'Failed to delete maintenance: {e}')
             raise RuntimeError(f'Failed to delete maintenace {self.obj.maintenanceid} from Zabbix: {e}')
 
-    def get_timeperiods(self) -> list:
+    def get_timeperiods(self):
         result = []
         for timeperiod in ZabbixMaintenancePeriod.objects.filter(zabbixmaintenance=self.obj):
             timeperiod_result = {
@@ -115,7 +115,7 @@ class MaintenanceSync(ZabbixSyncBase):
             result.append(timeperiod_result)
         return result
 
-    def get_hosts(self) -> list:
+    def get_hosts(self):
         result = []
         zabbixhostgroup_ct = ContentType.objects.get_for_model(ZabbixHostgroup)
         for host in ZabbixMaintenanceObjectAssignment.objects.exclude(assigned_object_type=zabbixhostgroup_ct).filter(zabbixmaintenance=self.obj):
@@ -133,7 +133,7 @@ class MaintenanceSync(ZabbixSyncBase):
             result.append({'hostid': hostid})
         return result
 
-    def get_hostgroups(self) -> list:
+    def get_hostgroups(self):
         result = []
         zabbixhostgroup_ct = ContentType.objects.get_for_model(ZabbixHostgroup)
         for group in ZabbixMaintenanceObjectAssignment.objects.filter(zabbixmaintenance=self.obj, assigned_object_type=zabbixhostgroup_ct):
@@ -145,7 +145,7 @@ class MaintenanceSync(ZabbixSyncBase):
             result.append({'groupid': zabbixhostgroup.groupid})
         return result
 
-    def get_tags(self) -> list:
+    def get_tags(self):
         result = []
         for assigned_tag in ZabbixMaintenanceTagAssignment.objects.filter(zabbixmaintenance=self.obj):
             result.append({'operator': assigned_tag.operator, 'tag': assigned_tag.zabbixtag.tag, 'value': assigned_tag.value})
