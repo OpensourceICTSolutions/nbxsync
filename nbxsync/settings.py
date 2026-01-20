@@ -27,9 +27,9 @@ class StatusMapping(BaseModel):
 
 
 class SNMPConfig(BaseModel):
-    snmp_community: str = Field(default='{$MY.SNMPV3.AUTHPASS}')
-    snmp_authpass: str = Field(default='{$MY.SNMPV3.AUTHPASS}')
-    snmp_privpass: str = Field(default='{$MY.SNMPV3.PRIVPASS}')
+    snmp_community: str = Field(default='{$SNMP_COMMUNITY}')
+    snmp_authpass: str = Field(default='{$SNMP_AUTHPASS}')
+    snmp_privpass: str = Field(default='{$SNMP_PRIVPASS}')
 
     @field_validator('snmp_community', 'snmp_authpass', 'snmp_privpass', mode='before')
     def validate_macro_format(cls, v: str) -> str:
