@@ -17,7 +17,7 @@ class ZabbixProxyGroupFilterSet(NetBoxModelFilterSet):
     failover_delay = NumberFilter()
     zabbixserver = ModelChoiceFilter(queryset=ZabbixServer.objects.all())
 
-    ordering = ("proxy_groupid", "name", "min_online", "failover_delay", "zabbixserver__name", "id") 
+    ordering = ('proxy_groupid', 'name', 'min_online', 'failover_delay', 'zabbixserver__name', 'id')
 
     class Meta:
         model = ZabbixProxyGroup

@@ -141,8 +141,8 @@ class HostSyncTestCase(TestCase):
 
             sot = SOT()
             attach_objtag = True
-            objtag_type= "nb_type"
-            objtag_id = "nb_id"
+            objtag_type = 'nb_type'
+            objtag_id = 'nb_id'
 
         self.sync.pluginsettings = PluginSettings()
 
@@ -415,12 +415,7 @@ class HostSyncTestCase(TestCase):
         self.sync.context['all_objects']['tags'] = [dummy_tag]
 
         result = self.sync.get_tag_attributes()
-        self.assertEqual(result, {'tags': [
-                                            {'tag': 'env', 'value': 'production'},
-                                            {'tag': 'nb_type', 'value': str(type(self.device).__name__).lower()},
-                                            {'tag': 'nb_id', 'value': str(self.device.id)}
-                                        ]
-                                  })
+        self.assertEqual(result, {'tags': [{'tag': 'env', 'value': 'production'}, {'tag': 'nb_type', 'value': str(type(self.device).__name__).lower()}, {'tag': 'nb_id', 'value': str(self.device.id)}]})
 
     def test_get_groups(self):
         class DummyZabbixHostGroup:

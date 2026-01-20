@@ -50,7 +50,6 @@ class ZabbixHostInterface(SyncInfoModel, NetBoxModel):
 
     parent = models.ForeignKey('self', null=True, blank=True, related_name='children', on_delete=models.SET_NULL)
 
-
     # Agent-specific fields
     tls_connect = models.PositiveSmallIntegerField(choices=ZabbixTLSChoices, default=ZabbixTLSChoices.NO_ENCRYPTION, blank=True, null=True)
     tls_accept = ArrayField(base_field=models.PositiveSmallIntegerField(choices=ZabbixTLSChoices), default=default_tls_accept, blank=True)
@@ -94,10 +93,10 @@ class ZabbixHostInterface(SyncInfoModel, NetBoxModel):
         constraints = [
             # Only ONE default interface per (server, type, assigned object)
             models.UniqueConstraint(
-                fields=["zabbixserver", "type", "assigned_object_type", "assigned_object_id"],
+                fields=['zabbixserver', 'type', 'assigned_object_type', 'assigned_object_id'],
                 condition=Q(interface_type=ZabbixInterfaceTypeChoices.DEFAULT),
-                name="%(app_label)s_%(class)s_unique_default__server_type_object",
-                violation_error_message="A default Hostinterface of this type has already been defined for this object.",
+                name='%(app_label)s_%(class)s_unique_default__server_type_object',
+                violation_error_message='A default Hostinterface of this type has already been defined for this object.',
             ),
         ]
 

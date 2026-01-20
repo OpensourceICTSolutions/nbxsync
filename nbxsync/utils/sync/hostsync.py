@@ -21,9 +21,9 @@ class HostSync(ZabbixSyncBase):
 
     def get_name_value(self):
         # If the object has the "name" attribute, only return that (Device). If not (cornercase?), return the display string
-        if hasattr(self.obj.assigned_object, "name"):
+        if hasattr(self.obj.assigned_object, 'name'):
             return self.obj.assigned_object.name
-        
+
         return str(self.obj.assigned_object)
 
     def get_create_params(self):
@@ -300,7 +300,6 @@ class HostSync(ZabbixSyncBase):
         if self.pluginsettings.attach_objtag:
             result.append({'tag': self.pluginsettings.objtag_type, 'value': str(type(self.obj.assigned_object).__name__).lower()})
             result.append({'tag': self.pluginsettings.objtag_id, 'value': str(self.obj.assigned_object.id)})
-
 
         return {'tags': result}
 

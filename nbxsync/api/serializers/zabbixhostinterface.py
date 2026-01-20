@@ -13,7 +13,7 @@ from nbxsync.models import ZabbixHostInterface, ZabbixServer, ZabbixConfiguratio
 
 class NestedZabbixHostInterfaceSerializer(NetBoxModelSerializer):
     url = serializers.HyperlinkedIdentityField(view_name='plugins-api:nbxsync-api:zabbixhostinterface-detail')
-    
+
     zabbixconfigurationgroup = ZabbixConfigurationGroupSerializer(nested=True, read_only=True, required=False)
     zabbixconfigurationgroup_id = serializers.PrimaryKeyRelatedField(queryset=ZabbixConfigurationGroup.objects.all(), source='zabbixconfigurationgroup', write_only=True, required=False)
 
@@ -107,14 +107,11 @@ class NestedZabbixHostInterfaceSerializer(NetBoxModelSerializer):
             'last_sync_message',
         )
 
-
-
     @extend_schema_field(OpenApiTypes.OBJECT)
     def get_assigned_object(self, instance):
         serializer = get_serializer_for_model(instance.assigned_object_type.model_class())
         context = {'request': self.context['request']}
         return serializer(instance.assigned_object, context=context).data
-
 
 
 class ZabbixHostInterfaceSerializer(SyncInfoSerializerMixin, NetBoxModelSerializer):
@@ -179,10 +176,8 @@ class ZabbixHostInterfaceSerializer(SyncInfoSerializerMixin, NetBoxModelSerializ
             'last_sync_message',
         )
 
-
     @extend_schema_field(OpenApiTypes.OBJECT)
     def get_assigned_object(self, instance):
         serializer = get_serializer_for_model(instance.assigned_object_type.model_class())
         context = {'request': self.context['request']}
         return serializer(instance.assigned_object, context=context).data
-

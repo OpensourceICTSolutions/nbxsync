@@ -16,7 +16,7 @@ def track_changes(sender, instance, **kwargs):
         instance._old_dns_name = None
         return
 
-    instance._old_dns_name = sender.objects.filter(pk=instance.pk).values_list("dns_name", flat=True).first()
+    instance._old_dns_name = sender.objects.filter(pk=instance.pk).values_list('dns_name', flat=True).first()
 
 
 @receiver(post_save, sender=IPAddress)
@@ -24,13 +24,13 @@ def handle_postsave_ipaddress(sender, instance, created, **kwargs):
     if created:
         return
 
-    old = getattr(instance, "_old_dns_name", None)
+    old = getattr(instance, '_old_dns_name', None)
     new = instance.dns_name
 
     if old == new:
         return
 
     def do_update():
-        ZabbixHostInterface.objects.filter(ip=instance.id, useip=ZabbixInterfaceUseChoices.DNS,zabbixconfigurationgroup__isnull=False).update(dns=new)
+        ZabbixHostInterface.objects.filter(ip=instance.id, useip=ZabbixInterfaceUseChoices.DNS, zabbixconfigurationgroup__isnull=False).update(dns=new)
 
     transaction.on_commit(do_update)

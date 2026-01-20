@@ -48,8 +48,6 @@ class HostInterfaceSync(ZabbixSyncBase):
                 'bulk': 1 if self.obj.snmp_usebulk else 0,
             }
 
-
-
             if self.obj.snmp_version in [1, 2]:  # community is required if the SNMP Version is SNMPv1 or SNMPv2
                 snmp_community_macro = getattr(self.pluginsettings.snmpconfig, 'snmp_community', '{$SNMP_COMMUNITY}')
                 snmp_dict['community'] = snmp_community_macro
@@ -63,7 +61,7 @@ class HostInterfaceSync(ZabbixSyncBase):
                 snmp_dict['securitylevel'] = self.obj.snmpv3_security_level
                 snmp_dict['authprotocol'] = self.obj.snmpv3_authentication_protocol
                 snmp_dict['privprotocol'] = self.obj.snmpv3_privacy_protocol
-                
+
                 if self.obj.snmp_pushcommunity:
                     snmp_dict['authpassphrase'] = snmp_authpass_macro
                     snmp_dict['privpassphrase'] = snmp_privpass_macro

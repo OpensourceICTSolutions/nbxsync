@@ -22,7 +22,7 @@ class ZabbixTemplate(NetBoxModel):
     class Meta:
         verbose_name = 'Zabbix Template'
         verbose_name_plural = 'Zabbix Templates'
-        ordering = ('-created',) 
+        ordering = ('-created',)
 
         constraints = [
             models.UniqueConstraint(

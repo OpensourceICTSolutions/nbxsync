@@ -108,8 +108,8 @@ class PluginSettingsModel(BaseModel):
     no_alerting_tag_value: str = Field(default='1')
     maintenance_window_duration: int = Field(default=3600)
     attach_objtag: bool = Field(default=True)
-    objtag_type: str = Field(default="nb_type")
-    objtag_id: str = Field(default="nb_id")
+    objtag_type: str = Field(default='nb_type')
+    objtag_id: str = Field(default='nb_id')
 
 
 # Helper function
