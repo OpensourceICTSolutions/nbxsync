@@ -33,6 +33,7 @@ None
 - Implemented the synchronization of the Description field from NetBox to Zabbix ([#36])
 - Implemented a checkbox on the Zabbix Host Interface that controls wether the SNMP Community/AuthPass/PrivPass is pushed onto the host (<1.0.2 default behaviour) or not and use the Zabbix inheritance logic  ([#30])
 - Implemented new settings to sync the NetBox type and ID to Zabbix as tag: 'attach_tag' (bool; default True) to enable/disable the tag to be synced; 'objtype_tag' to determine the name of the tag that contains the NetBox type and 'objid_tag' to specify the name of the tag that contains the NetBox ID ([#5])
+- Made the SNMPv3 Authentication Passphrase and Privacy Passphrase a 'password' field and hid the values by default
 
 ### Bug fixes
 

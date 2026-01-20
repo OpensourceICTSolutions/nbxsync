@@ -97,11 +97,22 @@
         {% render_field form.snmpv3_security_name %}
         {% render_field form.snmpv3_security_level %}
         <div id="snmpv3-auth-wrapper">
-            {% render_field form.snmpv3_authentication_passphrase %}
+            <div class="relative-container">
+                {% render_field form.snmpv3_authentication_passphrase %}
+                <button type="button" id="toggle-snmpv3-auth-pass" class="toggle-password-btn">
+                    <i class="mdi mdi-eye" id="toggle-icon"></i>
+                </button>
+            </div>
+            
             {% render_field form.snmpv3_authentication_protocol %}
         </div>
         <div id="snmpv3-priv-wrapper">
-            {% render_field form.snmpv3_privacy_passphrase %}
+            <div class="relative-container">
+                {% render_field form.snmpv3_privacy_passphrase %}
+                <button type="button" id="toggle-snmpv3-priv-pass" class="toggle-password-btn">
+                    <i class="mdi mdi-eye" id="toggle-icon"></i>
+                </button>
+            </div>
             {% render_field form.snmpv3_privacy_protocol %}
         </div>
     </div>

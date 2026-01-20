@@ -42,6 +42,8 @@ class ZabbixHostInterfaceForm(NetBoxModelForm):
 
     ipmi_password = forms.CharField(required=False, label=_('Password'), widget=forms.PasswordInput(render_value=True))
     snmp_pushcommunity = forms.BooleanField(required=False, label=_('Push SNMP Community'), help_text=_('Should the SNMP Credentials be pushed from NetBox or should the existing Zabbix macro be used?'))
+    snmpv3_authentication_passphrase = forms.CharField(required=False, label=_('Authentication passphrase'), widget=forms.PasswordInput(render_value=True))
+    snmpv3_privacy_passphrase = forms.CharField(required=False, label=_('Privacy passphrase '), widget=forms.PasswordInput(render_value=True))
 
     fieldsets = (
         FieldSet(

@@ -7,6 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const useIpField = getEl('id_useip');
   const snmpVersionField = getEl('id_snmp_version');
   const snmpv3securitylevelField = getEl('id_snmpv3_security_level');
+  const snmpv3AuthPassField = getEl('id_snmpv3_authentication_passphrase');
+  const snmpv3PrivPassField = getEl('id_snmpv3_privacy_passphrase');
   const tlsacceptField = getEl('id_tls_accept');
   const tlsconnectField = getEl('id_tls_connect');
   const tlspskField = getEl('id_tls_psk');
@@ -29,6 +31,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Buttons ---
   const togglePSKButton = getEl('toggle-psk');
+  const toggleSNMPv3PrivButton = getEl('toggle-snmpv3-priv-pass');
+  const toggleSNMPv3AuthButton = getEl('toggle-snmpv3-auth-pass');
   const toggleIPMIPasswordButton = getEl('toggle-ipmipassword');
 
   // --- Helpers ---
@@ -98,6 +102,13 @@ document.addEventListener('DOMContentLoaded', () => {
     ipmipasswordField.type = ipmipasswordField.type === "password" ? "text" : "password";
   };
 
+  const toggleSNMPv3PrivVisibility = () => {
+    snmpv3PrivPassField.type = snmpv3PrivPassField.type === "password" ? "text" : "password";
+  };
+  const toggleSNMPv3AuthVisibility = () => {
+    snmpv3AuthPassField.type = snmpv3AuthPassField.type === "password" ? "text" : "password";
+  };
+
   // --- Port logic ---
   const applyDefaultPortAndReadOnly = () => {
     const defaultPortValue = getDefaultPort(typeField.value);
@@ -165,6 +176,10 @@ document.addEventListener('DOMContentLoaded', () => {
   tlsacceptField?.addEventListener('change', updateTLSFieldVisibility);
   tlsconnectField?.addEventListener('change', updateTLSFieldVisibility);
   togglePSKButton?.addEventListener('click', togglePSKVisibility);
+
+  toggleSNMPv3AuthButton?.addEventListener('click', toggleSNMPv3AuthVisibility);
+  toggleSNMPv3PrivButton?.addEventListener('click', toggleSNMPv3PrivVisibility);
+
   toggleIPMIPasswordButton?.addEventListener('click', toggleIPMIPasswordVisibility);
   useDefaultPortCheckbox?.addEventListener('change', onUseDefaultPortCheckboxChange);
   portField?.addEventListener('input', onPortInput);
