@@ -19,17 +19,6 @@ class ZabbixProxyGroupFilterSet(NetBoxModelFilterSet):
 
     ordering = ("proxy_groupid", "name", "min_online", "failover_delay", "zabbixserver__name", "id") 
 
-    # ordering = OrderingFilter(
-    #     fields=(
-    #         ('proxy_groupid', 'proxy_groupid'),
-    #         ('name', 'name'),
-    #         ('min_online', 'min_online'),
-    #         ('failover_delay', 'failover_delay'),
-    #         ('zabbixserver__name', 'zabbixserver_name'),
-    #         ('id', 'id'),
-    #     )
-    # )
-
     class Meta:
         model = ZabbixProxyGroup
         fields = (

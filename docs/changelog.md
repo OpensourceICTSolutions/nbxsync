@@ -53,7 +53,6 @@ None
 
 [#5]: https://github.com/OpensourceICTSolutions/nbxsync/issues/5
 [#20]: https://github.com/OpensourceICTSolutions/nbxsync/issues/20
-[#30]: https://github.com/OpensourceICTSolutions/nbxsync/issues/30
 [#35]: https://github.com/OpensourceICTSolutions/nbxsync/issues/35
 [#36]: https://github.com/OpensourceICTSolutions/nbxsync/issues/36
 [#37]: https://github.com/OpensourceICTSolutions/nbxsync/issues/37
