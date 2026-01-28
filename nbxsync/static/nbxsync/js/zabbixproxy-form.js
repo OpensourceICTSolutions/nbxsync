@@ -4,11 +4,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const tlsacceptField = document.getElementById('id_tls_accept');
     const tlsconnectField = document.getElementById('id_tls_connect');
     const tlspskField = document.getElementById('id_tls_psk');
+    const proxygroupField = document.getElementById('id_proxygroup');
     const TogglePSKButton = document.getElementById('toggle-psk');
 
     const pskWrapper = document.getElementById('tlspsk-wrapper');
     const certWrapper = document.getElementById('tlscert-wrapper');
     const customTimeoutWrapper = document.getElementById('customtimeout-wrapper');
+    const activeProxyWrapper = document.querySelector('#opmode-active_with_proxy-wrapper');
     const opmodeActive = document.querySelector('#opmode-active-wrapper');
     const opmodePassive = document.querySelector('#opmode-passive-wrapper');
 
@@ -71,6 +73,23 @@ document.addEventListener('DOMContentLoaded', function () {
         toggleDisplay(customTimeoutWrapper, customTimeoutField.checked);
     }
 
+    function toggleActiveProxyFields() {
+        if (!operatingmodeField || !proxygroupField) return;
+
+        const operatingMode = operatingmodeField.value;
+        const selectedProxy = getSelectedValues(proxygroupField);
+        if (operatingMode === '0') { // Active Proxy
+            if (selectedProxy[0] != "") {
+                toggleDisplay(activeProxyWrapper, true);
+            } else {
+                toggleDisplay(activeProxyWrapper, false);
+            }
+        }  else if (operatingMode === '1') { // Passive Proxy
+            toggleDisplay(activeProxyWrapper, false);
+        }
+
+    }
+
     function toggleOperatingModeFields() {
         if (!operatingmodeField) return;
 
@@ -85,6 +104,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             toggleDisplay(tlsacceptFieldWrapper, true);
             toggleDisplay(tlsacceptLabelWrapper, true);
+
         } else if (operatingMode === '1') { // Passive Proxy
             toggleDisplay(opmodeActive, false);
             toggleDisplay(opmodePassive, true);
@@ -94,6 +114,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             toggleDisplay(tlsacceptFieldWrapper, false);
             toggleDisplay(tlsacceptLabelWrapper, false);
+            toggleDisplay(activeProxyWrapper, false);
         }
     }
 
@@ -107,6 +128,7 @@ document.addEventListener('DOMContentLoaded', function () {
         toggleTLSAcceptFields();
         toggleTLSConnectFields();
         toggleCustomTimeoutFields();
+        toggleActiveProxyFields();
     });
 
     // --- Event listeners ---
@@ -114,11 +136,13 @@ document.addEventListener('DOMContentLoaded', function () {
         toggleOperatingModeFields();
         toggleTLSAcceptFields();
         toggleTLSConnectFields();
+        toggleActiveProxyFields();
     });
 
     tlsacceptField?.addEventListener('change', toggleTLSAcceptFields);
     tlsconnectField?.addEventListener('change', toggleTLSConnectFields);
     customTimeoutField?.addEventListener('change', toggleCustomTimeoutFields);
+    proxygroupField?.addEventListener('change', toggleActiveProxyFields);
     TogglePSKButton?.addEventListener('click', togglePSKVisibility);
 });
 

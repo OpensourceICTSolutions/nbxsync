@@ -26,10 +26,11 @@ class ProxySync(ZabbixSyncBase):
         if self.obj.proxygroup:
             create_params['proxy_groupid'] = self.obj.proxygroup.proxy_groupid
 
+        if create_params['proxy_groupid'] != 0:
+            create_params['local_address'] = self.obj.local_address
+            create_params['local_port'] = self.obj.local_port
+
         if self.obj.operating_mode == ZabbixProxyTypeChoices.ACTIVE:
-            if create_params['proxy_groupid'] != 0:
-                create_params['local_address'] = self.obj.local_address
-                create_params['local_port'] = self.obj.local_port
             create_params['allowed_addresses'] = ','.join(self.obj.allowed_addresses)
 
             create_params['tls_accept'] = 0

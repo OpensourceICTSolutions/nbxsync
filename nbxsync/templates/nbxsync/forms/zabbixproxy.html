@@ -15,13 +15,17 @@
             {% render_field form.zabbixserver %}
             {% render_field form.proxygroup %}
             {% render_field form.operating_mode %}
+
             {% comment %} Only to be shown when Operating Mode == Active and Proxygroup is set {% endcomment %}
+            <div class="field-group my-5" id="opmode-active_with_proxy-wrapper">
+                {% render_field form.local_address %}
+                {% render_field form.local_port %}
+            </div>
+            {% comment %} Only to be shown when Operating Mode == Active {% endcomment %}
             <div class="field-group my-5" id="opmode-active-wrapper">
                 <div class="row">
                     <h2 class="col-9 offset-3">Active Proxy configuration</h2>
                 </div>
-                {% render_field form.local_address %}
-                {% render_field form.local_port %}
                 {% render_field form.allowed_addresses %}
             </div>
             {% comment %} Only to be shown when Operating Mode == Passive {% endcomment %}
