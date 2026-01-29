@@ -16,8 +16,8 @@ ITEM_TYPE_TO_INTERFACE_REQUIREMENT = {
     16: [HostInterfaceRequirementChoices.JMX],  # JMX
     17: [HostInterfaceRequirementChoices.SNMP],  # SNMP trap
     18: [HostInterfaceRequirementChoices.NONE],  # Dependent
-    19: [HostInterfaceRequirementChoices.NONE],  # HTTP agent // should be none
+    19: [HostInterfaceRequirementChoices.NONE],  # HTTP agent
     20: [HostInterfaceRequirementChoices.SNMP],  # SNMP agent
-    21: [HostInterfaceRequirementChoices.SNMP],  # Script
+    21: [HostInterfaceRequirementChoices.NONE],  # Script
     22: [HostInterfaceRequirementChoices.NONE],  # Browser
 }
