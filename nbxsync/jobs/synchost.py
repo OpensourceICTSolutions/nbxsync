@@ -73,7 +73,12 @@ class SyncHostJob:
                 pass
 
             # Once the Host exists and we have a HostId, time to sync the interfaces
-            for hostinterface in all_objects['hostinterfaces']:
+            # Sort by:
+            # - interface_type (defaults should be synced first)
+            # - type (group snmp, agent, jmx, etc)
+            # - id
+            hostinterfaces_sorted = sorted(all_objects['hostinterfaces'], key=lambda hostinterface: (-int(hostinterface.interface_type == 1), hostinterface.type, hostinterface.id))
+            for hostinterface in hostinterfaces_sorted:
                 safe_sync(HostInterfaceSync, hostinterface, extra_args={'hostid': assignment.hostid})
 
             safe_sync(HostSync, assignment, extra_args={'all_objects': all_objects})
