@@ -175,23 +175,24 @@ class HostSync(ZabbixSyncBase):
         return result
 
     def get_macros(self):
-        snmpconf = self.pluginsettings.snmpconfig
-
         all_macros = self.get_defined_macros()
         snmp_macros = self.get_snmp_macros()
+
+        macros_by_name = {}
 
         # It is possible to create a macro with the same name as SNMPCONFIG.SNMP_COMMUNITY
         # This would result in 2 macros with the same name, something Zabbix doesn't accept
         # So, in order to solve this....
 
-        # Loop through all regular macro's
-        for macro in all_macros:
-            # If the regular macro has the SNMP Community as macro
-            # We'll remove it from the SNMP Macros so we dont get duplicates
-            if macro['macro'] == snmpconf.snmp_community:
-                snmp_macros = [m for m in snmp_macros if m['macro'] != snmpconf.snmp_community]
+        # Put SNMP-generated macros in first...
+        for macro in snmp_macros:
+            macros_by_name[macro['macro']] = macro
 
-        return {'macros': all_macros + snmp_macros}
+        # Then overlay regular macros so the user-configured macro's is preferred
+        for macro in all_macros:
+            macros_by_name[macro['macro']] = macro
+
+        return {'macros': list(macros_by_name.values())}
 
     def get_hostinterface_attributes(self):
         result = {}
