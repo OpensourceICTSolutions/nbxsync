@@ -30,9 +30,9 @@ class SyncHostJob:
             if zabbix_status == ZabbixHostStatus.DELETED:
                 self.delete_host(assignment)
             else:
+                self.check_default_hostinterface(assignment)
                 self.sync_host(assignment)
                 self.verify_hostinterfaces(assignment)
-                # Check if host has Maintenance, if so: sync Maintenance
 
     def delete_host(self, assignment):
         safe_delete(HostSync, assignment)
@@ -40,6 +40,10 @@ class SyncHostJob:
     def verify_hostinterfaces(self, assignment):
         all_objects = get_assigned_zabbixobjects(self.instance)
         run_zabbix_operation(HostSync, assignment, 'verify_hostinterfaces', extra_args={'all_objects': all_objects})
+
+    def check_default_hostinterface(self, assignment):
+        all_objects = get_assigned_zabbixobjects(self.instance)
+        run_zabbix_operation(HostSync, assignment, 'check_default_hostinterface', extra_args={'all_objects': all_objects})
 
     def sync_host(self, assignment):
         try:
