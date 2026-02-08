@@ -4,7 +4,7 @@ from netbox.plugins import PluginTemplateExtension
 
 
 from nbxsync.models import ZabbixHostInterface, ZabbixServerAssignment, ZabbixTemplateAssignment
-from nbxsync.choices import HostInterfaceRequirementChoices
+from nbxsync.choices import HostInterfaceRequirementChoices, ZabbixInterfaceTypeChoices
 from nbxsync.utils import get_assigned_zabbixobjects, get_maintenance_can_sync
 
 
@@ -59,7 +59,7 @@ class ZabbixDeviceButtonsExtension(PluginTemplateExtension):
         hostgroups = get_assigned_zabbixobjects(obj).get('hostgroups') or []
         has_hostgroup_assignment = bool(hostgroups)
 
-        assigned_hostinterface_types = set(ZabbixHostInterface.objects.filter(assigned_object_type=ct, assigned_object_id=obj.pk).values_list('type', flat=True).distinct())
+        assigned_hostinterface_types = set(ZabbixHostInterface.objects.filter(assigned_object_type=ct, interface_type=ZabbixInterfaceTypeChoices.DEFAULT, assigned_object_id=obj.pk).values_list('type', flat=True).distinct())
         assigned_zabbixtemplates = list(ZabbixTemplateAssignment.objects.filter(assigned_object_type=ct, assigned_object_id=obj.pk))
 
         has_hostinterface_assignment = True
