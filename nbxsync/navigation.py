@@ -16,7 +16,7 @@ items = (
     PluginMenuItem(
         link='plugins:nbxsync:zabbixproxy_list',
         link_text='Proxies',
-        permissions=['nbxsync.view_zabbixproy'],
+        permissions=['nbxsync.view_zabbixproxy'],
         buttons=(
             PluginMenuButton(
                 link='plugins:nbxsync:zabbixproxy_add',
