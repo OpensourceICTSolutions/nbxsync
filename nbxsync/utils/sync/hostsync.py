@@ -39,8 +39,8 @@ class HostSync(ZabbixSyncBase):
         self.verify_maintenancewindow()
 
         return {
-            'host': self.sanitize_string(input_str=str(self.obj.assigned_object)),
-            'name': str(self.obj.assigned_object),
+            'host': self.sanitize_string(input_str=str(self.get_name_value())),
+            'name': self.get_name_value(),
             'groups': self.get_groups(),
             'status': host_status,
             'description': self.obj.assigned_object.description or '',
