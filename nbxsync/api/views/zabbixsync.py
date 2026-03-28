@@ -15,9 +15,6 @@ class ZabbixSyncViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = ZabbixHostInterfaceSerializer
 
-    # def list(self, request, **kwargs):
-    #     return Response({'count': 1, 'results': [{'scheduled': True}]})
-
     def create(self, request, **kwargs):
         obj_type = (request.data.get('obj_type') or '').strip().lower()
         obj_id = request.data.get('obj_id')

@@ -77,6 +77,7 @@
             {% render_field form.snmp_version %}
             {% render_field form.snmp_usebulk %}
             {% render_field form.snmp_pushcommunity %}
+            {% render_field form.snmp_max_repetitions %}
         </div>
     </div>
     <div id="snmpv2-wrapper" class="field-group my-5">
@@ -99,17 +100,20 @@
         <div id="snmpv3-auth-wrapper">
             <div class="relative-container">
                 {% render_field form.snmpv3_authentication_passphrase %}
-                <button type="button" id="toggle-snmpv3-auth-pass" class="toggle-password-btn">
+                <button type="button"
+                        id="toggle-snmpv3-auth-pass"
+                        class="toggle-password-btn">
                     <i class="mdi mdi-eye" id="toggle-icon"></i>
                 </button>
             </div>
-            
             {% render_field form.snmpv3_authentication_protocol %}
         </div>
         <div id="snmpv3-priv-wrapper">
             <div class="relative-container">
                 {% render_field form.snmpv3_privacy_passphrase %}
-                <button type="button" id="toggle-snmpv3-priv-pass" class="toggle-password-btn">
+                <button type="button"
+                        id="toggle-snmpv3-priv-pass"
+                        class="toggle-password-btn">
                     <i class="mdi mdi-eye" id="toggle-icon"></i>
                 </button>
             </div>

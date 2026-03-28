@@ -43,6 +43,19 @@ class ZabbixProblemTable(NetBoxTable):
         )
         exclude = ('id',)
 
+    def render_problem(self, value, record):
+        zabbixserver = record.get('zabbixserver')
+        eventid = record.get('eventid')
+        triggerid = record.get('triggerid')
+        url = zabbixserver.url.rstrip('/')
+        return format_html(
+            '<a href="{}/tr_events.php?triggerid={}&eventid={}" target="_blank" rel="noopener noreferrer">{}</a>',
+            url,
+            triggerid,
+            eventid,
+            value,
+        )
+
     def render_severity(self, value):
         member = SeverityChoices(int(value))
         return format_html(
@@ -51,14 +64,21 @@ class ZabbixProblemTable(NetBoxTable):
             member.label,
         )
 
-    def render_acknowledged(self, value):
+    def render_acknowledged(self, value, record):
+        zabbixserver = record.get('zabbixserver')
+        eventid = record.get('eventid')
+        url = zabbixserver.url.rstrip('/')
+
         if int(value):
             return format_html(
-                '<span class="badge text-bg-info">Yes</span>',
+                '<span class="badge text-bg-success">Yes</span>',
             )
 
+        # If not ACKed:
         return format_html(
-            '<span class="badge text-bg-danger">No</span>',
+            '<a href="{}/zabbix.php?action=popup&popup_action=acknowledge.edit&eventids[]={}" target="_blank" rel="noopener noreferrer"><span class="badge text-bg-danger">No</span></a>',
+            url,
+            eventid,
         )
 
     def render_clock(self, value):

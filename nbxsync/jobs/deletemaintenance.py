@@ -9,4 +9,7 @@ class DeleteMaintenanceJob:
         self.instance = kwargs.get('instance')  # This is the Zabbix Maintenance object
 
     def run(self):
+        if not self.instance.zabbixserver.sync_enabled:
+            return
+
         safe_delete(MaintenanceSync, self.instance)

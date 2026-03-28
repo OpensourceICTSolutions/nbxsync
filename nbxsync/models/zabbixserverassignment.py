@@ -20,6 +20,7 @@ class ZabbixServerAssignment(SyncInfoModel, NetBoxModel):
     assigned_object_id = models.PositiveBigIntegerField(blank=True, null=True)
     assigned_object = GenericForeignKey(ct_field='assigned_object_type', fk_field='assigned_object_id')
     zabbixconfigurationgroup = models.ForeignKey('nbxsync.ZabbixConfigurationGroup', on_delete=models.SET_NULL, blank=True, null=True)
+    sync_enabled = models.BooleanField(default=True)
 
     class Meta:
         verbose_name = 'Zabbix Server Assignment'

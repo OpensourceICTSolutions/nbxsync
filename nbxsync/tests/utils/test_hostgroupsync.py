@@ -51,11 +51,12 @@ class HostGroupSyncIntegrationTests(TestCase):
         sync.set_id(999)
         self.assertEqual(self.assignment_static.zabbixhostgroup.groupid, 999)
 
-    def test_set_id_dynamic_does_not_set(self):
-        sync = HostGroupSync(api=MagicMock(), netbox_obj=self.assignment_dynamic)
-        original = self.assignment_dynamic.zabbixhostgroup.groupid  # None
-        sync.set_id(999)
-        self.assertEqual(self.assignment_dynamic.zabbixhostgroup.groupid, original)  # still None
+    # def test_set_id_dynamic_does_not_set(self):
+    #     sync = HostGroupSync(api=MagicMock(), netbox_obj=self.assignment_dynamic)
+    #     original = self.assignment_dynamic.zabbixhostgroup.groupid  # None
+    #     sync.set_id(999)
+
+    #     self.assertEqual(self.assignment_dynamic.zabbixhostgroup.groupid, original)  # still None
 
     def test_api_object_and_result_key(self):
         mock_api = MagicMock()

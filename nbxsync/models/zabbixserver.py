@@ -14,6 +14,8 @@ class ZabbixServer(SyncInfoModel, NetBoxModel):
     url = models.URLField(blank=False)
     token = models.CharField(blank=False)
     validate_certs = models.BooleanField(default=True)
+    sync_enabled = models.BooleanField(default=True)
+    skip_version_check = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['name']

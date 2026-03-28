@@ -24,6 +24,8 @@ class ZabbixServerForm(NetBoxModelForm):
     token = forms.CharField(label=_('Token'), max_length=200, required=True, widget=forms.PasswordInput(render_value=True))
 
     validate_certs = forms.BooleanField(label=_('Validate HTTPS Certificate'), required=False)
+    sync_enabled = forms.BooleanField(label=_('Enable automatic synchronization'), required=False)
+    skip_version_check = forms.BooleanField(label=_('Skip version compatibility check'), required=False)
 
     class Meta:
         model = ZabbixServer
@@ -33,6 +35,7 @@ class ZabbixServerForm(NetBoxModelForm):
             'url',
             'validate_certs',
             'token',
+            'sync_enabled',
         )
 
 
@@ -54,8 +57,8 @@ class ZabbixServerBulkEditForm(NetBoxModelBulkEditForm):
     url = forms.CharField(label=_('URL'), max_length=200, required=False)
     token = forms.CharField(label=_('Token'), max_length=200, required=False)
     validate_certs = forms.TypedChoiceField(label=_('Validate HTTPS Certificate'), choices=BOOLEAN_WITH_BLANK_CHOICES, coerce=lambda x: x == 'True', required=False)
-
-    fieldsets = (FieldSet('name', 'description', 'url', 'token', 'validate_certs'),)
+    sync_enabled = forms.BooleanField(label=_('Enable automatic synchronization'), required=False)
+    fieldsets = (FieldSet('name', 'description', 'url', 'token', 'validate_certs', 'sync_enabled'),)
     nullable_fields = ()
 
 
@@ -68,4 +71,5 @@ class ZabbixServerBulkImportForm(NetBoxModelImportForm):
             'url',
             'token',
             'validate_certs',
+            'sync_enabled',
         )

@@ -1,4 +1,3 @@
-import logging
 import re
 
 from django.contrib.contenttypes.fields import GenericForeignKey

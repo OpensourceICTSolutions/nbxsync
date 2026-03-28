@@ -28,10 +28,6 @@ class ConfigGroupUtilsTestCase(TestCase):
         cls.tag = ZabbixTag.objects.create(name='Env', tag='env', value='{{ object.name }}')
 
     def test_get_configgroup_ct_id_caches_content_type(self):
-        # Clear cache if present
-        if hasattr(get_configgroup_ct_id, '_ct_id'):
-            delattr(get_configgroup_ct_id, '_ct_id')
-
         with patch('nbxsync.utils.cfggroup.helpers.ContentType.objects.get_for_model', wraps=ContentType.objects.get_for_model) as mocked_get_for_model:
             first = get_configgroup_ct_id()
             second = get_configgroup_ct_id()

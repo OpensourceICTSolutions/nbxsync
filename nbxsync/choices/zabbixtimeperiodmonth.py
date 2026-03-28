@@ -12,7 +12,7 @@ class ZabbixTimePeriodMonthChoices(models.IntegerChoices):
     JUNE = 32, 'June'
     JULI = 64, 'Juli'
     AUGUST = 128, 'August'
-    SEPTEMBER = 256, 'Septembet'
+    SEPTEMBER = 256, 'September'
     OCTOBER = 512, 'October'
     NOVEMBER = 1024, 'November'
     DECEMBER = 2048, 'December'

@@ -43,6 +43,26 @@
                         <td>HTTPS Certificate validation</td>
                         <td>{{ object.validate_certs }}</td>
                     </tr>
+                    <tr>
+                        <td>Automatic synchronization</td>
+                        <td>
+                            {% if object.sync_enabled %}
+                                <i class="mdi mdi-check-bold text-success"></i>
+                            {% else %}
+                                <i class="mdi mdi-close-thick text-danger" title="{{ false_label }}"></i>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Skip version check</td>
+                        <td>
+                            {% if object.skip_version_check %}
+                                <i class="mdi mdi-check-bold text-success"></i>
+                            {% else %}
+                                <i class="mdi mdi-close-thick text-danger" title="{{ false_label }}"></i>
+                            {% endif %}
+                        </td>
+                    </tr>
                 </table>
             </div>
             {% plugin_left_page object %}

@@ -41,3 +41,13 @@ class SyncProxyJobTestCase(TestCase):
             job.run()
 
         self.assertIn('Unexpected error: unexpected!', str(ctx.exception))
+
+    @patch('nbxsync.jobs.syncproxy.safe_sync')
+    def test_run_skips_when_zabbixserver_sync_disabled(self, mock_safe_sync):
+        instance = MagicMock()
+        instance.zabbixserver.sync_enabled = False
+
+        job = SyncProxyJob(instance=instance)
+        job.run()
+
+        mock_safe_sync.assert_not_called()

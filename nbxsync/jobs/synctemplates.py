@@ -16,6 +16,9 @@ class SyncTemplatesJob:
         self.instance = kwargs.get('instance')
 
     def run(self):
+        if not self.instance.sync_enabled:
+            return
+
         try:
             with ZabbixConnection(self.instance) as api:
                 templates = api.template.get(output='extend', selectMacros='extend')
@@ -55,17 +58,21 @@ class SyncTemplatesJob:
                         requirements = ITEM_TYPE_TO_INTERFACE_REQUIREMENT.get(item_type, [HostInterfaceRequirementChoices.NONE])
                         interface_requirements.update(requirements)
 
+                    final_requirements = []
                     # Normalize the interface requirements
                     if HostInterfaceRequirementChoices.ANY in interface_requirements:
                         final_requirements = [HostInterfaceRequirementChoices.ANY]
                     elif HostInterfaceRequirementChoices.NONE in interface_requirements and len(interface_requirements) == 1:
                         final_requirements = [HostInterfaceRequirementChoices.NONE]
                     else:
-                        final_requirements = [r for r in interface_requirements if r != HostInterfaceRequirementChoices.NONE]
+                        for requirement in interface_requirements:
+                            if requirement == HostInterfaceRequirementChoices.NONE:
+                                continue
+                            final_requirements.append(requirement)
 
                     # Update the template object if needed
                     if set(zabbixtemplate.interface_requirements) != set(final_requirements):
-                        zabbixtemplate.interface_requirements = list(interface_requirements)
+                        zabbixtemplate.interface_requirements = final_requirements
                         zabbixtemplate.save()
 
                 # Next logic: Cleanup all templates from Netbox that aren't present in Zabbix anymore

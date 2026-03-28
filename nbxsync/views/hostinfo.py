@@ -30,7 +30,18 @@ class ZabbixHostProblemsView(TemplateView):
                 with ZabbixConnection(zabbixserverassignment.zabbixserver) as api:
                     problems = api.problem.get(hostids=zabbixserverassignment.hostid, sortfield='eventid', sortorder='DESC')
                     for problem in problems:
-                        problem_list.append({'zabbixserver': zabbixserverassignment.zabbixserver, 'severity': problem['severity'], 'clock': problem['clock'], 'problem': problem['name'], 'acknowledged': problem['acknowledged'], 'opdata': problem['opdata']})
+                        problem_list.append(
+                            {
+                                'zabbixserver': zabbixserverassignment.zabbixserver,
+                                'eventid': problem.get('eventid'),
+                                'triggerid': problem.get('objectid'),
+                                'severity': problem.get('severity'),
+                                'clock': problem.get('clock'),
+                                'problem': problem.get('name'),
+                                'acknowledged': problem.get('acknowledged'),
+                                'opdata': problem.get('opdata'),
+                            }
+                        )
             except Exception:
                 pass
 
@@ -105,6 +116,8 @@ class ZabbixHostEventsView(TemplateView):
                                     'acknowledged': event.get('acknowledged', '0'),
                                     'duration': duration,
                                     'event': event.get('name'),
+                                    'eventid': event.get('eventid'),
+                                    'triggerid': event.get('objectid'),
                                     'severity': event.get('severity'),
                                     'start_time': event['clock'],
                                     'end_time': recovery_event['clock'],

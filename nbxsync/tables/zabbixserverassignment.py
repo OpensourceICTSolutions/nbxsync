@@ -28,6 +28,7 @@ class ZabbixServerAssignmentTable(NetBoxTable):
             'zabbixserver',
             'zabbixproxy',
             'zabbixproxygroup',
+            'sync_enabled',
             'created',
             'last_updated',
             'actions',
@@ -39,6 +40,7 @@ class ZabbixServerAssignmentTable(NetBoxTable):
             'zabbixserver',
             'zabbixproxy',
             'zabbixproxygroup',
+            'sync_enabled',
         )
 
 
@@ -53,11 +55,31 @@ class ZabbixServerAssignmentObjectViewTable(NetBoxTable):
             {% if record.last_sync_state %}
                 <i class="mdi mdi-check-bold text-success" title="{{ record.last_sync|date:'d-m-Y H:i' }}: {{ record.last_sync_message }}"></i>
             {% else %}
-                <i class="mdi mdi-close-thick text-danger" title="{{ record.last_sync|date:'d-m-Y H:i' }}: {{ record.last_sync_message }}"></i>
+                {% if record.last_sync %}
+                    <i class="mdi mdi-close-thick text-danger" title="{{ record.last_sync|date:'d-m-Y H:i' }}: {{ record.last_sync_message }}"></i>
+                {% else %}
+                    <i class="mdi mdi-close-thick text-danger" title="{{ record.last_sync_message }}"></i>
+                {% endif %}
             {% endif %}
         """,
         orderable=False,
     )
+
+    sync_enabled = tables.TemplateColumn(
+        template_code="""
+            {% if record.sync_enabled %}
+                {% if record.zabbixserver.sync_enabled %}
+                    <i class="mdi mdi-check-bold text-success" title="{{ record.sync_enabled }}"></i>
+                {% else %}
+                    <i class="mdi mdi-close-thick text-danger" title="Sync on {{ record.zabbixserver.name }} is disabled"></i>
+                {% endif %}
+            {% else %}
+                <i class="mdi mdi-close-thick text-danger" title="{{ record.sync_enabled }}"></i>
+            {% endif %}
+        """,
+        orderable=False,
+    )
+
     actions = InheritanceAwareActionsColumn(extra_buttons=ADD_HOSTINTERFACE_BUTTON)
 
     class Meta(NetBoxTable.Meta):
@@ -70,6 +92,7 @@ class ZabbixServerAssignmentObjectViewTable(NetBoxTable):
             'zabbixproxy',
             'zabbixproxygroup',
             'sync_status',
+            'sync_enabled',
             'created',
             'last_updated',
             'actions',
@@ -80,4 +103,5 @@ class ZabbixServerAssignmentObjectViewTable(NetBoxTable):
             'zabbixproxy',
             'zabbixproxygroup',
             'sync_status',
+            'sync_enabled',
         )

@@ -176,3 +176,35 @@ class SyncHostJobTestCase(TestCase):
 
         interface_sync_called = any(getattr(call.args[0], '__name__', None) == 'HostInterfaceSync' for call in mock_safe_sync.call_args_list)
         self.assertTrue(interface_sync_called)
+
+    @patch('nbxsync.jobs.synchost.safe_sync')
+    def test_run_skips_sync_when_assignment_sync_disabled(self, mock_safe_sync):
+        self.zabbixserverassignment.sync_enabled = False
+        self.zabbixserverassignment.save()
+
+        job = SyncHostJob(instance=self.device)
+        job.run()
+
+        mock_safe_sync.assert_not_called()
+
+    @patch('nbxsync.jobs.synchost.safe_sync')
+    def test_run_skips_sync_when_zabbixserver_sync_disabled(self, mock_safe_sync):
+        self.zabbixserver.sync_enabled = False
+        self.zabbixserver.save()
+
+        job = SyncHostJob(instance=self.device)
+        job.run()
+
+        mock_safe_sync.assert_not_called()
+
+    @patch('nbxsync.jobs.synchost.safe_sync')
+    def test_run_skips_sync_when_both_assignment_and_zabbixserver_sync_disabled(self, mock_safe_sync):
+        self.zabbixserverassignment.sync_enabled = False
+        self.zabbixserverassignment.save()
+        self.zabbixserver.sync_enabled = False
+        self.zabbixserver.save()
+
+        job = SyncHostJob(instance=self.device)
+        job.run()
+
+        mock_safe_sync.assert_not_called()

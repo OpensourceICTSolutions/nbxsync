@@ -34,6 +34,7 @@ class ZabbixServerAssignmentSerializer(SyncInfoSerializerMixin, NetBoxModelSeria
             'zabbixproxygroup',
             'zabbixconfigurationgroup',
             'zabbixconfigurationgroup_id',
+            'sync_enabled',
             'hostid',
             'last_sync',
             'last_sync_state',

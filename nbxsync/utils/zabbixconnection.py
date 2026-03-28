@@ -6,7 +6,7 @@ class ZabbixConnection:
         self.zabbixserver = zabbixserver
 
         self._ZABBIX_AUTH = {'url': zabbixserver.url, 'validate_certs': zabbixserver.validate_certs}
-        self.api = ZabbixAPI(**self._ZABBIX_AUTH)
+        self.api = ZabbixAPI(**self._ZABBIX_AUTH, skip_version_check=self.zabbixserver.skip_version_check)
 
     def __enter__(self):
         # Attempt login

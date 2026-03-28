@@ -95,7 +95,7 @@ class HostSync(ZabbixSyncBase):
 
     def get_defined_macros(self):
         result = []
-        for macro in self.context.get('all_objects').get('macros'):
+        for macro in self.context.get('all_objects', {}).get('macros'):
             result.append(
                 {
                     'macro': str(macro),
@@ -292,7 +292,7 @@ class HostSync(ZabbixSyncBase):
         zabbix_status = status_mapping.get(status)
 
         result = []
-        for assigned_tag in self.context.get('all_objects').get('tags'):
+        for assigned_tag in self.context.get('all_objects', {}).get('tags'):
             value, _ = assigned_tag.render()
             result.append({'tag': assigned_tag.zabbixtag.tag, 'value': value})
 

@@ -16,6 +16,8 @@ class DeleteHostJob:
         zabbixserver_assignments = ZabbixServerAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=self.instance.pk)
 
         for assignment in zabbixserver_assignments:
+            if not assignment.sync_enabled or not assignment.zabbixserver.sync_enabled:
+                return
             self.delete_host(assignment)
 
     def delete_host(self, assignment):

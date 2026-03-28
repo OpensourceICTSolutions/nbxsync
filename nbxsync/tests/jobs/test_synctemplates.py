@@ -239,3 +239,47 @@ class SyncTemplatesJobTestCase(TestCase):
         self.assertEqual(kwargs.get('zabbixserver_id'), self.mock_instance.id)
         self.assertEqual(set(kwargs.get('templateid__in')), {10002})
         qs_delete.delete.assert_called_once()
+
+    @patch('nbxsync.jobs.synctemplates.ZabbixConnection')
+    def test_run_skips_when_sync_disabled(self, mock_connection):
+        instance = MagicMock()
+        instance.sync_enabled = False
+
+        job = SyncTemplatesJob(instance=instance)
+        job.run()
+
+        mock_connection.assert_not_called()
+
+    @patch('nbxsync.jobs.synctemplates.create_or_update_zabbixmacro')
+    @patch('nbxsync.jobs.synctemplates.create_or_update_zabbixtemplate')
+    @patch('nbxsync.jobs.synctemplates.ZabbixConnection')
+    def test_interface_requirement_none_is_excluded_when_mixed_with_concrete_requirements(self, mock_connection, mock_template, mock_macro):
+        mock_api = MagicMock()
+        mock_connection.return_value.__enter__.return_value = mock_api
+
+        mock_api.template.get.return_value = [
+            {
+                'templateid': '10001',
+                'name': 'Mixed Requirements Template',
+                'macros': [],
+            }
+        ]
+        # type 0: AGENT,
+        # type 2: NONE: mixed set hits the else branch
+        mock_api.item.get.return_value = [{'type': '0'}, {'type': '2'}]
+        mock_api.discoveryrule.get.return_value = []
+
+        class MockTemplate:
+            def __init__(self):
+                self.interface_requirements = []
+                self.save = MagicMock()
+
+        template_obj = MockTemplate()
+        mock_template.return_value = template_obj
+
+        job = SyncTemplatesJob(instance=self.mock_instance)
+        job.run()
+
+        self.assertIn(HostInterfaceRequirementChoices.AGENT, template_obj.interface_requirements)
+        self.assertNotIn(HostInterfaceRequirementChoices.NONE, template_obj.interface_requirements)
+        template_obj.save.assert_called_once()

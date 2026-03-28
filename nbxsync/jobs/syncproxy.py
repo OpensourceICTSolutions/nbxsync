@@ -9,6 +9,9 @@ class SyncProxyJob:
         self.instance = kwargs.get('instance')
 
     def run(self):
+        if not self.instance.zabbixserver.sync_enabled:
+            return
+
         try:
             # If part of a ProxyGroup, sync that first to ensure it exists
             if self.instance.proxygroup:

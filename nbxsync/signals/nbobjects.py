@@ -3,7 +3,7 @@ from django.db.models.signals import pre_delete
 from django.dispatch import receiver
 from django_rq import get_queue
 
-from dcim.models import Device
+from dcim.models import Device, VirtualDeviceContext
 from virtualization.models import VirtualMachine
 
 from nbxsync.choices.syncsot import SyncSOT
@@ -15,6 +15,7 @@ __all__ = ('handle_deleted_object',)
 
 @receiver(pre_delete, sender=Device)
 @receiver(pre_delete, sender=VirtualMachine)
+@receiver(pre_delete, sender=VirtualDeviceContext)
 def handle_deleted_object(sender, instance, **kwargs):
     """
     Fires when an object is deleted.

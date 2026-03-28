@@ -4,7 +4,7 @@ NetBox is composed of several components, most importantly the Django applicatio
 
 - Job handling: nbxSync dispatches jobs into a queue. These jobs are then picked up and executed by a worker. This is native Netbox functionality. 
 - Zabbix communication: When a job is executed, the worker communicates with the Zabbix API. Depending on the configuration, this communication happens over port 80 (HTTP, unencrypted) or port 443 (HTTPS, encrypted).
-- Operational View: If the Zabbix Operational View feature is enabled, the NetBox frontend also communicates directly with the Zabbix API to retrieve problems and events for a given host.
+- Operational View: the NetBox frontend also communicates directly with the Zabbix API to retrieve problems and events for a given host.
 
 ## Traffic Matrix
 

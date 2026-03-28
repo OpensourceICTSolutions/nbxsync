@@ -9,6 +9,9 @@ class SyncProxyGroupJob:
         self.instance = kwargs.get('instance')
 
     def run(self):
+        if not self.instance.zabbixserver.sync_enabled:
+            return
+
         try:
             safe_sync(ProxyGroupSync, self.instance)
         except Exception as e:

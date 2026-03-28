@@ -1,10 +1,10 @@
 # Dynamic Values
 
-For the `Hostgroup` and `Tag` objects, values can be dynamically assigned using Jinja2 templates. Static values are, of course, also possible.
+For the `Hostgroup`, `Tag` and `ZabbixHostInventory` objects, values can be dynamically assigned using Jinja2 templates. Static values are, of course, also possible.
 
 ## Usage
 
-When creating a `Hostgroup` or a `Tag`, you can specify a value, which may be a Jinja2 template. Specifying a template alone does not have any immediate effect; it is the context in which the object is assigned that determines how the Jinja2 template is rendered.
+When creating a `Hostgroup`, `Tag`, or a `ZabbixHostInventory`, you can specify a value, which may be a Jinja2 template. Specifying a template alone does not have any immediate effect; it is the context in which the object is assigned that determines how the Jinja2 template is rendered.
 
 For example, if a Hostgroup is given the value:
 
@@ -53,3 +53,24 @@ Just like tags, hostgroups are rendered in a context:
 | object      | assigned_object       | Refers to the assigned object; this could be a DeviceType, Device, VirtualMachine, etc.      |
 | value       | zabbixhostgroup.value | The value of the Zabbix Hostgroup (typically the Jinja2 template)                            |
 | name        | zabbixhostgroup.name  | The name of the Zabbix Hostgroup                                                             |
+
+### Host Inventory
+
+Each field on a `ZabbixHostInventory` record is rendered individually. The context is simpler than for tags and hostgroups:
+
+| Key      | Value            | Explanation                                                  |
+|----------|------------------|--------------------------------------------------------------|
+| `object` | assigned_object  | The Device, VDC, or VirtualMachine this inventory belongs to |
+
+Because `ZabbixHostInventory` is assigned directly to a Device, VDC, or VM (never to a DeviceType or other inheritance-chain object), `object` always
+refers to the host itself. This means device attributes like `object.site.name`, `object.rack.name`, or `object.primary_ip` are always available and always resolve to the correct host.
+
+Note that each field has a maximum character length enforced at render time, values that exceed the limit are silently truncated. The `inventory_mode` field controls how Zabbix treats the inventory:
+- `Manual` (the default) means Zabbix only updates inventory via the API, which is how nbxSync writes it. 
+- `Automatic` would cause Zabbix to overwrite inventory fields from item values, which conflicts with nbxSync's writes and should generally be avoided.
+
+!!! note
+    The `inventory_mode` field determines how Zabbix handles the inventory data.
+    - Manual (default) means only nbxSync writes to inventory.
+    - Automatic causes Zabbix to overwrite inventory from item values (this conflicts with nbxSync's writes and is not recommended).
+    - Disabled turns off inventory entirely for the host.
