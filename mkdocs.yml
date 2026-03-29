@@ -41,7 +41,7 @@ plugins:
 
 nav:
   - Home: index.md
-  - Philosofy: philosofy.md
+  - Philosophy: philosophy.md
   - Installation: installation.md
   - Configuration: configuration.md
   - Setup: setup.md
@@ -50,6 +50,8 @@ nav:
   - Dynamic Values: dynamic_values.md
   - Signals: signals.md
   - Traffic flows: traffic_flows.md
+  - Configuration Groups: zabbixconfigurationgroup.md
+  - Zabbix Maintenace: zabbixmaintenance.md
   - Scaling: scaling.md
   - Development: development.md
   - Support: support.md
