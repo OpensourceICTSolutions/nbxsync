@@ -10,13 +10,15 @@ This plugin defines a set of Django models to represent and synchronize NetBox o
 
 This model represents the Zabbix Server where objects are synced from / to.
 
-| Field            | Type         | Description                         |
-|------------------|--------------|-------------------------------------|
-| `name`           | CharField    | Friendly name of the server         |
-| `description`    | CharField    | Optional description                |
-| `url`            | URLField     | Full API endpoint URL               |
-| `token`          | CharField    | API token for authentication        |
-| `validate_certs` | BooleanField | Toggle SSL cert validation          |
+| Field                | Type         | Description                                                       |
+|----------------------|--------------|-------------------------------------------------------------------|
+| `name`               | CharField    | Friendly name of the server                                       |
+| `description`        | CharField    | Optional description                                              |
+| `url`                | URLField     | Full API endpoint URL                                             |
+| `token`              | CharField    | API token for authentication                                      |
+| `validate_certs`     | BooleanField | Toggle SSL cert validation                                        |
+| `sync_enabled`       | BooleanField | Determines if automatic synchronisation from/to Zabbix is enabled |
+| `skip_version_check` | BooleanField | Enable/Disable the version check in the Zabbix Utils module       |
 
 Used as the anchor for all synced objects (hosts, templates, etc.).
 
@@ -46,22 +48,30 @@ Assigns a template to a NetBox object (device, VM, etc.).
 
 Templates can be inherited based on device/site hierarchy.
 
----
+### `ZabbixMacro`
 
-### `ZabbixMacro` / `ZabbixMacroAssignment`
+Defines a user macro at the Zabbix Server or Zabbix Template level. These macros apply globally to all hosts on the server or to all hosts using the template.
 
-Used to assign custom macros to hosts/templates.
+| Field             | Description                                              |
+|-------------------|----------------------------------------------------------|
+| `macro`           | Macro name, e.g. `{$SNMP_COMMUNITY}`                     |
+| `value`           | The macro value                                          |
+| `type`            | `Text`, `Secret`, or `Vault secret`                      |
+| `description`     | Optional description                                     |
+| `assigned_object` | The `ZabbixServer` or `ZabbixTemplate` this belongs to   |
 
-- `ZabbixMacro` defines a macro.
-- `ZabbixMacroAssignment` links it to a NetBox object with value and context.
+### `ZabbixMacroAssignment`
 
-| Field             | Description                             |
-|-------------------|-----------------------------------------|
-| `macro`           | Macro name (e.g. `{HOST.NAME}`)         |
-| `value`           | Static or regex-based value             |
-| `assigned_object` | Target device/interface/etc.            |
+Assigns a user macro to a specific NetBox object within the inheritance chain (Device, VDC, VM, Manufacturer, DeviceRole, DeviceType, Platform, Cluster, or ClusterType).
+Macros assigned here override template-level macros of the same name on the resulting Zabbix host.
 
----
+| Field             | Description                                                                |
+|-------------------|----------------------------------------------------------------------------|
+| `zabbixmacro`     | The macro definition to assign                                             |
+| `value`           | The value for this assignment (may differ from the macro's default value)  |
+| `context`         | Optional context suffix, producing e.g. `{$MACRO:context}`                 |
+| `is_regex`        | If `True`, the context is treated as a regular expression                  |
+| `assigned_object` | The NetBox object this assignment applies to                               |
 
 ### `ZabbixHostInterface`
 
@@ -78,20 +88,19 @@ Includes rich SNMP and TLS configuration fields.
 | `snmp_*`         | SNMPv3 credentials                         |
 | `assigned_object`| Mapped to NetBox interface or device       |
 
----
-
 ## Sync & Assignment Models
 
 ### `ZabbixServerAssignment`
 
 Links a NetBox object to a Zabbix server/host/proxy.
 
-| Field            | Description                      |
-|------------------|----------------------------------|
-| `zabbixserver`   | Destination server               |
-| `hostid`         | Zabbix host ID                   |
-| `zabbixproxy`    | (Optional) specific proxy        |
-| `assigned_object`| Device, VM, etc.                 |
+| Field            | Description                                                       |
+|------------------|-------------------------------------------------------------------|
+| `zabbixserver`   | Destination server                                                |
+| `hostid`         | Zabbix host ID                                                    |
+| `zabbixproxy`    | (Optional) specific proxy                                         |
+| `assigned_object`| Device, VM, etc.                                                  |
+| `sync_enabled`   | Determines if automatic synchronisation from/to Zabbix is enabled |
 
 ---
 
@@ -168,7 +177,6 @@ Please note that on the `ZabbixHostInterface`, no IP address needs to be entered
 
 Links a Device/Virtual Device Context/VirtualMachine to a `ZabbixConfigurationGroup` and as such determines the applied configuration on the linked object. Device/Virtual Device Context/VirtualMachines can only be assigned to a single `ZabbixConfigurationGroup`
 
-
 ---
 
 ## 🧬 Inheritance Logic
@@ -176,8 +184,27 @@ Links a Device/Virtual Device Context/VirtualMachine to a `ZabbixConfigurationGr
 Templates, macros, and hostgroups can be inherited across these chains, by default:
 
 ```plaintext
-Manufacturer → Device Type      → Platform     → Role       → Device
+Manufacturer → Device Type    → Platform  → Role  → Device
+Manufacturer → Device Type    → Platform  → Role  → Virtual Device Context
 Cluster      → VirtualMachine
 ```
 
 However, this is [configurable](configuration.md).
+
+## Assignment Scope
+
+Not all assignment types can be attached to the same set of NetBox objects.
+The table below shows what each model accepts as `assigned_object`.
+
+| Model                                | Can be assigned to                                                                                              |
+|--------------------------------------|-----------------------------------------------------------------------------------------------------------------|
+| `ZabbixMacro`                        | ZabbixServer, ZabbixTemplate                                                                                    |
+| `ZabbixServerAssignment`             | Device, VDC, VM, Manufacturer, DeviceRole, DeviceType, Platform, Cluster, ClusterType                           |
+| `ZabbixTemplateAssignment`           | Device, VDC, VM, Manufacturer, DeviceRole, DeviceType, Platform, Cluster, ClusterType                           |
+| `ZabbixMacroAssignment`              | Device, VDC, VM, Manufacturer, DeviceRole, DeviceType, Platform, Cluster, ClusterType                           |
+| `ZabbixTagAssignment`                | Device, VDC, VM, Manufacturer, DeviceRole, DeviceType, Platform, Cluster, ClusterType, ZabbixConfigurationGroup |
+| `ZabbixHostgroupAssignment`          | Device, VDC, VM, Manufacturer, DeviceRole, DeviceType, Platform, Cluster, ClusterType, ZabbixConfigurationGroup |
+| `ZabbixHostInterface`                | Device, VDC, VM, ZabbixConfigurationGroup                                                                       |
+| `ZabbixHostInventory`                | Device, VDC, VM (one record per object)                                                                         |
+| `ZabbixMaintenanceObjectAssignment`  | Device, VDC, VM, ZabbixHostgroup                                                                                |
+| `ZabbixConfigurationGroupAssignment` | Device, VDC, VM (one group per object)                                                                          |

@@ -26,3 +26,13 @@ class SyncProxyGroupJobTestCase(TestCase):
             job.run()
 
         self.assertIn('Unexpected error: some error', str(ctx.exception))
+
+    @patch('nbxsync.jobs.syncproxygroup.safe_sync')
+    def test_run_skips_when_zabbixserver_sync_disabled(self, mock_safe_sync):
+        instance = MagicMock()
+        instance.zabbixserver.sync_enabled = False
+
+        job = SyncProxyGroupJob(instance=instance)
+        job.run()
+
+        mock_safe_sync.assert_not_called()

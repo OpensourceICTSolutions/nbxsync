@@ -23,6 +23,8 @@ class ZabbixServerSerializer(SyncInfoSerializerMixin, NetBoxModelSerializer):
             'zabbixurl',
             'token',
             'validate_certs',
+            'sync_enabled',
+            'skip_version_check',
             'last_sync',
             'last_sync_state',
             'last_sync_message',

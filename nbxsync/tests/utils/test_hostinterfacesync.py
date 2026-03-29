@@ -165,8 +165,8 @@ class HostInterfaceSyncTests(TestCase):
             'details': {
                 'version': 3,
                 'bulk': 0,
-                'contextname': 'ctxv3',
-                'securityname': 'secv3',
+                'context_name': 'ctxv3',
+                'security_name': 'secv3',
                 'securitylevel': ZabbixInterfaceSNMPV3SecurityLevelChoices.AUTHPRIV,
                 'authprotocol': ZabbixInterfaceSNMPV3AuthProtoChoices.SHA256,
                 'privprotocol': ZabbixInterfaceSNMPV3PrivProtoChoices.AES192,

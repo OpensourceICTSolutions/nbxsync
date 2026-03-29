@@ -6,6 +6,7 @@
 {% load static %}
 {% load plugins %}
 {% load render_table from django_tables2 %}
+{% load zabbix_hostinterfaces %}
 {% block content %}
     <div class="row">
         <div class="col col-md-6">
@@ -40,9 +41,10 @@
                         <td>{{ object.get_useip_display }}</td>
                     </tr>
                     {% if object.useip == ZabbixInterfaceUseChoices.DNS %}
+                        {% render_hostinterface_dns object as rendered_dns %}
                         <tr>
                             <td>DNS Name</td>
-                            <td>{{ object.dns }}</td>
+                            <td>{{ rendered_dns|safe }}</td>
                         </tr>
                     {% else %}
                         <tr>
@@ -128,6 +130,12 @@
                             <td>SNMP Combined requests</td>
                             <td>{{ object.snmp_usebulk }}</td>
                         </tr>
+                        {% if object.snmp_version == ZabbixHostInterfaceSNMPVersionChoices.SNMPV2 or object.snmp_version == ZabbixHostInterfaceSNMPVersionChoices.SNMPV3 %}
+                            <tr>
+                                <td>SNMP Max Repetitions</td>
+                                <td>{{ object.snmp_max_repetitions }}</td>
+                            </tr>
+                        {% endif %}
                         {% if object.snmp_version == ZabbixHostInterfaceSNMPVersionChoices.SNMPV3 %}
                             <tr>
                                 <td>SNMPv3 Context name</td>

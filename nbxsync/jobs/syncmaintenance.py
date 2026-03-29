@@ -9,6 +9,9 @@ class SyncMaintenceJob:
         self.instance = kwargs.get('instance')
 
     def run(self):
+        if not self.zabbixserver.sync_enabled:
+            return
+
         try:
             safe_sync(MaintenanceSync, self.instance)
         except Exception as e:

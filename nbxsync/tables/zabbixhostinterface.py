@@ -17,6 +17,15 @@ class ZabbixHostInterfaceTable(NetBoxTable):
     interface_type = tables.Column(accessor='get_interface_type_display')
     ip = tables.Column(linkify=True)
 
+    dns = tables.TemplateColumn(
+        template_code="""
+        {% load zabbix_hostinterfaces %}
+        {% render_hostinterface_dns record as rendered_output %}
+        {{ rendered_output|escape }}
+        """,
+        verbose_name='DNS Name',
+    )
+
     class Meta(NetBoxTable.Meta):
         model = ZabbixHostInterface
         fields = (
@@ -46,6 +55,14 @@ class ZabbixHostInterfaceObjectViewTable(NetBoxTable):
     type = tables.Column(accessor='get_type_display')
     interface_type = tables.Column(accessor='get_interface_type_display')
     ip = tables.Column(linkify=True)
+    dns = tables.TemplateColumn(
+        template_code="""
+        {% load zabbix_hostinterfaces %}
+        {% render_hostinterface_dns record as rendered_output %}
+        {{ rendered_output|escape }}
+        """,
+        verbose_name='DNS Name',
+    )
 
     class Meta(NetBoxTable.Meta):
         model = ZabbixHostInterface

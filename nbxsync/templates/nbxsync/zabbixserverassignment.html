@@ -16,6 +16,22 @@
                         <td>Assigned Zabbix Server</td>
                         <td>{{ object.zabbixserver|linkify }}</td>
                     </tr>
+                    <tr>
+                        <td>Automatic synchronization</td>
+                        <td>
+                            {% if object.sync_enabled %}
+                                {% if object.zabbixserver.sync_enabled %}
+                                    <i class="mdi mdi-check-bold text-success"
+                                       title="{{ object.sync_enabled }}"></i>
+                                {% else %}
+                                    <i class="mdi mdi-close-thick text-danger"
+                                       title="Sync on {{ object.zabbixserver.name }} is disabled"></i>
+                                {% endif %}
+                            {% else %}
+                                <i class="mdi mdi-close-thick text-danger" title="{{ false_label }}"></i>
+                            {% endif %}
+                        </td>
+                    </tr>
                     {% if object.proxy %}
                         <tr>
                             <td>Proxy</td>

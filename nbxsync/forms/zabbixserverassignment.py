@@ -22,13 +22,14 @@ class ZabbixServerAssignmentForm(NetBoxModelForm):
     zabbixproxy = DynamicModelChoiceField(queryset=ZabbixProxy.objects.all(), required=False, selector=True, label=_('Zabbix Proxy'))
     zabbixproxygroup = DynamicModelChoiceField(queryset=ZabbixProxyGroup.objects.all(), required=False, selector=True, label=_('Zabbix Proxygroup'))
     zabbixconfigurationgroup = DynamicModelChoiceField(queryset=ZabbixConfigurationGroup.objects.all(), required=False, selector=True, label=_('Zabbix Configuration Group'))
+    sync_enabled = forms.BooleanField(label=_('Enable automatic synchronization'), required=False)
 
     device = DynamicModelChoiceField(queryset=Device.objects.all(), required=False, selector=True, label=_('Device'))
     virtualdevicecontext = DynamicModelChoiceField(queryset=VirtualDeviceContext.objects.all(), required=False, selector=True, label=_('Virtual Device Context'))
     virtualmachine = DynamicModelChoiceField(queryset=VirtualMachine.objects.all(), required=False, selector=True, label=_('Virtual Machine'))
 
     fieldsets = (
-        FieldSet('zabbixserver', name=_('Generic')),
+        FieldSet('zabbixserver', 'sync_enabled', name=_('Generic')),
         FieldSet(
             TabbedGroups(
                 FieldSet('zabbixproxy', name=_('Proxy')),
@@ -51,6 +52,7 @@ class ZabbixServerAssignmentForm(NetBoxModelForm):
         model = ZabbixServerAssignment
         fields = (
             'zabbixserver',
+            'sync_enabled',
             'zabbixproxy',
             'zabbixproxygroup',
             'device',
@@ -123,8 +125,8 @@ class ZabbixServerAssignmentBulkEditForm(NetBoxModelBulkEditForm):
     zabbixserver = DynamicModelChoiceField(queryset=ZabbixServer.objects.all(), required=False, selector=True, label=_('Zabbix Server'))
     zabbixproxy = DynamicModelChoiceField(queryset=ZabbixProxy.objects.all(), required=False, selector=True, label=_('Zabbix Proxy'))
     zabbixproxygroup = DynamicModelChoiceField(queryset=ZabbixProxyGroup.objects.all(), required=False, selector=True, label=_('Zabbix Proxygroup'))
-
-    fieldsets = (FieldSet('zabbixserver', 'zabbixproxy', 'zabbixproxygroup'),)
+    sync_enabled = forms.BooleanField(label=_('Enable automatic synchronization'), required=False)
+    fieldsets = (FieldSet('zabbixserver', 'sync_enabled', 'zabbixproxy', 'zabbixproxygroup'),)
     nullable_fields = ()
 
 
@@ -132,11 +134,13 @@ class ZabbixServerAssignmentBulkImportForm(NetBoxModelImportForm):
     zabbixserver = CSVModelChoiceField(queryset=ZabbixServer.objects.all(), to_field_name='name', help_text=_('Assigned Zabbix Server'))
     zabbixproxy = CSVModelChoiceField(queryset=ZabbixProxy.objects.all(), to_field_name='name', help_text=_('Assigned Zabbix Proxy'))
     zabbixproxygroup = CSVModelChoiceField(queryset=ZabbixProxyGroup.objects.all(), to_field_name='name', help_text=_('Assigned Zabbix Proxy Group'))
+    sync_enabled = forms.BooleanField(label=_('Enable automatic synchronization'), required=False)
 
     class Meta:
         model = ZabbixServerAssignment
         fields = (
             'zabbixserver',
+            'sync_enabled',
             'zabbixproxy',
             'zabbixproxygroup',
         )

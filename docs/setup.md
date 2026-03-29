@@ -21,7 +21,7 @@ After generating a token, configure a new Zabbix Server in Netbox. Navigate to `
 
 ## Step 2: Synchronize Templates
 
-Next, import all templates from Zabbix into Netbox so they can be referenced later. To do this, go to the Zabbix Server you created in Step 1 and click the `Sync Template` button in the upper right corner.
+Next, import all templates from Zabbix into Netbox so they can be referenced later. To do this, go to the Zabbix Server you created in Step 1 and click the `Sync Templates` button in the upper right corner.
 
 A background job will be scheduled. After a few seconds (if everything works as expected), you should see the templates by navigating to the 'Templates' tab on the Zabbix Server object or by browsing the Zabbix Template objects via the `Zabbix` -> `Zabbix Templates` menu.
 
@@ -30,7 +30,7 @@ A background job will be scheduled. After a few seconds (if everything works as 
 Configure your Device, Virtual Device Context (VDC) or Virtual Machine as needed, following the steps below. The main requirements are:
 
 1. The Device, VDC or VM must be associated with a Zabbix Server via a Zabbix Server Assignment.
-2. A host interface is required.
+2. A host interface is required in most cases (see Step 3b for details).
 3. At least one hostgroup must be assigned.
 
 If these conditions are not met, synchronization will not be possible.
@@ -49,8 +49,10 @@ When adding an assignment, you can:
 
 ### Step 3b: Configure a Host Interface
 
-!!! danger "Required"
-    A Host Interface is required
+!!! note "When is an interface required?"
+    Whether an interface is required depends on the templates assigned to the host. nbxSync inspects the item types on each template during the template sync (Step 2) and stores the interface requirements on each `ZabbixTemplate` record. 
+    A host interface is **not** required if all assigned templates consist entirely of items that need no interface (e.g. HTTP agent, Script, Calculated, Dependent). 
+    In practice, most templates require at least an Agent or SNMP interface. If the Sync button does not work on a device, check that the required interface type matches what the assigned templates expect.
 
 After assigning a Zabbix Server, specify how the Zabbix Server will monitor the Device, VDC or Virtual Machine via a [Host Interface](https://www.thezabbixbook.com/ch04-zabbix-collecting-data/host-interfaces/).
 
@@ -86,3 +88,36 @@ Once the Hostgroup is created, create a Hostgroup Assignment on the Device or Vi
 ## Debugging
 
 If something does not work as expected, relevant information can usually be found in the Netbox logs or Netbox worker logs. If not, enable Debug mode in Netbox for further troubleshooting.
+
+## Triggering Synchronization
+
+Host synchronization can be triggered in three ways. All three paths converge on the same underlying job and produce identical results.
+
+### Sync button in the UI
+
+On the `Zabbix` tab of any Device, VDC, or Virtual Machine, a **Sync** button appears when the host meets the minimum requirements (a Zabbix Server Assignment, at least one resolved host group, and a host interface compatible with the assigned templates). Clicking it immediately enqueues a `synchost` background job for that host.
+
+### Background system job
+
+The `Zabbix Sync Hosts job` runs automatically at the interval configured by `backgroundsync.objects.interval` (default: every 60 minutes). It iterates every `ZabbixServerAssignment` in NetBox and enqueues a `synchost` job for each unique Device, VDC, or VM (subject to both `sync_enabled` flags being `True`).
+
+### REST API
+
+A sync can be triggered programmatically via the nbxSync API endpoint:
+```
+POST /api/plugins/nbxsync/zabbixsync/
+```
+
+The request body must include `obj_type` and `obj_id`:
+```bash
+curl -X POST \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  http://<netbox>/api/plugins/nbxsync/zabbixsync/ \
+  --data '{"obj_type": "device", "obj_id": 1}'
+```
+
+Valid `obj_type` values: `device`, `virtualmachine`, `virtualdevicecontext`.
+
+The response is HTTP 202 with `{"count": 1, "results": [{"scheduled": true}]}`.
+The endpoint requires a valid NetBox authentication token but no special nbxSync permissions beyond basic API access.

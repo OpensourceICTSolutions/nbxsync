@@ -27,12 +27,15 @@ class SyncHostJob:
         zabbix_status = status_mapping.get(status)
 
         for assignment in zabbixserver_assignments:
+            if not assignment.sync_enabled or not assignment.zabbixserver.sync_enabled:
+                return
+
             if zabbix_status == ZabbixHostStatus.DELETED:
                 self.delete_host(assignment)
             else:
+                self.check_default_hostinterface(assignment)
                 self.sync_host(assignment)
                 self.verify_hostinterfaces(assignment)
-                # Check if host has Maintenance, if so: sync Maintenance
 
     def delete_host(self, assignment):
         safe_delete(HostSync, assignment)
@@ -40,6 +43,10 @@ class SyncHostJob:
     def verify_hostinterfaces(self, assignment):
         all_objects = get_assigned_zabbixobjects(self.instance)
         run_zabbix_operation(HostSync, assignment, 'verify_hostinterfaces', extra_args={'all_objects': all_objects})
+
+    def check_default_hostinterface(self, assignment):
+        all_objects = get_assigned_zabbixobjects(self.instance)
+        run_zabbix_operation(HostSync, assignment, 'check_default_hostinterface', extra_args={'all_objects': all_objects})
 
     def sync_host(self, assignment):
         try:
@@ -73,7 +80,12 @@ class SyncHostJob:
                 pass
 
             # Once the Host exists and we have a HostId, time to sync the interfaces
-            for hostinterface in all_objects['hostinterfaces']:
+            # Sort by:
+            # - interface_type (defaults should be synced first)
+            # - type (group snmp, agent, jmx, etc)
+            # - id
+            hostinterfaces_sorted = sorted(all_objects['hostinterfaces'], key=lambda hostinterface: (-int(hostinterface.interface_type == 1), hostinterface.type, hostinterface.id))
+            for hostinterface in hostinterfaces_sorted:
                 safe_sync(HostInterfaceSync, hostinterface, extra_args={'hostid': assignment.hostid})
 
             safe_sync(HostSync, assignment, extra_args={'all_objects': all_objects})

@@ -52,17 +52,29 @@ class HostGroupSync(ZabbixSyncBase):
     def set_id(self, value):
         if not self.obj.is_template():
             super().set_id(value)
-        else:
-            # print('HostGroupSync: Detected template value, skipping groupid update.')
-            # Get Hostgroup by ZabbixServer and ID
-            # If not, create it
-            hostgroup = ZabbixHostgroup.objects.filter(zabbixserver=self.obj.zabbixhostgroup.zabbixserver, groupid=value).first()
-            if hostgroup:
-                hostgroup.groupid = value
-                hostgroup.save()
-            else:
-                name, _state = self.obj.render()
-                ZabbixHostgroup(zabbixserver=self.obj.zabbixhostgroup.zabbixserver, name=name, value=name, groupid=value, description='Automatically generated from template').save()
+            return
+
+        # print('HostGroupSync: Detected template value, skipping groupid update.')
+        # Get Hostgroup by ZabbixServer and ID
+        # If not, create it
+        hostgroup = ZabbixHostgroup.objects.filter(zabbixserver=self.obj.zabbixhostgroup.zabbixserver, groupid=value).first()
+        if hostgroup:
+            hostgroup.groupid = value
+            hostgroup.save()
+            return
+
+        name, _state = self.obj.render()
+
+        # Try to get the hostgroup by value (the Zabbix name)
+        hostgroup = ZabbixHostgroup.objects.get(zabbixserver=self.obj.zabbixhostgroup.zabbixserver, value=name)
+
+        if hostgroup:
+            hostgroup.groupid = value
+            hostgroup.save()
+            return
+
+        # Not found by name, so create it
+        ZabbixHostgroup(zabbixserver=self.obj.zabbixhostgroup.zabbixserver, name=name, value=name, groupid=value, description='Automatically generated from template').save()
 
     def get_id(self):
         if self.obj.is_template():

@@ -15,7 +15,7 @@ class ZabbixProxyGroupForm(NetBoxModelForm):
     zabbixserver = DynamicModelChoiceField(queryset=ZabbixServer.objects.all(), required=True, selector=True, label=_('Zabbix Server'))
     name = forms.CharField(required=True, label=_('Name'))
     description = forms.CharField(label=_('Description'), required=False, widget=forms.Textarea(attrs={'rows': 1, 'cols': 40}))
-    failover_delay = forms.CharField(required=False, label=_('Vendor'))
+    failover_delay = forms.CharField(required=False, label=_('Failover delay'))
     min_online = forms.IntegerField(required=False, label=_('Minimum online proxies'))
 
     class Meta:
@@ -48,7 +48,7 @@ class ZabbixProxyGroupBulkEditForm(NetBoxModelBulkEditForm):
     zabbixserver = DynamicModelChoiceField(queryset=ZabbixServer.objects.all(), required=False, selector=True, label=_('Zabbix Server'))
     name = forms.CharField(required=False, label=_('Name'))
     description = forms.CharField(label=_('Description'), required=False, widget=forms.Textarea(attrs={'rows': 1, 'cols': 40}))
-    failover_delay = forms.CharField(required=False, label=_('Vendor'))
+    failover_delay = forms.CharField(required=False, label=_('Failover delay'))
     min_online = forms.IntegerField(required=False, label=_('Minimum online proxies'))
 
     fieldsets = (

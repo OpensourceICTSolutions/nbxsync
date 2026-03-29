@@ -2,6 +2,7 @@ import logging
 from django import forms
 from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import gettext_lazy as _
+from django.core.validators import MaxValueValidator, MinValueValidator
 
 from netbox.forms import NetBoxModelBulkEditForm, NetBoxModelFilterSetForm, NetBoxModelForm
 from utilities.forms.fields import DynamicModelChoiceField, TagFilterField
@@ -42,6 +43,8 @@ class ZabbixHostInterfaceForm(NetBoxModelForm):
 
     ipmi_password = forms.CharField(required=False, label=_('Password'), widget=forms.PasswordInput(render_value=True))
     snmp_pushcommunity = forms.BooleanField(required=False, label=_('Push SNMP Community'), help_text=_('Should the SNMP Credentials be pushed from NetBox or should the existing Zabbix macro be used?'))
+    snmp_max_repetitions = forms.IntegerField(initial=10, required=False, validators=[MinValueValidator(0), MaxValueValidator(100)], label=_('SNMP Max repetitions'), help_text='Max repetition value for native SNMP bulk requests (0-100)')
+
     snmpv3_authentication_passphrase = forms.CharField(required=False, label=_('Authentication passphrase'), widget=forms.PasswordInput(render_value=True))
     snmpv3_privacy_passphrase = forms.CharField(required=False, label=_('Privacy passphrase '), widget=forms.PasswordInput(render_value=True))
 
@@ -81,7 +84,9 @@ class ZabbixHostInterfaceForm(NetBoxModelForm):
         FieldSet(
             'snmp_version',
             'snmp_usebulk',
-            'snmp_pushcommunitysnmpv3_context_name',
+            'snmp_pushcommunity',
+            'snmp_max_repetitions',
+            'snmpv3_context_name',
             'snmpv3_security_name',
             'snmpv3_security_level',
             'snmpv3_authentication_passphrase',
@@ -122,6 +127,7 @@ class ZabbixHostInterfaceForm(NetBoxModelForm):
             'snmp_version',
             'snmp_usebulk',
             'snmp_community',
+            'snmp_max_repetitions',
             'snmp_pushcommunity',
             'snmpv3_context_name',
             'snmpv3_security_name',

@@ -1,172 +1,204 @@
-from django.contrib.contenttypes.models import ContentType
-from django.test import TransactionTestCase
-from django.db import IntegrityError
 from unittest.mock import patch
 
-from utilities.testing import create_test_device
+from django.contrib.contenttypes.models import ContentType
+from django.db import IntegrityError
+from django.test import TestCase
+
 from dcim.models import Device
+from utilities.testing import create_test_device
 
-from nbxsync.models import ZabbixServer, ZabbixHostgroup, ZabbixHostgroupAssignment, ZabbixConfigurationGroup, ZabbixConfigurationGroupAssignment
+from nbxsync.jobs.cfggroup import PropagateHostGroupAssignmentJob, DeleteHostGroupAssignmentClonesJob
+from nbxsync.models import ZabbixConfigurationGroup, ZabbixConfigurationGroupAssignment, ZabbixHostgroup, ZabbixHostgroupAssignment, ZabbixServer
+from nbxsync.signals.zabbixhostgroupassignment import handle_postcreate_zabbixhostgroupassignment, handle_postsave_zabbixhostgroupassignment, handle_postdelete_zabbixhostgroupassignment
 
-# Ensure signal handlers are imported and registered
-import nbxsync.signals.zabbixhostgroupassignment  # noqa: F401
+# Both the job's own transaction.on_commit and the helpers' need patching.
+_PATCH_ON_COMMIT = [
+    patch('nbxsync.jobs.cfggroup.transaction.on_commit', side_effect=lambda fn: fn()),
+    patch('nbxsync.utils.cfggroup.helpers.transaction.on_commit', side_effect=lambda fn: fn()),
+]
 
 
-class ZabbixHostgroupAssignmentSignalsTestCase(TransactionTestCase):
+def with_on_commit(f):
+    """Decorator: apply both on_commit patches to a test method."""
+    for p in reversed(_PATCH_ON_COMMIT):
+        f = p(f)
+    return f
+
+
+class ZabbixHostgroupAssignmentSignalsTestCase(TestCase):
     def setUp(self):
         self.server = ZabbixServer.objects.create(name='Signal Test Server')
         self.hostgroup = ZabbixHostgroup.objects.create(name='HG Signals', value='hg-signals', zabbixserver=self.server)
         self.cfg = ZabbixConfigurationGroup.objects.create(name='ConfigGroup HG Signals', description='Hostgroup assignment signal test group')
-
         self.devices = [
             create_test_device(name='HGSignal Dev 1'),
             create_test_device(name='HGSignal Dev 2'),
         ]
-
         self.device_ct = ContentType.objects.get_for_model(Device)
         self.cfg_ct = ContentType.objects.get_for_model(ZabbixConfigurationGroup)
 
         for dev in self.devices:
             ZabbixConfigurationGroupAssignment.objects.create(zabbixconfigurationgroup=self.cfg, assigned_object_type=self.device_ct, assigned_object_id=dev.pk)
 
-    def test_postcreate_non_configgroup_does_not_create_clones(self):
-        base = ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.hostgroup, assigned_object_type=self.device_ct, assigned_object_id=self.devices[0].pk)
+    @patch('nbxsync.signals.zabbixhostgroupassignment.propagate_hostgroup_assignment')
+    def test_postcreate_non_configgroup_does_not_enqueue(self, mock_job):
+        assignment = ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.hostgroup, assigned_object_type=self.device_ct, assigned_object_id=self.devices[0].pk)
+
+        handle_postcreate_zabbixhostgroupassignment(sender=ZabbixHostgroupAssignment, instance=assignment, created=True)
+
+        mock_job.delay.assert_not_called()
+
+    @patch('nbxsync.signals.zabbixhostgroupassignment.propagate_hostgroup_assignment')
+    def test_postcreate_configgroup_enqueues_job(self, mock_job):
+        assignment = ZabbixHostgroupAssignment(zabbixhostgroup=self.hostgroup, assigned_object_type=self.cfg_ct, assigned_object_id=self.cfg.pk)
+        assignment.pk = 999
+
+        handle_postcreate_zabbixhostgroupassignment(sender=ZabbixHostgroupAssignment, instance=assignment, created=True)
+
+        mock_job.delay.assert_called_once_with(assignment.pk)
+
+    @patch('nbxsync.signals.zabbixhostgroupassignment.propagate_hostgroup_assignment')
+    def test_postcreate_handler_does_not_fire_on_update(self, mock_job):
+        assignment = ZabbixHostgroupAssignment(zabbixhostgroup=self.hostgroup, assigned_object_type=self.cfg_ct, assigned_object_id=self.cfg.pk)
+        assignment.pk = 999
+
+        handle_postcreate_zabbixhostgroupassignment(sender=ZabbixHostgroupAssignment, instance=assignment, created=False)
+
+        mock_job.delay.assert_not_called()
+
+    @patch('nbxsync.signals.zabbixhostgroupassignment.propagate_hostgroup_assignment')
+    def test_postsave_non_configgroup_does_not_enqueue(self, mock_job):
+        assignment = ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.hostgroup, assigned_object_type=self.device_ct, assigned_object_id=self.devices[0].pk)
+
+        handle_postsave_zabbixhostgroupassignment(sender=ZabbixHostgroupAssignment, instance=assignment, created=False)
+
+        mock_job.delay.assert_not_called()
+
+    @patch('nbxsync.signals.zabbixhostgroupassignment.propagate_hostgroup_assignment')
+    def test_postsave_configgroup_enqueues_job(self, mock_job):
+        assignment = ZabbixHostgroupAssignment(zabbixhostgroup=self.hostgroup, assigned_object_type=self.cfg_ct, assigned_object_id=self.cfg.pk)
+        assignment.pk = 999
+
+        handle_postsave_zabbixhostgroupassignment(sender=ZabbixHostgroupAssignment, instance=assignment, created=False)
+
+        mock_job.delay.assert_called_once_with(assignment.pk)
+
+    @patch('nbxsync.signals.zabbixhostgroupassignment.propagate_hostgroup_assignment')
+    def test_postsave_handler_does_not_fire_on_create(self, mock_job):
+        assignment = ZabbixHostgroupAssignment(zabbixhostgroup=self.hostgroup, assigned_object_type=self.cfg_ct, assigned_object_id=self.cfg.pk)
+        assignment.pk = 999
+
+        handle_postsave_zabbixhostgroupassignment(sender=ZabbixHostgroupAssignment, instance=assignment, created=True)
+
+        mock_job.delay.assert_not_called()
+
+    @patch('nbxsync.signals.zabbixhostgroupassignment.delete_hostgroup_assignment_clones')
+    def test_postdelete_non_configgroup_does_not_enqueue(self, mock_job):
+        assignment = ZabbixHostgroupAssignment(zabbixhostgroup=self.hostgroup, assigned_object_type=self.device_ct, assigned_object_id=self.devices[0].pk)
+
+        handle_postdelete_zabbixhostgroupassignment(sender=ZabbixHostgroupAssignment, instance=assignment)
+
+        mock_job.delay.assert_not_called()
+
+    @patch('nbxsync.signals.zabbixhostgroupassignment.delete_hostgroup_assignment_clones')
+    def test_postdelete_configgroup_enqueues_job(self, mock_job):
+        assignment = ZabbixHostgroupAssignment(zabbixhostgroup=self.hostgroup, assigned_object_type=self.cfg_ct, assigned_object_id=self.cfg.pk)
+        assignment.assigned_object_type_id = self.cfg_ct.pk
+
+        handle_postdelete_zabbixhostgroupassignment(sender=ZabbixHostgroupAssignment, instance=assignment)
+
+        mock_job.delay.assert_called_once_with(configgroup_pk=self.cfg.pk)
+
+    @with_on_commit
+    def test_propagate_job_creates_clones_for_members(self, *_mocks):
+        assignment = ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.hostgroup, assigned_object_type=self.cfg_ct, assigned_object_id=self.cfg.pk)
+
+        PropagateHostGroupAssignmentJob(assignment_pk=assignment.pk).run()
 
         qs = ZabbixHostgroupAssignment.objects.filter(zabbixhostgroup=self.hostgroup)
-        self.assertEqual(qs.count(), 1)
-        self.assertEqual(qs.first().pk, base.pk)
-
-    def test_postcreate_configgroup_creates_clones_for_members(self):
-        ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.hostgroup, assigned_object_type=self.cfg_ct, assigned_object_id=self.cfg.pk)
-
-        qs = ZabbixHostgroupAssignment.objects.filter(zabbixhostgroup=self.hostgroup)
-
         self.assertEqual(qs.count(), 1 + len(self.devices))
-        self.assertTrue(qs.filter(assigned_object_type=self.cfg_ct, assigned_object_id=self.cfg.pk).exists())
 
         for dev in self.devices:
             self.assertTrue(qs.filter(assigned_object_type=self.device_ct, assigned_object_id=dev.pk, zabbixconfigurationgroup=self.cfg).exists(), f'Expected hostgroup clone for {dev}')
 
-    def test_postcreate_respects_existing_null_group_assignment(self):
+    @with_on_commit
+    def test_propagate_job_respects_existing_null_group_assignment(self, *_mocks):
         existing = ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.hostgroup, assigned_object_type=self.device_ct, assigned_object_id=self.devices[0].pk, zabbixconfigurationgroup=None)
 
-        ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.hostgroup, assigned_object_type=self.cfg_ct, assigned_object_id=self.cfg.pk)
+        assignment = ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.hostgroup, assigned_object_type=self.cfg_ct, assigned_object_id=self.cfg.pk)
+
+        PropagateHostGroupAssignmentJob(assignment_pk=assignment.pk).run()
 
         qs = ZabbixHostgroupAssignment.objects.filter(zabbixhostgroup=self.hostgroup)
-
         self.assertEqual(qs.count(), 3)
 
         existing.refresh_from_db()
-
         self.assertIsNone(existing.zabbixconfigurationgroup)
         self.assertFalse(qs.filter(assigned_object_type=self.device_ct, assigned_object_id=self.devices[0].pk, zabbixconfigurationgroup=self.cfg).exists())
         self.assertTrue(qs.filter(assigned_object_type=self.device_ct, assigned_object_id=self.devices[1].pk, zabbixconfigurationgroup=self.cfg).exists())
 
-    def test_postsave_configgroup_adds_clones_for_new_members(self):
+    @with_on_commit
+    def test_propagate_job_adds_clones_for_new_members(self, *_mocks):
         ZabbixConfigurationGroupAssignment.objects.filter(zabbixconfigurationgroup=self.cfg, assigned_object_id=self.devices[1].pk).delete()
 
-        base = ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.hostgroup, assigned_object_type=self.cfg_ct, assigned_object_id=self.cfg.pk)
+        assignment = ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.hostgroup, assigned_object_type=self.cfg_ct, assigned_object_id=self.cfg.pk)
 
-        qs_initial = ZabbixHostgroupAssignment.objects.filter(zabbixhostgroup=self.hostgroup)
-        self.assertEqual(qs_initial.count(), 2)
+        PropagateHostGroupAssignmentJob(assignment_pk=assignment.pk).run()
+
+        self.assertEqual(ZabbixHostgroupAssignment.objects.filter(zabbixhostgroup=self.hostgroup).count(), 2)
 
         ZabbixConfigurationGroupAssignment.objects.create(zabbixconfigurationgroup=self.cfg, assigned_object_type=self.device_ct, assigned_object_id=self.devices[1].pk)
 
-        base.refresh_from_db()
-        base.save()
+        PropagateHostGroupAssignmentJob(assignment_pk=assignment.pk).run()
 
         qs = ZabbixHostgroupAssignment.objects.filter(zabbixhostgroup=self.hostgroup)
-
         self.assertEqual(qs.count(), 3)
 
         for dev in self.devices:
-            self.assertTrue(
-                qs.filter(assigned_object_type=self.device_ct, assigned_object_id=dev.pk, zabbixconfigurationgroup=self.cfg).exists(),
-                f'Expected clone for new member {dev}',
-            )
+            self.assertTrue(qs.filter(assigned_object_type=self.device_ct, assigned_object_id=dev.pk, zabbixconfigurationgroup=self.cfg).exists(), f'Expected clone for new member {dev}')
 
-    def test_postsave_non_configgroup_does_not_create_clones(self):
-        base = ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.hostgroup, assigned_object_type=self.device_ct, assigned_object_id=self.devices[0].pk)
+    @with_on_commit
+    def test_propagate_job_non_configgroup_does_not_propagate(self, *_mocks):
+        assignment = ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.hostgroup, assigned_object_type=self.device_ct, assigned_object_id=self.devices[0].pk)
 
-        base.save()
+        PropagateHostGroupAssignmentJob(assignment_pk=assignment.pk).run()
 
-        qs = ZabbixHostgroupAssignment.objects.filter(zabbixhostgroup=self.hostgroup)
-        self.assertEqual(qs.count(), 1)
+        self.assertEqual(ZabbixHostgroupAssignment.objects.filter(zabbixhostgroup=self.hostgroup).count(), 1)
 
-    def test_postdelete_non_configgroup_does_not_delete_clones(self):
-        for dev in self.devices:
-            ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.hostgroup, assigned_object_type=self.device_ct, assigned_object_id=dev.pk, zabbixconfigurationgroup=self.cfg)
-
-        extra_dev = create_test_device(name='HGSignal Extra Dev')
-        non_cfg = ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.hostgroup, assigned_object_type=self.device_ct, assigned_object_id=extra_dev.pk)
-
-        self.assertEqual(ZabbixHostgroupAssignment.objects.filter(zabbixhostgroup=self.hostgroup).count(), len(self.devices) + 1)
-
-        non_cfg.delete()
-
-        self.assertEqual(ZabbixHostgroupAssignment.objects.filter(zabbixhostgroup=self.hostgroup).count(), len(self.devices))
-
-    def test_postdelete_configgroup_deletes_clones_for_group(self):
-        for dev in self.devices:
-            ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.hostgroup, assigned_object_type=self.device_ct, assigned_object_id=dev.pk, zabbixconfigurationgroup=self.cfg)
-
-        base = ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.hostgroup, assigned_object_type=self.cfg_ct, assigned_object_id=self.cfg.pk, zabbixconfigurationgroup=self.cfg)
-
-        self.assertEqual(ZabbixHostgroupAssignment.objects.filter(zabbixhostgroup=self.hostgroup).count(), 1 + len(self.devices))
-
-        base.delete()
-
-        self.assertEqual(ZabbixHostgroupAssignment.objects.filter(zabbixhostgroup=self.hostgroup).count(), 0)
-
-    def test_postsave_respects_existing_null_group_assignment(self):
-        base = ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.hostgroup, assigned_object_type=self.cfg_ct, assigned_object_id=self.cfg.pk)
-
-        device0_assignment = ZabbixHostgroupAssignment.objects.get(zabbixhostgroup=self.hostgroup, assigned_object_type=self.device_ct, assigned_object_id=self.devices[0].pk)
-        device0_assignment.zabbixconfigurationgroup = None
-        device0_assignment.save()
-
-        device1_assignmnet = ZabbixHostgroupAssignment.objects.get(zabbixhostgroup=self.hostgroup, assigned_object_type=self.device_ct, assigned_object_id=self.devices[1].pk)
-        self.assertIsNone(device0_assignment.zabbixconfigurationgroup)
-        self.assertEqual(device1_assignmnet.zabbixconfigurationgroup, self.cfg)
-
-        base.refresh_from_db()
-        base.save()
-
-        device0_assignment.refresh_from_db()
-        self.assertIsNone(device0_assignment.zabbixconfigurationgroup)
-
-        self.assertEqual(ZabbixHostgroupAssignment.objects.filter(zabbixhostgroup=self.hostgroup, assigned_object_type=self.device_ct, assigned_object_id=self.devices[0].pk).count(), 1)
-
-    def test_postcreate_integrityerror_falls_back_to_update(self):
-        cfg2 = ZabbixConfigurationGroup.objects.create(name='Other ConfigGroup', description='Used to test IntegrityError fallback (create)')
+    @with_on_commit
+    def test_propagate_job_integrityerror_falls_back_to_update(self, *_mocks):
+        cfg2 = ZabbixConfigurationGroup.objects.create(name='Other ConfigGroup', description='IntegrityError fallback test')
 
         for dev in self.devices:
             ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.hostgroup, assigned_object_type=self.device_ct, assigned_object_id=dev.pk, zabbixconfigurationgroup=cfg2)
 
-        with patch('nbxsync.signals.zabbixhostgroupassignment.ZabbixHostgroupAssignment.objects.update_or_create', side_effect=IntegrityError('duplicate')):
-            ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.hostgroup, assigned_object_type=self.cfg_ct, assigned_object_id=self.cfg.pk)
+        assignment = ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.hostgroup, assigned_object_type=self.cfg_ct, assigned_object_id=self.cfg.pk)
+
+        with patch('nbxsync.jobs.cfggroup.ZabbixHostgroupAssignment.objects.update_or_create', side_effect=IntegrityError('duplicate')):
+            PropagateHostGroupAssignmentJob(assignment_pk=assignment.pk).run()
 
         for dev in self.devices:
-            assignment = ZabbixHostgroupAssignment.objects.get(zabbixhostgroup=self.hostgroup, assigned_object_type=self.device_ct, assigned_object_id=dev.pk)
-            self.assertEqual(assignment.zabbixconfigurationgroup, self.cfg, f'Expected fallback update to change group for {dev}')
+            a = ZabbixHostgroupAssignment.objects.get(zabbixhostgroup=self.hostgroup, assigned_object_type=self.device_ct, assigned_object_id=dev.pk)
+            self.assertEqual(a.zabbixconfigurationgroup, self.cfg, f'Expected fallback update to change group for {dev}')
 
-    def test_postsave_integrityerror_falls_back_to_update(self):
-        base = ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.hostgroup, assigned_object_type=self.cfg_ct, assigned_object_id=self.cfg.pk)
-        cfg2 = ZabbixConfigurationGroup.objects.create(name='Other ConfigGroup (update)', description='Used to test IntegrityError fallback (update)')
-
+    @with_on_commit
+    def test_delete_job_removes_clones_for_group(self, *_mocks):
         for dev in self.devices:
-            assignment = ZabbixHostgroupAssignment.objects.get(zabbixhostgroup=self.hostgroup, assigned_object_type=self.device_ct, assigned_object_id=dev.pk)
-            assignment.zabbixconfigurationgroup = cfg2
-            assignment.save()
+            ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.hostgroup, assigned_object_type=self.device_ct, assigned_object_id=dev.pk, zabbixconfigurationgroup=self.cfg)
 
+        ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.hostgroup, assigned_object_type=self.cfg_ct, assigned_object_id=self.cfg.pk, zabbixconfigurationgroup=self.cfg)
+
+        self.assertEqual(ZabbixHostgroupAssignment.objects.filter(zabbixhostgroup=self.hostgroup).count(), 1 + len(self.devices))
+
+        DeleteHostGroupAssignmentClonesJob(configgroup_pk=self.cfg.pk).run()
+
+        self.assertEqual(ZabbixHostgroupAssignment.objects.filter(zabbixhostgroup=self.hostgroup).count(), 0)
+
+    def test_delete_job_non_configgroup_does_not_delete_other_rows(self):
         for dev in self.devices:
-            assignment = ZabbixHostgroupAssignment.objects.get(zabbixhostgroup=self.hostgroup, assigned_object_type=self.device_ct, assigned_object_id=dev.pk)
-            self.assertEqual(assignment.zabbixconfigurationgroup, cfg2)
+            ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.hostgroup, assigned_object_type=self.device_ct, assigned_object_id=dev.pk, zabbixconfigurationgroup=self.cfg)
 
-        with patch('nbxsync.signals.zabbixhostgroupassignment.ZabbixHostgroupAssignment.objects.update_or_create', side_effect=IntegrityError('duplicate')):
-            base.refresh_from_db()
-            base.save()
+        extra_dev = create_test_device(name='HGSignal Extra Dev')
+        ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.hostgroup, assigned_object_type=self.device_ct, assigned_object_id=extra_dev.pk)
 
-        for dev in self.devices:
-            assignment = ZabbixHostgroupAssignment.objects.get(zabbixhostgroup=self.hostgroup, assigned_object_type=self.device_ct, assigned_object_id=dev.pk)
-            self.assertEqual(assignment.zabbixconfigurationgroup, self.cfg, f'Expected fallback update to change group for {dev}')
+        self.assertEqual(ZabbixHostgroupAssignment.objects.filter(zabbixhostgroup=self.hostgroup).count(), len(self.devices) + 1)

@@ -16,6 +16,8 @@ class ZabbixServerTable(NetBoxTable):
             'pk',
             'name',
             'description',
+            'sync_enabled',
+            'skip_version_check',
             'url',
             'created',
             'last_updated',
@@ -24,4 +26,6 @@ class ZabbixServerTable(NetBoxTable):
             'pk',
             'name',
             'url',
+            'sync_enabled',
+            'skip_version_check',
         )

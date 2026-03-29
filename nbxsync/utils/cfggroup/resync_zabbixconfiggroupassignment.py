@@ -24,16 +24,8 @@ DEFAULT_EXCLUDE_SERVER = DEFAULT_EXCLUDE_ASSIGNMENTS
 DEFAULT_EXCLUDE_TEMPLATE = DEFAULT_EXCLUDE_ASSIGNMENTS
 DEFAULT_EXCLUDE_TAG = DEFAULT_EXCLUDE_ASSIGNMENTS
 DEFAULT_EXCLUDE_HOSTGROUP = DEFAULT_EXCLUDE_ASSIGNMENTS
-DEFAULT_EXCLUDE_MACRO_CREATE = COMMON_EXCLUDE
-DEFAULT_EXCLUDE_HOSTINTERFACE = COMMON_EXCLUDE | {
-    'interfaceid',
-    'last_sync',
-    'last_sync_state',
-    'last_sync_message',
-    'parent',
-    'zabbixconfigurationgroup',
-    'ip',
-}
+DEFAULT_EXCLUDE_MACRO_CREATE = COMMON_EXCLUDE | {'parent'}
+DEFAULT_EXCLUDE_HOSTINTERFACE = COMMON_EXCLUDE | {'interfaceid', 'last_sync', 'last_sync_state', 'last_sync_message', 'parent', 'zabbixconfigurationgroup', 'ip'}
 
 
 def resync_zabbixconfigurationgroupassignment(instance):

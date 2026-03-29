@@ -11,28 +11,35 @@ class ZabbixConfigurationGroupAssignmentPostSaveSignalTestCase(TestCase):
     def setUp(self):
         self.cfg = ZabbixConfigurationGroup.objects.create(name='Test Config Group', description='Signal test cfg group')
 
-    @patch('nbxsync.signals.zabbixconfigurationgroupassignment.resync_zabbixconfigurationgroupassignment')
-    def test_postsave_calls_resync_when_configgroup_present(self, mock_resync):
+    @patch('nbxsync.signals.zabbixconfigurationgroupassignment.propagate_configgroup_assignment')
+    def test_postsave_enqueues_job_when_configgroup_present(self, mock_job):
         asn = ZabbixConfigurationGroupAssignment(zabbixconfigurationgroup=self.cfg, assigned_object_type=None, assigned_object_id=None)
+        asn.pk = 42
 
         handle_postsave_zabbixconfigurationgroupassignment(sender=ZabbixConfigurationGroupAssignment, instance=asn, created=True)
 
-        mock_resync.assert_called_once_with(asn)
+        mock_job.delay.assert_called_once_with(42)
 
-    @patch('nbxsync.signals.zabbixconfigurationgroupassignment.resync_zabbixconfigurationgroupassignment')
-    def test_postsave_returns_early_when_configgroup_none(self, mock_resync):
-        assignment = SimpleNamespace(zabbixconfigurationgroup=None)
+    @patch('nbxsync.signals.zabbixconfigurationgroupassignment.propagate_configgroup_assignment')
+    def test_postsave_returns_early_when_configgroup_none(self, mock_job):
+        asn = SimpleNamespace(zabbixconfigurationgroup=None)
 
-        handle_postsave_zabbixconfigurationgroupassignment(sender=ZabbixConfigurationGroupAssignment, instance=assignment, created=True)
+        handle_postsave_zabbixconfigurationgroupassignment(sender=ZabbixConfigurationGroupAssignment, instance=asn, created=True)
 
-        # No resync call when configgroup is None
-        mock_resync.assert_not_called()
+        mock_job.delay.assert_not_called()
 
-    @patch('nbxsync.signals.zabbixconfigurationgroupassignment.transaction.on_commit')
-    def test_postdelete_returns_early_when_configgroup_none(self, mock_on_commit):
-        assignment = SimpleNamespace(zabbixconfigurationgroup=None, assigned_object_type=None, assigned_object_id=None)
+    @patch('nbxsync.signals.zabbixconfigurationgroupassignment.delete_configgroup_assignment_children')
+    def test_postdelete_enqueues_job_when_configgroup_present(self, mock_job):
+        asn = SimpleNamespace(zabbixconfigurationgroup=self.cfg, assigned_object_type_id=99, assigned_object_id=7)
 
-        handle_postdelete_zabbixconfigurationgroupassignment(sender=ZabbixConfigurationGroupAssignment, instance=assignment)
+        handle_postdelete_zabbixconfigurationgroupassignment(sender=ZabbixConfigurationGroupAssignment, instance=asn)
 
-        # No on_commit scheduled when configgroup is None
-        mock_on_commit.assert_not_called()
+        mock_job.delay.assert_called_once_with(configgroup_pk=self.cfg.pk, assigned_object_type_pk=99, assigned_object_id=7)
+
+    @patch('nbxsync.signals.zabbixconfigurationgroupassignment.delete_configgroup_assignment_children')
+    def test_postdelete_returns_early_when_configgroup_none(self, mock_job):
+        asn = SimpleNamespace(zabbixconfigurationgroup=None, assigned_object_type_id=None, assigned_object_id=None)
+
+        handle_postdelete_zabbixconfigurationgroupassignment(sender=ZabbixConfigurationGroupAssignment, instance=asn)
+
+        mock_job.delay.assert_not_called()

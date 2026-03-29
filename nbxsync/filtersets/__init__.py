@@ -17,4 +17,4 @@ from .zabbixmaintenanceperiod import *
 from .zabbixmaintenanceobjectassignment import *
 from .zabbixmaintenancetagassignment import *
 from .zabbixconfigurationgroup import *
-from .zabbixconfiguationgroupassignment import *
+from .zabbixconfigurationgroupassignment import *

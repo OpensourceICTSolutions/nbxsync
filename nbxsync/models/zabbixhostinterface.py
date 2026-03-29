@@ -10,6 +10,7 @@ from django.utils.translation import gettext_lazy as _
 
 from netbox.models import NetBoxModel
 from ipam.models import IPAddress
+from utilities.jinja2 import render_jinja2
 
 from nbxsync.choices import (
     IPMIAuthTypeChoices,
@@ -26,6 +27,8 @@ from nbxsync.choices import (
 
 from nbxsync.constants import DEVICE_OR_VM_ASSIGNMENT_MODELS, CONFIGGROUP_OBJECTS
 from nbxsync.models import SyncInfoModel, ZabbixConfigurationGroup
+
+TEMPLATE_PATTERN = re.compile(r'({{.*?}}|{%-?\s*.*?\s*-?%}|{#.*?#})')
 
 
 def default_tls_accept():
@@ -61,6 +64,7 @@ class ZabbixHostInterface(SyncInfoModel, NetBoxModel):
     # SNMP (v1/v2/v3)
     snmp_version = models.IntegerField(choices=ZabbixHostInterfaceSNMPVersionChoices, default=ZabbixHostInterfaceSNMPVersionChoices.SNMPV2, blank=True, null=True, verbose_name=_('SNMP Version'))
     snmp_usebulk = models.BooleanField(default=True, verbose_name=_('SNMP Combined requests'))
+    snmp_max_repetitions = models.PositiveBigIntegerField(default=10, verbose_name=_('Max repetitions'))
 
     # SNMPv1/2-specific fields
     snmp_community = models.CharField(max_length=75, blank=True, verbose_name=_('SNMPv1/2 Community'))
@@ -99,6 +103,31 @@ class ZabbixHostInterface(SyncInfoModel, NetBoxModel):
                 violation_error_message='A default Hostinterface of this type has already been defined for this object.',
             ),
         ]
+
+    def get_context(self, **extra_context):
+        context = {
+            'object': self.assigned_object,
+            'dns': self.dns,
+        }
+        context.update(extra_context)
+        return context
+
+    def render_dns(self, **context):
+        context = self.get_context(**context)
+
+        if isinstance(self.assigned_object, ZabbixConfigurationGroup):
+            return self.dns, True
+
+        try:
+            output = render_jinja2(self.dns, context)
+            output = output.replace('\r\n', '\n')
+            return output, True
+
+        except Exception:
+            return self.dns, False
+
+    def dns_is_template(self):
+        return bool(TEMPLATE_PATTERN.search(self.dns))
 
     def clean(self):
         super().clean()
@@ -146,10 +175,18 @@ class ZabbixHostInterface(SyncInfoModel, NetBoxModel):
         # # The IP will be set upon assignment!
         if self.assigned_object_type == ContentType.objects.get_for_model(ZabbixConfigurationGroup):
             self.ip = None
-            self.dns = ''
+            # Only set DNS to '' when its NOT a template
+            if not self.dns_is_template():
+                self.dns = ''
 
         if errors:
             raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        if self.snmp_max_repetitions is None:
+            self.snmp_max_repetitions = 10
+
+        super().save(*args, **kwargs)
 
     def get_useip_display(self):
         return ZabbixInterfaceUseChoices(self.useip).label

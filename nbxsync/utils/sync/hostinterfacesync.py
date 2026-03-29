@@ -32,11 +32,12 @@ class HostInterfaceSync(ZabbixSyncBase):
         if self.obj.ip_id:
             ipaddr = IPAddress.objects.get(id=self.obj.ip_id).address.ip
 
+        dns_name, _ = self.obj.render_dns()
         result = {
             'hostid': hostid,
             'type': self.obj.type,
             'ip': str(ipaddr),
-            'dns': self.obj.dns,
+            'dns': dns_name,
             'port': str(self.obj.port),
             'useip': self.obj.useip,
             'main': self.obj.interface_type,
@@ -51,6 +52,9 @@ class HostInterfaceSync(ZabbixSyncBase):
             if self.obj.snmp_version in [1, 2]:  # community is required if the SNMP Version is SNMPv1 or SNMPv2
                 snmp_community_macro = getattr(self.pluginsettings.snmpconfig, 'snmp_community', '{$SNMP_COMMUNITY}')
                 snmp_dict['community'] = snmp_community_macro
+
+            if self.obj.snmp_version in [2, 3]:
+                snmp_dict['max_repetitions'] = self.obj.snmp_max_repetitions
 
             if self.obj.snmp_version == 3:
                 snmp_authpass_macro = getattr(self.pluginsettings.snmpconfig, 'snmp_authpass', '{$SNMPV3_AUTHPASS}')
@@ -103,9 +107,12 @@ class HostInterfaceSync(ZabbixSyncBase):
                 if self.obj.snmp_version in [1, 2]:
                     self.obj.snmp_community = snmp_data.get('community', '')
 
-                elif self.obj.snmp_version == 3:
-                    self.obj.snmpv3_context_name = snmp_data.get('contextname', '')
-                    self.obj.snmpv3_security_name = snmp_data.get('securityname', '')
+                if self.obj.snmp_version in [2, 3]:
+                    self.obj.snmp_max_repetitions = int(data.get('max_repetitions', 10))
+
+                if self.obj.snmp_version == 3:
+                    self.obj.snmpv3_context_name = snmp_data.get('context_name', '')
+                    self.obj.snmpv3_security_name = snmp_data.get('security_name', '')
                     self.obj.snmpv3_security_level = snmp_data.get('securitylevel')
                     self.obj.snmpv3_authentication_protocol = snmp_data.get('authprotocol')
                     self.obj.snmpv3_privacy_protocol = snmp_data.get('privprotocol')
