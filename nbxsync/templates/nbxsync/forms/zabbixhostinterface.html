@@ -123,7 +123,7 @@
     <div class="field-group my-5">
         <div class="row mb-2">
             {% for fieldset in form.fieldsets %}
-                {% if fieldset.name == "Assignment" %}
+                {% if fieldset.name == _('Assignment') %}
                     {% render_fieldset form fieldset %}
                 {% endif %}
             {% endfor %}
