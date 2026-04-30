@@ -20,12 +20,33 @@ class HostSync(ZabbixSyncBase):
     def api_object(self):
         return self.api.host
 
-    def get_name_value(self):
+    def get_base_name(self):
         # If the object has the "name" attribute, only return that (Device). If not (cornercase?), return the display string
         if hasattr(self.obj.assigned_object, 'name'):
             return self.obj.assigned_object.name
 
         return str(self.obj.assigned_object)
+
+    def get_name_value(self):
+        base_name = self.get_base_name()
+        cf_name = getattr(self.pluginsettings, 'custom_field_hostname', '')
+        if cf_name and hasattr(self.obj.assigned_object, 'custom_field_data'):
+            cf_value = self.obj.assigned_object.custom_field_data.get(cf_name)
+            if cf_value:
+                return str(cf_value)
+        return base_name
+
+    def get_display_name(self):
+        base_name = self.get_base_name()
+        cf_name = getattr(self.pluginsettings, 'custom_field_display_name', '')
+        if cf_name and hasattr(self.obj.assigned_object, 'custom_field_data'):
+            cf_value = self.obj.assigned_object.custom_field_data.get(cf_name)
+            if cf_value:
+                return str(cf_value)
+        return base_name
+
+    def find_by_name(self):
+        return self.api_object().get(filter={'host': self.sanitize_string(input_str=str(self.get_name_value()))})
 
     def get_create_params(self):
         status = self.obj.assigned_object.status
@@ -41,7 +62,7 @@ class HostSync(ZabbixSyncBase):
 
         return {
             'host': self.sanitize_string(input_str=str(self.get_name_value())),
-            'name': self.get_name_value(),
+            'name': self.get_display_name(),
             'groups': self.get_groups(),
             'status': host_status,
             'description': self.obj.assigned_object.description or '',
