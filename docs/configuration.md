@@ -78,7 +78,9 @@ The plugin is configuration to do exactly what you want, by means of the plugin 
     'no_alerting_tag_value': '1',
     'attach_objtag': True,
     'objtag_type': 'nb_type',
-    'objtag_id': 'nb_id'
+    'objtag_id': 'nb_id',
+    'custom_field_hostname':'',
+    'custom_field_display_name':''
 }
 ```
 
@@ -207,6 +209,9 @@ These tags allow you to navigate from a Zabbix host back to the corresponding  N
 | `attach_objtag` | `True`    | Enable or disable auto-tagging      |
 | `objtag_type`   | `nb_type` | Tag name for the NetBox object type |
 | `objtag_id`     | `nb_id`   | Tag name for the NetBox object ID   |
+
+### custom_field_hostname and custom_field_display_name
+You can use these fields to map the connection between NetBox and the Zabbix hostname and display name. The device name is used as the default.
 
 ## Enabling and Disabling Synchronization
 
