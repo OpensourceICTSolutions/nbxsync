@@ -20,6 +20,8 @@ class ZabbixConfigurationGroup(NetBoxModel):
 
 A minimal model, just a name and a description. All the complexity lives in assignments and signals around it. It inherits `NetBoxModel`, giving it standard NetBox features: changelog, tags, custom fields, creation/update timestamps, etc.
 
+
+
 ### `ZabbixConfigurationGroupAssignment`
 
 ```python
@@ -54,23 +56,31 @@ The `ASSIGNMENT_MODELS` constant is intentionally broader than `DEVICE_OR_VM_ASS
 
 ## How Propagation Works — Step by Step
 
-When a device or VM is added to a group, the system propagates every piece of Zabbix config from the group to that device. This entire flow is driven by **Django signals** and **deferred `on_commit` execution**.
+When a device or VM is added to a group, the system propagates every piece of Zabbix config from the group to that device. This flow is driven by **Django signals** that dispatch **RQ background jobs**, which in turn execute the actual database mutations safely after the transaction commits.
 
 ### Step 1 — Membership is saved
 
 A `ZabbixConfigurationGroupAssignment` is created or updated (device → group link).
 
-### Step 2 — `post_save` signal fires
+### Step 2 — `post_save` signal fires and enqueues an RQ job
 
-```python
+```python filename="test"
 @receiver(post_save, sender=ZabbixConfigurationGroupAssignment)
 def handle_postsave_zabbixconfigurationgroupassignment(sender, instance, created, **kwargs):
-    resync_zabbixconfigurationgroupassignment(instance)
+    if instance.zabbixconfigurationgroup is None:
+        return
+
+    propagate_configgroup_assignment.delay(instance.pk)
 ```
 
-### Step 3 — `resync_zabbixconfigurationgroupassignment` runs
+The signal does not run propagation inline. It enqueues a `propagate_configgroup_assignment` background job on the RQ `low` queue and returns immediately, so the HTTP request that triggered the save is not blocked.
 
-This is the main propagation engine (`utils/cfggroup/resync_zabbixconfiggroupassignment.py`). For each assignment type it:
+
+### Step 3 — The job runs `resync_zabbixconfigurationgroupassignment`
+
+A worker picks up the job and calls `PropagateConfigGroupAssignmentJob.run()`, which calls `resync_zabbixconfigurationgroupassignment(instance)` — the main propagation engine in `utils/cfggroup/resync_zabbixconfiggroupassignment.py`.
+
+For each assignment type it:
 
 1. Looks up all group-level definitions for this config group (e.g. all `ZabbixServerAssignment` records where `assigned_object = this_configgroup`).
 2. For each one, calls `propagate_group_assignment()`.
@@ -102,11 +112,11 @@ def propagate_group_assignment(*, instance, model, lookup_factory, ...):
 
 For each member, it upserts the assignment record on that device, copying all non-excluded fields from the group-level definition and stamping `zabbixconfigurationgroup` with the group FK.
 
-The whole inner function runs **after the transaction commits** (`on_commit`), which prevents partial state from being visible to the sync worker.
+The actual mutations are wrapped in `transaction.on_commit(_do)`, so they only execute after the job's own database transaction commits. This prevents partial state from ever being visible.
 
 ### Step 5 — Special handling for HostInterfaces
 
-Host interfaces get separate treatment because they require an IP address:
+Host interfaces get separate treatment because they require an IP address. After all other assignment types are processed, a `transaction.on_commit` callback runs the interface propagation:
 
 ```python
 for parent in hostinterface_parents:
@@ -127,20 +137,30 @@ Because the group-level `ZabbixHostInterface` has no IP (it can't — it's on th
 
 ## The Reverse: Cleanup on Removal
 
-When a `ZabbixConfigurationGroupAssignment` is deleted (device leaves the group), the `post_delete` signal fires and removes all group-cloned assignments from that device:
+When a `ZabbixConfigurationGroupAssignment` is deleted (device leaves the group), the `post_delete` signal enqueues a cleanup job:
 
 ```python
 @receiver(post_delete, sender=ZabbixConfigurationGroupAssignment)
 def handle_postdelete_zabbixconfigurationgroupassignment(sender, instance, **kwargs):
-    def _delete_children():
-        ZabbixServerAssignment.objects.filter(
-            zabbixconfigurationgroup=configgroup,
-            assigned_object_type=assigned_ct,
-            assigned_object_id=assigned_id,
-        ).delete()
-        # ... same for Template, Tag, Hostgroup, Macro, HostInterface
-    
-    transaction.on_commit(_delete_children)
+    if instance.zabbixconfigurationgroup is None:
+        return
+
+    delete_configgroup_assignment_children.delay(
+        configgroup_pk=instance.zabbixconfigurationgroup.pk,
+        assigned_object_type_pk=instance.assigned_object_type_id,
+        assigned_object_id=instance.assigned_object_id,
+    )
+```
+
+The `DeleteConfigGroupAssignmentChildrenJob` that runs in the worker removes all group-cloned assignments from the departing device across every assignment type:
+
+```python
+ZabbixServerAssignment.objects.filter(**filter_kwargs).delete()
+ZabbixTemplateAssignment.objects.filter(**filter_kwargs).delete()
+ZabbixTagAssignment.objects.filter(**filter_kwargs).delete()
+ZabbixHostgroupAssignment.objects.filter(**filter_kwargs).delete()
+ZabbixMacroAssignment.objects.filter(**filter_kwargs).delete()
+ZabbixHostInterface.objects.filter(**filter_kwargs).delete()
 ```
 
 Only records stamped with this group's FK are deleted. Manually created assignments (where `zabbixconfigurationgroup=NULL`) are untouched.
@@ -149,7 +169,7 @@ Only records stamped with this group's FK are deleted. Manually created assignme
 
 ## Bidirectional Sync: Group Config Changes Propagate Too
 
-When a group-level assignment is **created or updated** (e.g. you add a new Zabbix template to the group), the assignment model's own `post_save` signal handles propagation:
+When a group-level assignment is **created or updated** (e.g. you add a new Zabbix template to the group), the assignment model's own `post_save` signal enqueues a targeted propagation job:
 
 ```python
 @receiver(post_save, sender=ZabbixServerAssignment)
@@ -157,12 +177,12 @@ def handle_sync_zabbixserverassignment(sender, instance, **kwargs):
     if not is_configgroup_assignment(instance):
         return  # Only act on group-level definitions
 
-    propagate_group_assignment(instance=instance, model=ZabbixServerAssignment, ...)
+    propagate_server_assignment.delay(instance.pk)
 ```
 
-`is_configgroup_assignment()` checks whether `assigned_object_type` points to `ZabbixConfigurationGroup`. If it does, propagation runs. If it's a direct device/VM assignment, nothing happens.
+`is_configgroup_assignment()` checks whether `assigned_object_type` points to `ZabbixConfigurationGroup`. If it does, the corresponding propagation job is enqueued. If it's a direct device/VM assignment, nothing happens.
 
-Similarly, when a group-level assignment is **deleted** (e.g. a template is removed from the group), `delete_group_clones()` is called to remove the cloned assignments from all group members.
+Each assignment type has its own pair of propagation and cleanup jobs (`propagate_server_assignment` / `delete_server_assignment_clones`, `propagate_template_assignment` / `delete_template_assignment_clones`, and so on). When a group-level assignment is **deleted** (e.g. a template is removed from the group), the matching delete job removes the cloned assignments from all current group members.
 
 ---
 
@@ -216,21 +236,23 @@ ZabbixConfigurationGroup  (e.g. "Router Profile")
       └── → VirtualMachine: vm-03
 
 On membership save/delete:
-  Signal → resync_zabbixconfigurationgroupassignment()
+  Signal → enqueues RQ job (low queue)
+         → job calls resync_zabbixconfigurationgroupassignment()
          → propagate_group_assignment() for each assignment type
          → upsert/delete cloned records on each member device/VM
-         → all deferred via transaction.on_commit()
+         → DB mutations deferred via transaction.on_commit()
 ```
 
 ---
 
 ## Key Design Properties
 
-| Property | Detail |
-|---|---|
-| **Generic FK pattern** | Groups are assigned to devices the same way any other NetBox object is, using `ContentType` + `object_id`. |
-| **Provenance tracking** | Cloned records carry a `zabbixconfigurationgroup` FK so they can be distinguished from manual assignments and cleaned up correctly. |
-| **Non-destructive** | Manual (non-group) assignments on a device are never overwritten by propagation. |
-| **Transactionally safe** | All mutations run in `on_commit` callbacks, so partial state is never exposed. |
-| **Bidirectional** | Changes to group membership AND changes to group-level config both trigger propagation. |
-| **IP injection** | Host interfaces are a special case: the IP is pulled from the device's `primary_ip` at propagation time, not stored on the group. |
+| Property                 | Detail                                                                                                                                              |
+|--------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Generic FK pattern**   | Groups are assigned to devices the same way any other NetBox object is, using `ContentType` + `object_id`                                           |
+| **Provenance tracking**  | Cloned records carry a `zabbixconfigurationgroup` FK so they can be distinguished from manual assignments and cleaned up correctly                  |
+| **Non-destructive**      | Manual (non-group) assignments on a device are never overwritten by propagation                                                                     |
+| **Asynchronous**         | All propagation runs in RQ background jobs on the `low` queue, so the request that triggered the change returns immediately without blocking the UI |
+| **Transactionally safe** | Within each job, DB mutations run inside `transaction.on_commit()` callbacks, so partial state is never exposed                                     |
+| **Bidirectional**        | Changes to group membership AND changes to group-level config both trigger propagation                                                              |
+| **IP injection**         | Host interfaces are a special case: the IP is pulled from the device's `primary_ip` at propagation time, not stored on the group                    |
