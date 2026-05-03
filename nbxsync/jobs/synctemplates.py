@@ -91,7 +91,7 @@ class SyncTemplatesJob:
 
             self.instance.last_sync_state = True
             self.instance.last_sync = make_aware(datetime.datetime.now())
-            self.instance.last_sync_message = 'Succes'
+            self.instance.last_sync_message = 'Success'
             self.instance.save()
 
         except ConnectionError as e:

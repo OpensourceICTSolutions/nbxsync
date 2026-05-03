@@ -239,6 +239,9 @@ class HostSyncTestCase(TestCase):
                 self.zabbixmacro = DummyZabbixMacro(type_=1, description='Test Macro')
                 self.value = 'secret-value'
 
+            def render(self, object):
+                return 'secret-value', True
+
             def __str__(self):
                 return '{$TEST_MACRO}'
 
@@ -264,6 +267,9 @@ class HostSyncTestCase(TestCase):
             def __init__(self):
                 self.zabbixmacro = DummyZabbixMacro(type_=1, description='From NetBox')
                 self.value = 'nb-value'
+
+            def render(self, object):
+                return 'nb-value', True
 
             def __str__(self):
                 return '{$FROM_NETBOX}'

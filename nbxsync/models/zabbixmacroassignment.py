@@ -1,14 +1,20 @@
+import re
+
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models
 
-from netbox.models import NetBoxModel
+from jinja2 import TemplateError, TemplateSyntaxError, UndefinedError
+from utilities.jinja2 import render_jinja2
 
+from netbox.models import NetBoxModel
 from nbxsync.constants import ASSIGNMENT_MODELS
-from nbxsync.models import SyncInfoModel
+from nbxsync.models import SyncInfoModel, ZabbixConfigurationGroup
 
 __all__ = ('ZabbixMacroAssignment',)
+
+TEMPLATE_PATTERN = re.compile(r'({{.*?}}|{%-?\s*.*?\s*-?%}|{#.*?#})')
 
 
 class ZabbixMacroAssignment(SyncInfoModel, NetBoxModel):
@@ -58,6 +64,42 @@ class ZabbixMacroAssignment(SyncInfoModel, NetBoxModel):
                 return f'{self.zabbixmacro.macro[:-1]}:regex:"{self.context}"}}'
             return f'{self.zabbixmacro.macro[:-1]}:{self.context}}}'
         return self.zabbixmacro.macro
+
+    def is_template(self):
+        return bool(TEMPLATE_PATTERN.search(self.value))
+
+    def render(self, **context):
+        if isinstance(self.assigned_object, ZabbixConfigurationGroup):
+            return self.value, True
+
+        context = self.get_context(**context)
+
+        try:
+            output = render_jinja2(self.value, context)
+            output = output.replace('\r\n', '\n')
+            return output, True
+
+        except TemplateSyntaxError as err:
+            return self.value, False
+
+        except UndefinedError as err:
+            return self.value, False
+
+        except TemplateError as err:
+            return self.value, False
+
+        except Exception as err:
+            return self.value, False
+
+    def get_context(self, **extra_context):
+        context = {
+            'object': self.assigned_object,
+            'macro': self.zabbixmacro.macro,
+            'value': self.value,
+            'description': self.zabbixmacro.description,
+        }
+        context.update(extra_context)
+        return context
 
     @property
     def full_name(self):
