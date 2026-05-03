@@ -96,12 +96,13 @@ class HostSync(ZabbixSyncBase):
     def get_defined_macros(self):
         result = []
         for macro in self.context.get('all_objects', {}).get('macros'):
+            rendered_value, _ = macro.render(object=self.obj.assigned_object)
             result.append(
                 {
                     'macro': str(macro),
                     'type': macro.zabbixmacro.type,
                     'description': macro.zabbixmacro.description,
-                    'value': macro.value,
+                    'value': rendered_value,
                 }
             )
 

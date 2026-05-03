@@ -6,7 +6,7 @@ from netbox.tables import NetBoxTable
 
 from nbxsync.models import ZabbixMacroAssignment
 from nbxsync.tables import ZabbixInheritedAssignmentTable
-from nbxsync.tables.columns import ContentTypeModelNameColumn, InheritanceAwareActionsColumn
+from nbxsync.tables.columns import ContentTypeModelNameColumn, InheritanceAwareActionsColumn, JinjaValueColumn
 from nbxsync.choices import ZabbixMacroTypeChoices
 
 __all__ = ('ZabbixMacroAssignmentTable', 'ZabbixMacroAssignmentObjectViewTable')
@@ -18,6 +18,11 @@ class ZabbixMacroAssignmentTable(ZabbixInheritedAssignmentTable, NetBoxTable):
     zabbixmacro = tables.Column(accessor='zabbixmacro.macro', verbose_name=_('Zabbix Macro'), linkify={'viewname': 'plugins:nbxsync:zabbixmacro', 'args': [A('zabbixmacro.pk')]})
     macro_full_name = tables.Column(accessor='full_name', verbose_name=_('Macro'), order_by='zabbixmacro__macro')
     actions = InheritanceAwareActionsColumn()
+    rendered_output = JinjaValueColumn(
+        verbose_name='Value',
+        orderable=False,
+        accessor='value',
+    )
 
     class Meta(NetBoxTable.Meta):
         model = ZabbixMacroAssignment
@@ -30,10 +35,10 @@ class ZabbixMacroAssignmentTable(ZabbixInheritedAssignmentTable, NetBoxTable):
             'inherited_from',
             'is_context',
             'regex',
-            'value',
+            'rendered_output',
             'created',
             'last_updated',
-            'actions,',
+            'actions',
         )
         default_columns = (
             'pk',
@@ -43,7 +48,7 @@ class ZabbixMacroAssignmentTable(ZabbixInheritedAssignmentTable, NetBoxTable):
             'macro_full_name',
             'is_context',
             'regex',
-            'value',
+            'rendered_output',
             'inherited_from',
         )
 
@@ -58,7 +63,11 @@ class ZabbixMacroAssignmentObjectViewTable(ZabbixInheritedAssignmentTable, NetBo
     assigned_object = tables.Column(verbose_name=_('Assigned To'), linkify=True, orderable=False)
     macro_full_name = tables.Column(accessor='full_name', verbose_name=_('Macro'), order_by='zabbixmacro__macro', linkify={'viewname': 'plugins:nbxsync:zabbixmacro', 'args': [A('zabbixmacro.pk')]})
     actions = InheritanceAwareActionsColumn()
-    value = tables.Column(verbose_name='Value')
+    rendered_output = JinjaValueColumn(
+        verbose_name='Value',
+        orderable=False,
+        accessor='value',
+    )
 
     class Meta(NetBoxTable.Meta):
         model = ZabbixMacroAssignment
@@ -71,7 +80,7 @@ class ZabbixMacroAssignmentObjectViewTable(ZabbixInheritedAssignmentTable, NetBo
             'inherited_from',
             'is_regex',
             'context',
-            'value',
+            'rendered_output',
             'created',
             'last_updated',
             'actions,',
@@ -81,7 +90,7 @@ class ZabbixMacroAssignmentObjectViewTable(ZabbixInheritedAssignmentTable, NetBo
             'macro_full_name',
             'is_regex',
             'context',
-            'value',
+            'rendered_output',
             'inherited_from',
         )
 

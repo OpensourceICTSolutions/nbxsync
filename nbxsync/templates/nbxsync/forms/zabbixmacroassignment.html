@@ -23,7 +23,7 @@
             </div>
         </div>
         {% for fieldset in form.fieldsets %}
-            {% if fieldset.name == _("Assignment") %}
+            {% if fieldset.name == _('Assignment') %}
                 {% render_fieldset form fieldset %}
             {% endif %}
         {% endfor %}
