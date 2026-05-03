@@ -406,12 +406,20 @@ class HostSync(ZabbixSyncBase):
                 pass
             return
 
+        # The assigned object (Device/VM) may already be gone if this job runs
+        # after a cascade delete. Resolve it once and guard all uses below.
+        assigned_object = self.obj.assigned_object
+        if assigned_object is None:
+            # NetBox object is gone — still delete the Zabbix host, then clean up
+            # what we can without touching the now-invalid assignment row.
+            try:
+                self.api_object().delete([self.obj.hostid])
+            except Exception as e:
+                raise RuntimeError(f'Failed to delete orphaned host {self.obj.hostid} from Zabbix: {e}')
+            return
+
         try:
-            # Check for maintenances where this host is attached to
-            # If found:
-            #    Check if this host is the only host for this maintenance; if so - delete the maintenance window
-            #    If not: delete the host from the maintenance window
-            object_ct = ContentType.objects.get_for_model(self.obj.assigned_object)
+            object_ct = ContentType.objects.get_for_model(assigned_object)
             maintenances = self.api.maintenance.get(hostids=[self.obj.hostid], selectHosts='extend')
             for mw in maintenances:
                 # Check per maintenance window if this host is the only host in the window or not. If it is, we can delete it
@@ -421,7 +429,7 @@ class HostSync(ZabbixSyncBase):
                     hosts = [{'hostid': host['hostid']} for host in mw['hosts'] if int(host['hostid']) != self.obj.hostid]
                     # Update the maintenance window in Zabbix without our hostid in it
                     self.api.maintenance.update(maintenanceid=mw['maintenanceid'], hosts=hosts)
-                    for assignment in ZabbixMaintenanceObjectAssignment.objects.filter(maintenanceid=mw['maintenanceid'], assigned_object_type=object_ct, assigned_object_id=self.obj.assigned_object.id):
+                    for assignment in ZabbixMaintenanceObjectAssignment.objects.filter(maintenanceid=mw['maintenanceid'], assigned_object_type=object_ct, assigned_object_id=assigned_object.id):
                         assignment.delete()  # Delete the Assignment from Netbox;
 
                 # If our host is the only one in the Maintenance Object
@@ -442,7 +450,7 @@ class HostSync(ZabbixSyncBase):
 
             # Also clear host IDs from related interfaces
             try:
-                ZabbixHostInterface.objects.filter(assigned_object_type=self.obj.assigned_object_type, assigned_object_id=self.obj.assigned_object.id, zabbixserver=self.obj.zabbixserver).update(interfaceid=None)
+                ZabbixHostInterface.objects.filter(assigned_object_type=self.obj.assigned_object_type, assigned_object_id=assigned_object.id, zabbixserver=self.obj.zabbixserver).update(interfaceid=None)
 
                 self.obj.update_sync_info(success=True, message='Host deleted from Zabbix.')
             except Exception:
