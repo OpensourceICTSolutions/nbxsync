@@ -111,7 +111,6 @@ class ZabbixTagAssignmentForm(NetBoxModelForm):
                 self.fields['zabbixtag'].queryset = ZabbixTag.objects.exclude(pk__in=excluded_ids)
                 self.fields['zabbixtag'].widget.add_query_params({'id__n': list(excluded_ids)})
 
-
     def clean(self):
         super().clean()
 
