@@ -77,6 +77,9 @@ class HostInterfaceSync(ZabbixSyncBase):
     def get_update_params(self, **kwargs):
         params = self.get_create_params()
         params['interfaceid'] = self.obj.interfaceid
+
+        # Zabbix forbids changing hostid on update
+        params.pop('hostid', None)
         return params
 
     def result_key(self):
@@ -126,3 +129,25 @@ class HostInterfaceSync(ZabbixSyncBase):
 
         except Exception as err:
             self.obj.update_sync_info(success=False, message=str(err))
+
+    def find_by_id(self):
+        if not self.obj.interfaceid:
+            return []
+
+        found = self.api_object().get(interfaceids=self.obj.interfaceid, output=['interfaceid', 'hostid'])
+
+        if not found:
+            # interfaceid no longer exists in Zabbix, clear it so the next sync cycle falls through to find_by_name / try_create
+            self.obj.interfaceid = None
+            self.obj.save(update_fields=['interfaceid'])
+            return []
+
+        expected_hostid = str(self.context.get('hostid') or '')
+        if expected_hostid and str(found[0]['hostid']) != expected_hostid:
+            # interfaceid exists but belongs to a different host: this is a stale reference.
+            # Clear it and let the sync re-establish the correct interface
+            self.obj.interfaceid = None
+            self.obj.save(update_fields=['interfaceid'])
+            return []
+
+        return found
