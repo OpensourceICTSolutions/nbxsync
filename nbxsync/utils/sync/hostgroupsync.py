@@ -65,8 +65,14 @@ class HostGroupSync(ZabbixSyncBase):
 
         name, _state = self.obj.render()
 
-        # Try to get the hostgroup by value (the Zabbix name)
-        hostgroup = ZabbixHostgroup.objects.get(zabbixserver=self.obj.zabbixhostgroup.zabbixserver, value=name)
+        zabbixserver = self.obj.zabbixhostgroup.zabbixserver
+        # Try to find an existing local representation for the rendered Zabbix group.
+        # Dynamic groups created from templates are stored with the rendered group
+        # name in both `name` and `value`, so check either field without raising.
+        hostgroup = (
+            ZabbixHostgroup.objects.filter(zabbixserver=zabbixserver, name=name).first()
+            or ZabbixHostgroup.objects.filter(zabbixserver=zabbixserver, value=name).first()
+        )
 
         if hostgroup:
             hostgroup.groupid = value
@@ -74,8 +80,8 @@ class HostGroupSync(ZabbixSyncBase):
             return
 
         # Not found by name, so create it
-        ZabbixHostgroup(zabbixserver=self.obj.zabbixhostgroup.zabbixserver, name=name, value=name, groupid=value, description='Automatically generated from template').save()
-
+        ZabbixHostgroup(zabbixserver=zabbixserver, name=name, value=name, groupid=value, description='Automatically generated from template').save()
+        
     def get_id(self):
         if self.obj.is_template():
             # print('HostGroupSync: Detected template value, skipping groupid usage.')
