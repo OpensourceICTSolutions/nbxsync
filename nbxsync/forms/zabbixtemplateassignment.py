@@ -11,6 +11,7 @@ from virtualization.models import Cluster, ClusterType, VirtualMachine
 
 from nbxsync.constants import ASSIGNMENT_TYPE_TO_FIELD, ASSIGNMENT_TYPE_TO_FIELD_NBOBJS
 from nbxsync.models import ZabbixTemplate, ZabbixTemplateAssignment, ZabbixConfigurationGroup
+from nbxsync.utils import get_assigned_zabbixobjects
 
 __all__ = ('ZabbixTemplateAssignmentForm', 'ZabbixTemplateAssignmentFilterForm')
 logger = logging.getLogger(__name__)
@@ -71,8 +72,10 @@ class ZabbixTemplateAssignmentForm(NetBoxModelForm):
     def __init__(self, *args, **kwargs):
         instance = kwargs.get('instance')
         initial = kwargs.get('initial', {}).copy()
+        target = None
 
         if instance and instance.assigned_object:
+            target = instance.assigned_object
             for model_class, field in ASSIGNMENT_TYPE_TO_FIELD.items():
                 if isinstance(instance.assigned_object, model_class):
                     initial[field] = instance.assigned_object
@@ -81,11 +84,11 @@ class ZabbixTemplateAssignmentForm(NetBoxModelForm):
         elif 'assigned_object_type' in initial and 'assigned_object_id' in initial:
             try:
                 content_type = ContentType.objects.get(pk=initial['assigned_object_type'])
-                obj = content_type.get_object_for_this_type(pk=initial['assigned_object_id'])
+                target = content_type.get_object_for_this_type(pk=initial['assigned_object_id'])
 
                 for model_class, field in ASSIGNMENT_TYPE_TO_FIELD.items():
-                    if isinstance(obj, model_class):
-                        initial[field] = obj.pk
+                    if isinstance(target, model_class):
+                        initial[field] = target.pk
                         break
 
             except Exception as e:
@@ -94,6 +97,19 @@ class ZabbixTemplateAssignmentForm(NetBoxModelForm):
 
         kwargs['initial'] = initial
         super().__init__(*args, **kwargs)
+
+        if target is not None:
+            assigned = get_assigned_zabbixobjects(target)
+            excluded_ids = set()
+            for assigned_template in assigned['templates']:
+                excluded_ids.add(assigned_template.zabbixtemplate_id)
+
+            if instance is not None and instance.pk and instance.zabbixtemplate_id:
+                excluded_ids.discard(instance.zabbixtemplate_id)
+
+            if excluded_ids:
+                self.fields['zabbixtemplate'].queryset = ZabbixTemplate.objects.exclude(pk__in=excluded_ids)
+                self.fields['zabbixtemplate'].widget.add_query_params({'id__n': list(excluded_ids)})
 
     def clean(self):
         super().clean()
