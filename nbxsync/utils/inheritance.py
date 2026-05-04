@@ -18,16 +18,18 @@ def get_zabbixassignments_for_request(instance, request):
     assignments = get_assigned_zabbixobjects(instance)
     content_type = ContentType.objects.get_for_model(instance)
 
-    def table_or_none(data, table_cls):
+    def table_or_none(data, table_cls, attach_instance=False):
         if data:
             table = table_cls(data)
             table.configure(request)
+            if attach_instance:
+                table.instance = instance
             return table
         return None
 
     return {
         'zabbix_template_table': table_or_none(assignments['templates'], ZabbixTemplateAssignmentObjectViewTable),
-        'zabbix_macro_table': table_or_none(assignments['macros'], ZabbixMacroAssignmentObjectViewTable),
+        'zabbix_macro_table': table_or_none(assignments['macros'], ZabbixMacroAssignmentObjectViewTable, attach_instance=True),
         'zabbix_tag_table': table_or_none(assignments['tags'], ZabbixTagAssignmentObjectViewTable),
         'zabbix_hostgroup_table': table_or_none(assignments['hostgroups'], ZabbixHostgroupAssignmentObjectViewTable),
         'object': instance,

@@ -39,3 +39,13 @@ class ContentTypeModelNameColumn(tables.Column):
         if model is None:
             return capfirst(value.model.replace('_', ' '))
         return capfirst(model._meta.verbose_name)
+
+
+class JinjaValueColumn(tables.Column):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def render(self, value, record, table):
+        instance = getattr(table, 'instance', None)
+        output, success = record.render(object=instance)
+        return output

@@ -77,3 +77,15 @@ class HostGroupSyncIntegrationTests(TestCase):
         self.assertEqual(updated_hg.groupid, 999)
         self.assertEqual(updated_hg.name, 'ExistingGroup')
         self.assertEqual(updated_hg.zabbixserver, self.zabbixserver)
+
+    def test_set_id_dynamic_creates_rendered_hostgroup_when_missing(self):
+        rendered_name, ok = self.assignment_dynamic.render()
+        self.assertTrue(ok)
+
+        sync = HostGroupSync(api=None, netbox_obj=self.assignment_dynamic)
+        sync.set_id(321)
+
+        created_hg = ZabbixHostgroup.objects.get(zabbixserver=self.zabbixserver, name=rendered_name)
+        self.assertEqual(created_hg.value, rendered_name)
+        self.assertEqual(created_hg.groupid, 321)
+        self.assertEqual(created_hg.description, 'Automatically generated from template')

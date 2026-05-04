@@ -5,16 +5,15 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
 from django.apps import apps
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema
 
-from nbxsync.api.serializers import ZabbixHostInterfaceSerializer
-from nbxsync.models import ZabbixHostInterface
 from nbxsync.constants import OBJECT_TYPE_MODEL_MAP
 
 
 class ZabbixSyncViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
-    serializer_class = ZabbixHostInterfaceSerializer
 
+    @extend_schema(exclude=True)
     def create(self, request, **kwargs):
         obj_type = (request.data.get('obj_type') or '').strip().lower()
         obj_id = request.data.get('obj_id')
