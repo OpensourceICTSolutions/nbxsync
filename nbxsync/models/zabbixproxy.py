@@ -62,8 +62,8 @@ class ZabbixProxy(SyncInfoModel, NetBoxModel):
         errors = {}
 
         # Validate local_address field
-        if not self.local_address and self.proxygroup is not None and self.operating_mode == ZabbixProxyTypeChoices.ACTIVE:
-            errors['local_address'] = _('Local Address must be specified when part of a ProxyGroup and Operating Mode is set to Active')
+        if not self.local_address and self.proxygroup is not None:
+            errors['local_address'] = _('Local Address must be specified when part of a ProxyGroup')
 
         # Validate if local_address is valid
         if self.local_address is not None and self.operating_mode == ZabbixProxyTypeChoices.ACTIVE:
@@ -151,8 +151,9 @@ class ZabbixProxy(SyncInfoModel, NetBoxModel):
             self.tls_connect = ZabbixTLSChoices.NO_ENCRYPTION
 
         if self.operating_mode == ZabbixProxyTypeChoices.PASSIVE:
-            self.local_address = ''
-            self.local_port = 10051
+            if not self.proxygroup:
+                self.local_address = ''
+                self.local_port = 10051
             self.allowed_addresses = []
             self.tls_accept = [ZabbixTLSChoices.NO_ENCRYPTION]
 
