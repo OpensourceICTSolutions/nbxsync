@@ -84,6 +84,24 @@ None
 
 None
 
+## [1.0.4] - Minor update
+
+- Updated the documentation
+
+### New features
+
+- Updated the Zabbix Template Assignment and Zabbix Tag Assignment forms so no duplicate templates/tags can't be assigned ([#78])
+- Zabbix Macro's now support Jinja2 templated values ([#83])
+
+### Bug fixes
+
+- Fixed issue with internationalization of field set names on forms ([#39])
+- Fixed typo in last_sync_message ([#77])
+- Fixed issue with API Schema not being able to generated ([#79])
+- Manual device sync fails for templated Zabbix hostgroups when the rendered local hostgroup does not already exist ([#81])
+- Ensure that the worker doesn't crash on certain race conditions with regards to the hostinterfacesync job ([#86])
+- Fix issue with DeleteHost so it now actually removed the device/object from Zabbix when its deleted from NetBox ([#88])
+
 
 [#5]: https://github.com/OpensourceICTSolutions/nbxsync/issues/5
 [#20]: https://github.com/OpensourceICTSolutions/nbxsync/issues/20
@@ -106,3 +124,9 @@ None
 [#68]: https://github.com/OpensourceICTSolutions/nbxsync/issues/68
 [#71]: https://github.com/OpensourceICTSolutions/nbxsync/issues/71
 [#74]: https://github.com/OpensourceICTSolutions/nbxsync/issues/74
+[#77]: https://github.com/OpensourceICTSolutions/nbxsync/issues/77
+[#78]: https://github.com/OpensourceICTSolutions/nbxsync/issues/78
+[#79]: https://github.com/OpensourceICTSolutions/nbxsync/issues/79
+[#81]: https://github.com/OpensourceICTSolutions/nbxsync/issues/81
+[#86]: https://github.com/OpensourceICTSolutions/nbxsync/issues/86
+[#88]: https://github.com/OpensourceICTSolutions/nbxsync/issues/88
