@@ -37,22 +37,40 @@ def get_zabbixassignments_for_request(instance, request):
     }
 
 
-def get_assigned_zabbixobjects(instance):
+def get_assigned_zabbixobjects(instance, zabbixserver=None):
     """
     Return raw Zabbix assignment lists (direct + inherited) without any table formatting.
+
+    When *zabbixserver* is given, server-scoped objects (templates, hostgroups,
+    host interfaces) are filtered to that server only.  Macros, tags, inventory
+    and configuration-group assignments are server-agnostic and returned
+    unfiltered.
     """
     content_type = ContentType.objects.get_for_model(instance)
 
-    # Direct assignments
-    direct_templates = list(ZabbixTemplateAssignment.objects.filter(assigned_object_type=content_type, assigned_object_id=instance.id).select_related('zabbixtemplate'))
+    # Direct assignments — server-scoped querysets are filtered conditionally
+    templates_qs = ZabbixTemplateAssignment.objects.filter(assigned_object_type=content_type, assigned_object_id=instance.id).select_related('zabbixtemplate')
+    if zabbixserver:
+        templates_qs = templates_qs.filter(zabbixtemplate__zabbixserver=zabbixserver)
+    direct_templates = list(templates_qs)
+
     direct_macros = list(ZabbixMacroAssignment.objects.filter(assigned_object_type=content_type, assigned_object_id=instance.id).select_related('zabbixmacro'))
     direct_tags = list(ZabbixTagAssignment.objects.filter(assigned_object_type=content_type, assigned_object_id=instance.id).select_related('zabbixtag'))
-    direct_hostgroups = list(ZabbixHostgroupAssignment.objects.filter(assigned_object_type=content_type, assigned_object_id=instance.id).select_related('zabbixhostgroup'))
-    hostinterfaces = list(ZabbixHostInterface.objects.filter(assigned_object_type=content_type, assigned_object_id=instance.id))
+
+    hostgroups_qs = ZabbixHostgroupAssignment.objects.filter(assigned_object_type=content_type, assigned_object_id=instance.id).select_related('zabbixhostgroup')
+    if zabbixserver:
+        hostgroups_qs = hostgroups_qs.filter(zabbixhostgroup__zabbixserver=zabbixserver)
+    direct_hostgroups = list(hostgroups_qs)
+
+    hostinterfaces_qs = ZabbixHostInterface.objects.filter(assigned_object_type=content_type, assigned_object_id=instance.id)
+    if zabbixserver:
+        hostinterfaces_qs = hostinterfaces_qs.filter(zabbixserver=zabbixserver)
+    hostinterfaces = list(hostinterfaces_qs)
+
     hostinventory = ZabbixHostInventory.objects.filter(assigned_object_type=content_type, assigned_object_id=instance.id).first()
     configurationgroup = ZabbixConfigurationGroupAssignment.objects.filter(assigned_object_type=content_type, assigned_object_id=instance.id).first()
 
-    inherited = resolve_inherited_zabbix_assignments(instance)
+    inherited = resolve_inherited_zabbix_assignments(instance, zabbixserver)
 
     def merge(direct, inherited_map, key):
         direct_ids = {getattr(obj, key) for obj in direct}
@@ -70,7 +88,7 @@ def get_assigned_zabbixobjects(instance):
     }
 
 
-def resolve_inherited_zabbix_assignments(assigned_object):
+def resolve_inherited_zabbix_assignments(assigned_object, zabbixserver=None):
     resolved_templates = OrderedDict()
     resolved_macros = OrderedDict()
     resolved_tags = OrderedDict()
@@ -91,7 +109,7 @@ def resolve_inherited_zabbix_assignments(assigned_object):
             # If the attribute is a manager or queryset, take the first related object
             if isinstance(cur, (BaseManager, QuerySet)):
                 cur = cur.first()
-            # If it’s something that still isn’t a model instance after collapsing, bail
+            # If it's something that still isn't a model instance after collapsing, bail
             if cur is None:
                 return None
         return cur
@@ -108,10 +126,13 @@ def resolve_inherited_zabbix_assignments(assigned_object):
         ct = ContentType.objects.get_for_model(related_obj)
         templates = ZabbixTemplateAssignment.objects.filter(assigned_object_type=ct, assigned_object_id=related_obj.pk).select_related('zabbixtemplate')
         macros = ZabbixMacroAssignment.objects.filter(assigned_object_type=ct, assigned_object_id=related_obj.pk).select_related('zabbixmacro')
-
         tags = ZabbixTagAssignment.objects.filter(assigned_object_type=ct, assigned_object_id=related_obj.pk).select_related('zabbixtag')
         hostgroups = ZabbixHostgroupAssignment.objects.filter(assigned_object_type=ct, assigned_object_id=related_obj.pk).select_related('zabbixhostgroup')
         configurationgroups = ZabbixConfigurationGroupAssignment.objects.filter(assigned_object_type=ct, assigned_object_id=related_obj.pk).select_related('zabbixconfigurationgroup')
+
+        if zabbixserver:
+            templates = templates.filter(zabbixtemplate__zabbixserver=zabbixserver)
+            hostgroups = hostgroups.filter(zabbixhostgroup__zabbixserver=zabbixserver)
 
         # print(f'[Resolved from {label}] {related_obj}: inherited {len(templates)} templates, {len(macros)} macros, {len(tags)} tags, {len(hostgroups)} hostgroups, {len(configurationgroups)} configurationgroups,')
 
