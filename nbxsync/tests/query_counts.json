@@ -1,0 +1,19 @@
+{
+  "zabbixconfigurationgroup:list_objects_with_permission": 18,
+  "zabbixconfigurationgroupassignment:list_objects_with_permission": 20,
+  "zabbixhostgroup:list_objects_with_permission": 19,
+  "zabbixhostgroupassignment:list_objects_with_permission": 20,
+  "zabbixhostinterface:list_objects_with_permission": 21,
+  "zabbixhostinventory:list_objects_with_permission": 22,
+  "zabbixmacro:list_objects_with_permission": 22,
+  "zabbixmacroassignment:list_objects_with_permission": 22,
+  "zabbixproxy:list_objects_with_permission": 20,
+  "zabbixproxygroup:list_objects_with_permission": 19,
+  "zabbixserver:list_objects_with_permission": 18,
+  "zabbixserverassignment:list_objects_with_permission": 22,
+  "zabbixtag:list_objects_with_permission": 19,
+  "zabbixtagassignment:list_objects_with_permission": 20,
+  "zabbixtemplate:list_objects_with_permission": 19,
+  "zabbixtemplateassignment:list_objects_with_permission": 20
+}
+
