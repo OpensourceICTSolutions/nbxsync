@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 from django.apps import apps
 from pydantic import BaseModel, Field, field_validator
@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, field_validator
 from nbxsync.choices.syncsot import SyncSOT
 from nbxsync.choices.zabbixstatus import ZabbixHostStatus
 
-__all__ = ('PluginSettingsModel',)
+__all__ = ('PluginSettingsModel', 'TriggerDependencyConfig', 'TriggerDependencyLevelConfig')
 
 
 class SoTConfig(BaseModel):
@@ -50,11 +50,72 @@ class BackgroundSync(BaseModel):
     maintenance: BackgroundSyncConfig = Field(default_factory=BackgroundSyncConfig)
 
 
+class TriggerDependencyLevelConfig(BaseModel):
+    name: str
+    roles: List[str]
+    trigger_description: str
+
+    @field_validator('name', 'trigger_description', mode='before')
+    def validate_non_empty_string(cls, v: str) -> str:
+        if not isinstance(v, str) or not v.strip():
+            raise ValueError('Value must be a non-empty string')
+        return v.strip()
+
+    @field_validator('roles', mode='before')
+    def validate_role_tokens(cls, v: List[str]) -> List[str]:
+        if not isinstance(v, list) or not v:
+            raise ValueError('Role tokens must be a non-empty list')
+        return v
+
+
+class TriggerDependencyConfig(BaseModel):
+    enabled: bool = Field(default=False)
+    levels: List[TriggerDependencyLevelConfig] = Field(
+        default_factory=lambda: [
+            TriggerDependencyLevelConfig(
+                name='access_point',
+                roles=['access point', 'access-point', 'ap'],
+                trigger_description='AP status',
+            ),
+            TriggerDependencyLevelConfig(
+                name='switch',
+                roles=['switch', 'switches'],
+                trigger_description='Switch status',
+            ),
+            TriggerDependencyLevelConfig(
+                name='gateway',
+                roles=[
+                    'gateway',
+                    'gateways',
+                    'gw',
+                    'firewall',
+                    'firewalls',
+                    'meraki gw',
+                    'meraki-gw',
+                    'meraki mx',
+                    'meraki-mx',
+                    'mx',
+                    'security appliance',
+                    'security-appliance',
+                ],
+                trigger_description='Gateway status',
+            ),
+        ]
+    )
+
+    @field_validator('levels', mode='before')
+    def validate_levels(cls, v: List[TriggerDependencyLevelConfig]) -> List[TriggerDependencyLevelConfig]:
+        if not isinstance(v, list) or not v:
+            raise ValueError('Dependency levels must be a non-empty list')
+        return v
+
+
 class PluginSettingsModel(BaseModel):
     sot: SoTConfig = SoTConfig()
     statusmapping: StatusMapping = Field(default_factory=StatusMapping)
     snmpconfig: SNMPConfig = Field(default_factory=SNMPConfig)
     backgroundsync: BackgroundSync = Field(default_factory=BackgroundSync)
+    trigger_dependencies: TriggerDependencyConfig = Field(default_factory=TriggerDependencyConfig)
     inheritance_chain: List[Tuple[str, ...]] = Field(
         default_factory=lambda: [
             ('device',),

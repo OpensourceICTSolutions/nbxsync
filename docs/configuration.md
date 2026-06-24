@@ -1,6 +1,6 @@
 # Configuration
 
-The plugin is configuration to do exactly what you want, by means of the plugin settings. As described in the [installation instructions](installation.md)), the default configuration is as follows:
+The plugin can be configured with NetBox plugin settings. As described in the [installation instructions](installation.md), the default configuration is as follows:
 
 ```python
 "nbxsync": {
@@ -74,6 +74,39 @@ The plugin is configuration to do exactly what you want, by means of the plugin 
             'interval': 15, # 15 minutes
         },
     },
+    'trigger_dependencies': {
+        'enabled': False,
+        'levels': [
+            {
+                'name': 'access_point',
+                'roles': ['access point', 'access-point', 'ap'],
+                'trigger_description': 'AP status',
+            },
+            {
+                'name': 'switch',
+                'roles': ['switch', 'switches'],
+                'trigger_description': 'Switch status',
+            },
+            {
+                'name': 'gateway',
+                'roles': [
+                    'gateway',
+                    'gateways',
+                    'gw',
+                    'firewall',
+                    'firewalls',
+                    'meraki gw',
+                    'meraki-gw',
+                    'meraki mx',
+                    'meraki-mx',
+                    'mx',
+                    'security appliance',
+                    'security-appliance',
+                ],
+                'trigger_description': 'Gateway status',
+            },
+        ],
+    },
     'no_alerting_tag': 'NO_ALERTING',
     'no_alerting_tag_value': '1',
     'attach_objtag': True,
@@ -86,11 +119,11 @@ The plugin is configuration to do exactly what you want, by means of the plugin 
 
 ### Source of Truth
 
-The `sot` key determines which system is the Source of Truth: `netbox` or `zabbix`. And as such, which way the sync works. If the SoT is Netbox, data will be synschronized from Netbox to Zabbix. If the SoT is Zabbix, data is synchronized from Zabbix to Netbox - if and where possible (Zabbix doesn't expose all information).
+The `sot` key determines which system is the source of truth: `netbox` or `zabbix`. This controls the sync direction. If the SoT is NetBox, data is synchronized from NetBox to Zabbix. If the SoT is Zabbix, data is synchronized from Zabbix to NetBox where possible; Zabbix does not expose all information.
 
 ### Statusmapping
 
-The `statusmapping` key influences how certain statusses are interpreted and used. The two models that are to be synchronized are Devices and Virtual Machines. Each of these can be configurated independently of eachother for maximum flexibility.
+The `statusmapping` key controls how certain statuses are interpreted and used. Devices and Virtual Machines can be configured independently.
 
 The key is the `netbox` status whilst the value is the action to be taken in Zabbix.
 
@@ -98,15 +131,15 @@ The key is the `netbox` status whilst the value is the action to be taken in Zab
 
 #### enabled
 
-This status results in the host to be enabled in Zabbix
+This status enables the host in Zabbix.
 
 #### disabled
 
-This status results in the host to be disabled in Zabbix
+This status disables the host in Zabbix.
 
 #### deleted
 
-This status results in the host to be deleted from Zabbix
+This status deletes the host from Zabbix.
 
 #### enabled_in_maintenance
 
@@ -118,11 +151,11 @@ If a host has this status, it is enabled in Zabbix, but it will have a tag with 
 
 ### backgroundsync
 
-If wanted, system jobs can be used to automatically sync objects
+System jobs can be used to automatically sync objects.
 
 #### objects
 
-This key is used to determine if 'objects' (that is: Devices and/or Virtual Machines) are to be automatically synched to/from Zabbix
+This key controls whether objects, such as Devices and Virtual Machines, are automatically synchronized to or from Zabbix.
 
 ##### enabled
 
@@ -164,6 +197,38 @@ to Zabbix.
 This runs as the `Zabbix Sync Maintenance job` system job. Only maintenance
 windows that have at least one period and one object assignment are included.
 See [Zabbix Maintenance](zabbixmaintenance.md) for details.
+
+### trigger_dependencies
+
+When enabled, nbxSync updates Zabbix trigger dependencies after a successful device host sync. The feature uses NetBox cabling and ordered dependency levels to build dependency chains such as:
+
+```text
+access point trigger -> switch trigger -> gateway/firewall trigger
+```
+
+This feature is disabled by default. Enable it only when the configured role tokens match your NetBox device role names or slugs and the configured trigger descriptions match your Zabbix trigger names.
+
+Both pieces are required:
+
+- Role matching decides which dependency level a NetBox device belongs to. Role names and slugs are compared case-insensitively.
+- Interface cabling decides which directly connected devices are considered.
+- The order of `levels` decides dependency direction. Lower levels depend on directly connected higher levels.
+
+For example, an access point role named `Wireless AP` will not match the defaults unless you add `wireless ap` or the role slug to the access point level's `roles`. A device with a matching role but no connected higher-level neighbor is skipped because nbxSync cannot determine its upstream dependency.
+
+| Key        | Default | Description |
+|------------|---------|-------------|
+| `enabled`  | `False` | Enable trigger dependency updates after host sync |
+| `levels`   | AP, switch, gateway/firewall | Ordered from lowest child to highest parent |
+| `name`     | Level-specific | Human-readable level name used for configuration clarity |
+| `roles`    | Level-specific role tokens | NetBox device role names/slugs that belong to this level |
+| `trigger_description` | Level-specific trigger name | Zabbix trigger description on hosts in this level |
+
+The default levels are ordered as access point, switch, gateway/firewall. With those defaults, a connected access point depends on its connected switch, and a connected switch depends on its connected gateway or firewall. Cable direction does not matter; nbxSync looks at directly connected devices and uses the level order to decide which device is the child and which device is the parent.
+
+To support more device types, add their NetBox role names or slugs to the appropriate level. To support a different hierarchy, add or reorder levels from lowest child to highest parent.
+
+Existing Zabbix dependencies whose descriptions do not match the managed parent trigger descriptions are preserved. Dependencies matching the managed parent trigger descriptions are replaced with the current cabling-derived parent triggers.
 
 ### no_alerting_tag
 

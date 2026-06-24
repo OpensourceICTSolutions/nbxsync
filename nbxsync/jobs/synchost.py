@@ -7,6 +7,7 @@ from nbxsync.utils import get_assigned_zabbixobjects
 from nbxsync.utils.sync import HostGroupSync, HostInterfaceSync, HostSync, ProxyGroupSync, ProxySync, run_zabbix_operation
 from nbxsync.utils.sync.safe_delete import safe_delete
 from nbxsync.utils.sync.safe_sync import safe_sync
+from nbxsync.utils.trigger_dependency_sync import sync_device_trigger_dependencies
 
 __all__ = ('SyncHostJob',)
 
@@ -36,6 +37,9 @@ class SyncHostJob:
                 self.check_default_hostinterface(assignment)
                 self.sync_host(assignment)
                 self.verify_hostinterfaces(assignment)
+
+        if object_type == 'device' and zabbix_status != ZabbixHostStatus.DELETED and pluginsettings.trigger_dependencies.enabled:
+            sync_device_trigger_dependencies(self.instance)
 
     def delete_host(self, assignment):
         safe_delete(HostSync, assignment)
