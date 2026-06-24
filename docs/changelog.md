@@ -102,6 +102,22 @@ None
 - Ensure that the worker doesn't crash on certain race conditions with regards to the hostinterfacesync job ([#86])
 - Fix issue with DeleteHost so it now actually removed the device/object from Zabbix when its deleted from NetBox ([#88])
 
+## [1.0.5] - Minor update
+
+### New features
+
+-
+
+### Bug fixes
+
+- Fixed issue where syncing to multiple Zabbix Servers failed ([#90])
+- Fixed issue where local_address was cleared, even when the proxy is part of a ProxyGroup ([#91])
+- Removed duplicate line in ProxySync ([#91])
+- Fixed typo (`acept` vs `accept`) in ProxySync ([#91])
+
+### Breaking changes
+
+- Dropped support for NetBox < 4.2.6 in order to support NetBox 4.6.X ([#98])
 
 [#5]: https://github.com/OpensourceICTSolutions/nbxsync/issues/5
 [#20]: https://github.com/OpensourceICTSolutions/nbxsync/issues/20
@@ -130,3 +146,6 @@ None
 [#81]: https://github.com/OpensourceICTSolutions/nbxsync/issues/81
 [#86]: https://github.com/OpensourceICTSolutions/nbxsync/issues/86
 [#88]: https://github.com/OpensourceICTSolutions/nbxsync/issues/88
+[#90]: https://github.com/OpensourceICTSolutions/nbxsync/issues/90
+[#91]: https://github.com/OpensourceICTSolutions/nbxsync/issues/91
+[#98]: https://github.com/OpensourceICTSolutions/nbxsync/issues/98
