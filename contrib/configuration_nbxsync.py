@@ -42,3 +42,6 @@ SECRET_KEY = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 DEFAULT_PERMISSIONS = {}
 
 LOGGING = {'version': 1, 'disable_existing_loggers': True}
+API_TOKEN_PEPPERS = {
+    1: 'kp7ht*76fiQAhUi5dHfASLlYUE_S^gI^(7J^K5M!LfoH@vl&b_',
+}
