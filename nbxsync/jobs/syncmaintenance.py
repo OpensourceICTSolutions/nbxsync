@@ -7,6 +7,7 @@ __all__ = ('SyncMaintenceJob',)
 class SyncMaintenceJob:
     def __init__(self, **kwargs):
         self.instance = kwargs.get('instance')
+        self.zabbixserver = self.instance.zabbixserver
 
     def run(self):
         if not self.zabbixserver.sync_enabled:
