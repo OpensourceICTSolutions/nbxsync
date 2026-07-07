@@ -117,6 +117,8 @@ class nbxSync(PluginConfig):
         'attach_objtag': False,
         'objtag_type': 'nb_type',
         'objtag_id': 'nb_id',
+        'custom_field_hostname': '',
+        'custom_field_display_name': '',
     }
     queues = []
     validated_config = None
