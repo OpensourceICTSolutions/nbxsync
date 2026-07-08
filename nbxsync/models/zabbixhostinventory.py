@@ -21,7 +21,7 @@ class ZabbixHostInventory(NetBoxModel):
     chassis = models.CharField(max_length=64, blank=True, verbose_name=_('Chassis'))
     contact = models.TextField(blank=True, verbose_name=_('Contact'))
     contract_number = models.CharField(max_length=64, blank=True, verbose_name=_('Contract number'))
-    date_hw_decomm = models.CharField(max_length=64, blank=True, verbose_name=_('Date HW decommussioned'))
+    date_hw_decomm = models.CharField(max_length=64, blank=True, verbose_name=_('Date HW decommissioned'))
     date_hw_expiry = models.CharField(max_length=64, blank=True, verbose_name=_('Date HW maintenance expires'))
     date_hw_install = models.CharField(max_length=64, blank=True, verbose_name=_('Date HW installed'))
     date_hw_purchase = models.CharField(max_length=64, blank=True, verbose_name=_('Date HW purchased'))
