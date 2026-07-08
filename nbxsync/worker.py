@@ -39,7 +39,7 @@ def synctemplates(instance):
 
 @job('low')
 def syncmaintenance(instance):
-    worker = SyncMaintenceJob(instance=instance)
+    worker = SyncMaintenanceJob(instance=instance)
     worker.run()
 
 
