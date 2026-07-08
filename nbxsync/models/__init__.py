@@ -20,8 +20,6 @@ from .zabbixtagassignment import *
 from .zabbixmacroassignment import *
 from .zabbixtemplateassignment import *
 from .zabbixhostgroupassignment import *
-from .zabbixtagassignment import *
-from .zabbixtemplateassignment import *
 from .zabbixserverassignment import *
 from .zabbixmaintenanceobjectassignment import *
 from .zabbixmaintenancetagassignment import *
