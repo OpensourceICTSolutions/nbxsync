@@ -13,6 +13,79 @@ from nbxsync.constants import DEVICE_OR_VM_ASSIGNMENT_MODELS
 
 __all__ = ('ZabbixHostInventory',)
 
+_MAX_LENGTHS = {
+    'alias': 128,
+    'asset_tag': 64,
+    'chassis': 64,
+    'contact': 65535,
+    'contract_number': 64,
+    'date_hw_decomm': 64,
+    'date_hw_expiry': 64,
+    'date_hw_install': 64,
+    'date_hw_purchase': 64,
+    'deployment_status': 64,
+    'hardware': 255,
+    'hardware_full': 65535,
+    'host_netmask': 39,
+    'host_networks': 65535,
+    'host_router': 39,
+    'hw_arch': 32,
+    'installer_name': 64,
+    'location': 65535,
+    'location_lat': 16,
+    'location_lon': 16,
+    'macaddress_a': 64,
+    'macaddress_b': 64,
+    'model_field': 64,
+    'name': 128,
+    'notes': 65535,
+    'oob_ip': 39,
+    'oob_netmask': 39,
+    'oob_router': 39,
+    'os': 128,
+    'os_full': 255,
+    'os_short': 128,
+    'poc_1_cell': 64,
+    'poc_1_email': 128,
+    'poc_1_name': 128,
+    'poc_1_notes': 65535,
+    'poc_1_phone_a': 64,
+    'poc_1_phone_b': 64,
+    'poc_1_screen': 64,
+    'poc_2_cell': 64,
+    'poc_2_email': 128,
+    'poc_2_name': 128,
+    'poc_2_notes': 65535,
+    'poc_2_phone_a': 64,
+    'poc_2_phone_b': 64,
+    'poc_2_screen': 64,
+    'serialno_a': 64,
+    'serialno_b': 64,
+    'site_address_a': 128,
+    'site_address_b': 128,
+    'site_address_c': 128,
+    'site_city': 128,
+    'site_country': 64,
+    'site_notes': 65535,
+    'site_rack': 128,
+    'site_state': 64,
+    'site_zip': 64,
+    'software': 255,
+    'software_app_a': 64,
+    'software_app_b': 64,
+    'software_app_c': 64,
+    'software_app_d': 64,
+    'software_app_e': 64,
+    'software_full': 65535,
+    'tag': 64,
+    'type': 64,
+    'type_full': 64,
+    'url_a': 2048,
+    'url_b': 2048,
+    'url_c': 2048,
+    'vendor': 64,
+}
+
 
 class ZabbixHostInventory(NetBoxModel):
     inventory_mode = models.IntegerField(choices=ZabbixHostInventoryModeChoices, default=ZabbixHostInventoryModeChoices.MANUAL, verbose_name=_('Inventory mode'))
@@ -33,7 +106,7 @@ class ZabbixHostInventory(NetBoxModel):
     host_router = models.CharField(max_length=39, blank=True, verbose_name=_('Host router'))
     hw_arch = models.CharField(max_length=32, blank=True, verbose_name=_('HW architecture'))
     installer_name = models.CharField(max_length=64, blank=True, verbose_name=_('Installer name'))
-    location = models.TextField(blank=True, verbose_name=_('Location '))
+    location = models.TextField(blank=True, verbose_name=_('Location'))
     location_lat = models.CharField(max_length=30, blank=True, verbose_name=_('Location latitude'))
     location_lon = models.CharField(max_length=30, blank=True, verbose_name=_('Location longitude'))
     macaddress_a = models.CharField(max_length=64, blank=True, verbose_name=_('MAC address A'))
@@ -60,7 +133,7 @@ class ZabbixHostInventory(NetBoxModel):
     poc_2_notes = models.TextField(blank=True, verbose_name=_('Secondary POC notes'))
     poc_2_phone_a = models.CharField(max_length=64, blank=True, verbose_name=_('Secondary POC phone A'))
     poc_2_phone_b = models.CharField(max_length=64, blank=True, verbose_name=_('Secondary POC phone B'))
-    poc_2_screen = models.CharField(max_length=64, blank=True, verbose_name=_('Secondary POC  screen name'))
+    poc_2_screen = models.CharField(max_length=64, blank=True, verbose_name=_('Secondary POC screen name'))
     serialno_a = models.CharField(max_length=64, blank=True, verbose_name=_('Serial number A'))
     serialno_b = models.CharField(max_length=64, blank=True, verbose_name=_('Serial number B'))
     site_address_a = models.CharField(max_length=128, blank=True, verbose_name=_('Site address A'))
@@ -161,76 +234,3 @@ class ZabbixHostInventory(NetBoxModel):
 
     def __str__(self):
         return f'Host Inventory of {self.assigned_object.name}'
-
-    _MAX_LENGTHS = {
-        'alias': 128,
-        'asset_tag': 64,
-        'chassis': 64,
-        'contact': 65535,
-        'contract_number': 64,
-        'date_hw_decomm': 64,
-        'date_hw_expiry': 64,
-        'date_hw_install': 64,
-        'date_hw_purchase': 64,
-        'deployment_status': 64,
-        'hardware': 255,
-        'hardware_full': 65535,
-        'host_netmask': 39,
-        'host_networks': 65535,
-        'host_router': 39,
-        'hw_arch': 32,
-        'installer_name': 64,
-        'location': 65535,
-        'location_lat': 16,
-        'location_lon': 16,
-        'macaddress_a': 64,
-        'macaddress_b': 64,
-        'model_field': 64,
-        'name': 128,
-        'notes': 65535,
-        'oob_ip': 39,
-        'oob_netmask': 39,
-        'oob_router': 39,
-        'os': 128,
-        'os_full': 255,
-        'os_short': 128,
-        'poc_1_cell': 64,
-        'poc_1_email': 128,
-        'poc_1_name': 128,
-        'poc_1_notes': 65535,
-        'poc_1_phone_a': 64,
-        'poc_1_phone_b': 64,
-        'poc_1_screen': 64,
-        'poc_2_cell': 64,
-        'poc_2_email': 128,
-        'poc_2_name': 128,
-        'poc_2_notes': 65535,
-        'poc_2_phone_a': 64,
-        'poc_2_phone_b': 64,
-        'poc_2_screen': 64,
-        'serialno_a': 64,
-        'serialno_b': 64,
-        'site_address_a': 128,
-        'site_address_b': 128,
-        'site_address_c': 128,
-        'site_city': 128,
-        'site_country': 64,
-        'site_notes': 65535,
-        'site_rack': 128,
-        'site_state': 64,
-        'site_zip': 64,
-        'software': 255,
-        'software_app_a': 64,
-        'software_app_b': 64,
-        'software_app_c': 64,
-        'software_app_d': 64,
-        'software_app_e': 64,
-        'software_full': 65535,
-        'tag': 64,
-        'type': 64,
-        'type_full': 64,
-        'url_a': 2048,
-        'url_b': 2048,
-        'url_c': 2048,
-        'vendor': 64,
-    }
