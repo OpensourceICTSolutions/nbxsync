@@ -1,6 +1,6 @@
 # Configuration
 
-The plugin can be configured with NetBox plugin settings. As described in the [installation instructions](installation.md), the default configuration is as follows:
+The plugin is configuration to do exactly what you want, by means of the plugin settings. As described in the [installation instructions](installation.md)), the default configuration is as follows:
 
 ```python
 "nbxsync": {
@@ -119,11 +119,11 @@ The plugin can be configured with NetBox plugin settings. As described in the [i
 
 ### Source of Truth
 
-The `sot` key determines which system is the source of truth: `netbox` or `zabbix`. This controls the sync direction. If the SoT is NetBox, data is synchronized from NetBox to Zabbix. If the SoT is Zabbix, data is synchronized from Zabbix to NetBox where possible; Zabbix does not expose all information.
+The `sot` key determines which system is the Source of Truth: `netbox` or `zabbix`. And as such, which way the sync works. If the SoT is Netbox, data will be synschronized from Netbox to Zabbix. If the SoT is Zabbix, data is synchronized from Zabbix to Netbox - if and where possible (Zabbix doesn't expose all information).
 
 ### Statusmapping
 
-The `statusmapping` key controls how certain statuses are interpreted and used. Devices and Virtual Machines can be configured independently.
+The `statusmapping` key influences how certain statusses are interpreted and used. The two models that are to be synchronized are Devices and Virtual Machines. Each of these can be configurated independently of eachother for maximum flexibility.
 
 The key is the `netbox` status whilst the value is the action to be taken in Zabbix.
 
@@ -131,15 +131,15 @@ The key is the `netbox` status whilst the value is the action to be taken in Zab
 
 #### enabled
 
-This status enables the host in Zabbix.
+This status results in the host to be enabled in Zabbix
 
 #### disabled
 
-This status disables the host in Zabbix.
+This status results in the host to be disabled in Zabbix
 
 #### deleted
 
-This status deletes the host from Zabbix.
+This status results in the host to be deleted from Zabbix
 
 #### enabled_in_maintenance
 
@@ -151,11 +151,11 @@ If a host has this status, it is enabled in Zabbix, but it will have a tag with 
 
 ### backgroundsync
 
-System jobs can be used to automatically sync objects.
+If wanted, system jobs can be used to automatically sync objects
 
 #### objects
 
-This key controls whether objects, such as Devices and Virtual Machines, are automatically synchronized to or from Zabbix.
+This key is used to determine if 'objects' (that is: Devices and/or Virtual Machines) are to be automatically synched to/from Zabbix
 
 ##### enabled
 
