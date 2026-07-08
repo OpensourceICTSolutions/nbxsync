@@ -6,7 +6,7 @@ from django.db import models
 from netbox.models import NetBoxModel
 
 from nbxsync.choices import ZabbixMacroTypeChoices
-from nbxsync.constants import MACRO_ASSIGNMENT_MODELS
+from nbxsync.constants.assignment_models import MACRO_ASSIGNMENT_MODELS
 
 __all__ = ('ZabbixMacro',)
 

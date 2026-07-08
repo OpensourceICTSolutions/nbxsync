@@ -25,10 +25,9 @@ from nbxsync.choices import (
     ZabbixTLSChoices,
 )
 
-from nbxsync.constants import DEVICE_OR_VM_ASSIGNMENT_MODELS, CONFIGGROUP_OBJECTS
+from nbxsync.constants.assignment_models import DEVICE_OR_VM_ASSIGNMENT_MODELS, CONFIGGROUP_OBJECTS
+from nbxsync.constants.template_pattern import TEMPLATE_PATTERN
 from nbxsync.models import SyncInfoModel, ZabbixConfigurationGroup
-
-TEMPLATE_PATTERN = re.compile(r'({{.*?}}|{%-?\s*.*?\s*-?%}|{#.*?#})')
 
 
 def default_tls_accept():

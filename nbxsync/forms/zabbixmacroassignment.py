@@ -9,7 +9,7 @@ from utilities.forms.rendering import FieldSet, TabbedGroups
 from dcim.models import Device, VirtualDeviceContext, DeviceRole, DeviceType, Manufacturer, Platform
 from virtualization.models import Cluster, ClusterType, VirtualMachine
 
-from nbxsync.constants import ASSIGNMENT_TYPE_TO_FIELD
+from nbxsync.constants.assignment_type_to_field import ASSIGNMENT_TYPE_TO_FIELD
 from nbxsync.models import ZabbixMacro, ZabbixMacroAssignment, ZabbixConfigurationGroup
 
 __all__ = ('ZabbixMacroAssignmentForm', 'ZabbixMacroAssignmentFilterForm', 'ZabbixMacroAssignmentBulkEditForm')

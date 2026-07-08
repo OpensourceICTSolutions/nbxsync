@@ -12,7 +12,7 @@ from virtualization.models import VirtualMachine
 from ipam.models import IPAddress
 
 from nbxsync.choices import IPMIAuthTypeChoices, IPMIPrivilegeChoices, ZabbixHostInterfaceTypeChoices, ZabbixInterfaceTypeChoices, ZabbixInterfaceUseChoices, ZabbixTLSChoices
-from nbxsync.constants import ASSIGNMENT_TYPE_TO_FIELD, ASSIGNMENT_TYPE_TO_FIELD_NBOBJS
+from nbxsync.constants.assignment_type_to_field import ASSIGNMENT_TYPE_TO_FIELD, ASSIGNMENT_TYPE_TO_FIELD_NBOBJS
 from nbxsync.models import ZabbixHostInterface, ZabbixServer, ZabbixServerAssignment, ZabbixConfigurationGroup
 from nbxsync.models.zabbixproxy import default_tls_accept
 

@@ -9,7 +9,7 @@ from django_rq import get_queue
 
 from nbxsync.models import ZabbixMaintenance, ZabbixProxy, ZabbixProxyGroup, ZabbixServer, ZabbixConfigurationGroup
 from nbxsync.utils.cfggroup.resync_zabbixconfiggroupassignment import resync_zabbixconfigurationgroupassignment
-from nbxsync.constants import OBJECT_TYPE_MODEL_MAP
+from nbxsync.constants.assignment_type_to_field import OBJECT_TYPE_MODEL_MAP
 
 __all__ = (
     'ZabbixSyncInfoModalView',

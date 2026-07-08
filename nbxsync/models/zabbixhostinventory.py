@@ -1,90 +1,21 @@
+import logging
+from jinja2 import TemplateError, TemplateSyntaxError, UndefinedError
+
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from jinja2 import TemplateError, TemplateSyntaxError, UndefinedError
 
 from netbox.models import NetBoxModel
 from utilities.jinja2 import render_jinja2
 
 from nbxsync.choices import ZabbixHostInventoryModeChoices
-from nbxsync.constants import DEVICE_OR_VM_ASSIGNMENT_MODELS
+from nbxsync.constants.assignment_models import DEVICE_OR_VM_ASSIGNMENT_MODELS
 
 __all__ = ('ZabbixHostInventory',)
 
-_MAX_LENGTHS = {
-    'alias': 128,
-    'asset_tag': 64,
-    'chassis': 64,
-    'contact': 65535,
-    'contract_number': 64,
-    'date_hw_decomm': 64,
-    'date_hw_expiry': 64,
-    'date_hw_install': 64,
-    'date_hw_purchase': 64,
-    'deployment_status': 64,
-    'hardware': 255,
-    'hardware_full': 65535,
-    'host_netmask': 39,
-    'host_networks': 65535,
-    'host_router': 39,
-    'hw_arch': 32,
-    'installer_name': 64,
-    'location': 65535,
-    'location_lat': 16,
-    'location_lon': 16,
-    'macaddress_a': 64,
-    'macaddress_b': 64,
-    'model_field': 64,
-    'name': 128,
-    'notes': 65535,
-    'oob_ip': 39,
-    'oob_netmask': 39,
-    'oob_router': 39,
-    'os': 128,
-    'os_full': 255,
-    'os_short': 128,
-    'poc_1_cell': 64,
-    'poc_1_email': 128,
-    'poc_1_name': 128,
-    'poc_1_notes': 65535,
-    'poc_1_phone_a': 64,
-    'poc_1_phone_b': 64,
-    'poc_1_screen': 64,
-    'poc_2_cell': 64,
-    'poc_2_email': 128,
-    'poc_2_name': 128,
-    'poc_2_notes': 65535,
-    'poc_2_phone_a': 64,
-    'poc_2_phone_b': 64,
-    'poc_2_screen': 64,
-    'serialno_a': 64,
-    'serialno_b': 64,
-    'site_address_a': 128,
-    'site_address_b': 128,
-    'site_address_c': 128,
-    'site_city': 128,
-    'site_country': 64,
-    'site_notes': 65535,
-    'site_rack': 128,
-    'site_state': 64,
-    'site_zip': 64,
-    'software': 255,
-    'software_app_a': 64,
-    'software_app_b': 64,
-    'software_app_c': 64,
-    'software_app_d': 64,
-    'software_app_e': 64,
-    'software_full': 65535,
-    'tag': 64,
-    'type': 64,
-    'type_full': 64,
-    'url_a': 2048,
-    'url_b': 2048,
-    'url_c': 2048,
-    'vendor': 64,
-}
+logger = logging.getLogger(__name__)
 
 
 class ZabbixHostInventory(NetBoxModel):
@@ -164,6 +95,79 @@ class ZabbixHostInventory(NetBoxModel):
     assigned_object_id = models.PositiveBigIntegerField(blank=True, null=True)
     assigned_object = GenericForeignKey(ct_field='assigned_object_type', fk_field='assigned_object_id')
 
+    _MAX_LENGTHS = {
+        'alias': 128,
+        'asset_tag': 64,
+        'chassis': 64,
+        'contact': 65535,
+        'contract_number': 64,
+        'date_hw_decomm': 64,
+        'date_hw_expiry': 64,
+        'date_hw_install': 64,
+        'date_hw_purchase': 64,
+        'deployment_status': 64,
+        'hardware': 255,
+        'hardware_full': 65535,
+        'host_netmask': 39,
+        'host_networks': 65535,
+        'host_router': 39,
+        'hw_arch': 32,
+        'installer_name': 64,
+        'location': 65535,
+        'location_lat': 16,
+        'location_lon': 16,
+        'macaddress_a': 64,
+        'macaddress_b': 64,
+        'model_field': 64,
+        'name': 128,
+        'notes': 65535,
+        'oob_ip': 39,
+        'oob_netmask': 39,
+        'oob_router': 39,
+        'os': 128,
+        'os_full': 255,
+        'os_short': 128,
+        'poc_1_cell': 64,
+        'poc_1_email': 128,
+        'poc_1_name': 128,
+        'poc_1_notes': 65535,
+        'poc_1_phone_a': 64,
+        'poc_1_phone_b': 64,
+        'poc_1_screen': 64,
+        'poc_2_cell': 64,
+        'poc_2_email': 128,
+        'poc_2_name': 128,
+        'poc_2_notes': 65535,
+        'poc_2_phone_a': 64,
+        'poc_2_phone_b': 64,
+        'poc_2_screen': 64,
+        'serialno_a': 64,
+        'serialno_b': 64,
+        'site_address_a': 128,
+        'site_address_b': 128,
+        'site_address_c': 128,
+        'site_city': 128,
+        'site_country': 64,
+        'site_notes': 65535,
+        'site_rack': 128,
+        'site_state': 64,
+        'site_zip': 64,
+        'software': 255,
+        'software_app_a': 64,
+        'software_app_b': 64,
+        'software_app_c': 64,
+        'software_app_d': 64,
+        'software_app_e': 64,
+        'software_full': 65535,
+        'tag': 64,
+        'type': 64,
+        'type_full': 64,
+        'url_a': 2048,
+        'url_b': 2048,
+        'url_c': 2048,
+        'vendor': 64,
+    }
+
     class Meta:
         verbose_name = 'Zabbix Host Inventory'
         verbose_name_plural = 'Zabbix Host Inventories'
@@ -192,24 +196,37 @@ class ZabbixHostInventory(NetBoxModel):
     def render_field(self, field_name, **context):
         """
         Render a single field using Jinja2.
-        Returns a tuple of (rendered_value, success_flag).
+
+        Returns ``(rendered_value, success_flag)``. A template that has valid
+        syntax but references undefined variables (a very common case when a
+        user writes ``{{ object.custom_field_that_doesnt_exist }}``) is
+        considered a soft failure and returns ``('', False)`` — the caller
+        decides whether to show the empty value or fall through to a default.
+
+        Unexpected exceptions (attribute lookups blowing up, import errors,
+        programming mistakes in ``get_context``) are re-raised so they surface
+        in tests and logs instead of being papered over.
         """
-        template_field = getattr(self, field_name, '')
+        template_field = getattr(self, field_name, '') or ''
+        if not template_field:
+            return '', True
+
         try:
             rendered = render_jinja2(template_field, self.get_context(**context))
-            rendered = rendered.replace('\r\n', '\n')
-
-            max_len = self._MAX_LENGTHS.get(field_name)
-            if max_len is not None and len(rendered) > max_len:
-                rendered = rendered[:max_len]
-
-            return rendered, True
-
         except (TemplateSyntaxError, UndefinedError, TemplateError) as err:
-            pass
-        except Exception as err:
-            pass
-        return '', False
+            logger.warning('Jinja render failed for %s.%s (pk=%s): %s', self.__class__.__name__, field_name, self.pk, err)
+            return '', False
+        except Exception:
+            logger.exception('Unexpected error rendering %s.%s (pk=%s); returning empty value', self.__class__.__name__, field_name, self.pk)
+            return '', False
+
+        rendered = rendered.replace('\r\n', '\n')
+
+        max_len = self._MAX_LENGTHS.get(field_name)
+        if max_len is not None and len(rendered) > max_len:
+            rendered = rendered[:max_len]
+
+        return rendered, True
 
     def render_all_fields(self, **context):
         """

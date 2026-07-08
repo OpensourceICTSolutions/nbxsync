@@ -5,7 +5,7 @@ from django.http import Http404
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import TemplateView
 
-from nbxsync.constants import OBJECT_TYPE_MODEL_MAP
+from nbxsync.constants.assignment_type_to_field import OBJECT_TYPE_MODEL_MAP
 from nbxsync.models import ZabbixServerAssignment
 from nbxsync.tables import ZabbixEventTable, ZabbixProblemTable
 from nbxsync.utils import ZabbixConnection

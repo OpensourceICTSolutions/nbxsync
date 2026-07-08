@@ -4,7 +4,7 @@ from django.db import models
 
 from netbox.models import NetBoxModel
 
-from nbxsync.constants import DEVICE_OR_VM_ASSIGNMENT_MODELS
+from nbxsync.constants.assignment_models import DEVICE_OR_VM_ASSIGNMENT_MODELS
 
 __all__ = ('ZabbixConfigurationGroupAssignment',)
 

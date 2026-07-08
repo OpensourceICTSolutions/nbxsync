@@ -6,7 +6,7 @@ from django.db import models
 
 from netbox.models import NetBoxModel
 
-from nbxsync.constants import MAINTENANCE_ASSIGNMENT_OBJECTS
+from nbxsync.constants.assignment_models import MAINTENANCE_ASSIGNMENT_OBJECTS
 from nbxsync.models import ZabbixHostgroup
 
 __all__ = ('ZabbixMaintenanceObjectAssignment',)
