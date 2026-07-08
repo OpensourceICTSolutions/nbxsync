@@ -17,7 +17,7 @@ class DeleteHostJob:
 
         for assignment in zabbixserver_assignments:
             if not assignment.sync_enabled or not assignment.zabbixserver.sync_enabled:
-                return
+                continue
             self.delete_host(assignment)
 
     def delete_host(self, assignment):

@@ -28,7 +28,7 @@ class SyncHostJob:
 
         for assignment in zabbixserver_assignments:
             if not assignment.sync_enabled or not assignment.zabbixserver.sync_enabled:
-                return
+                continue
 
             if zabbix_status == ZabbixHostStatus.DELETED:
                 self.delete_host(assignment)
