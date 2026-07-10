@@ -76,6 +76,13 @@ class nbxSync(PluginConfig):
             'snmp_privpass': '{$SNMP_PRIVPASS}',
         },
         'inheritance_chain': [
+            ['device', 'site'],
+            ['site'],
+            ['site', 'group'],
+            ['site', 'region'],
+            ['region'],
+            ['region', 'parent'],
+            ['cluster', 'site'],
             ['device'],
             ['role'],
             ['device', 'role'],

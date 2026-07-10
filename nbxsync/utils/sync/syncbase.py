@@ -62,7 +62,7 @@ class ZabbixSyncBase:
                 self.sync_from_zabbix(found)
             elif self.sot == SyncSOT.NETBOX:
                 self.sync_to_zabbix(object_id)
-            self.obj.save()
+            if not getattr(self.obj, '_is_inherited_copy', False): self.obj.save()
             logger.debug(f'Found and synced {self.__class__.__name__} ID: {object_id}')
         else:
             # Object not found: create in Zabbix, always
@@ -72,11 +72,13 @@ class ZabbixSyncBase:
                     raise RuntimeError(f'{self.__class__.__name__} creation returned no ID.')
             except RuntimeError as err:
                 logger.warning(str(err))
-                self.obj.update_sync_info(success=False, message=str(err))
+                if not getattr(self.obj, '_is_inherited_copy', False):
+                    self.obj.update_sync_info(success=False, message=str(err))
                 raise
             self.set_id(object_id)
-            self.obj.save()
-            self.obj.update_sync_info(success=True)
+            if not getattr(self.obj, '_is_inherited_copy', False):
+                self.obj.save()
+                self.obj.update_sync_info(success=True)
 
     def try_create(self):
         try:
@@ -116,8 +118,9 @@ class ZabbixSyncBase:
 
     def sync_to_zabbix(self, object_id):
         self.set_id(object_id)
-        self.obj.save()
-        self.obj.update_sync_info(success=True)
+        if not getattr(self.obj, '_is_inherited_copy', False):
+            self.obj.save()
+            self.obj.update_sync_info(success=True)
         self.update_in_zabbix(object_id=object_id)
 
     def update_in_zabbix(self, **kwargs):

@@ -467,7 +467,7 @@ class HostSyncTestCase(TestCase):
             def __init__(self):
                 self.inventory_mode = 1
 
-            def render_all_fields(self):
+            def render_all_fields(self, object=None):
                 return {
                     'serialnumber': ('ABC123', True),
                     'location': ('', True),  # Empty, should be skipped

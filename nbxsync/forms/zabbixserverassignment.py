@@ -7,7 +7,7 @@ from django.utils.translation import gettext as _
 from netbox.forms import NetBoxModelImportForm, NetBoxModelBulkEditForm, NetBoxModelFilterSetForm, NetBoxModelForm
 from utilities.forms.fields import DynamicModelChoiceField, TagFilterField, CSVModelChoiceField
 from utilities.forms.rendering import FieldSet, TabbedGroups
-from dcim.models import Device, VirtualDeviceContext
+from dcim.models import Device, VirtualDeviceContext, Site, SiteGroup, Region
 from virtualization.models import VirtualMachine
 
 from nbxsync.constants import ASSIGNMENT_TYPE_TO_FIELD, ASSIGNMENT_TYPE_TO_FIELD_NBOBJS
@@ -27,6 +27,9 @@ class ZabbixServerAssignmentForm(NetBoxModelForm):
     device = DynamicModelChoiceField(queryset=Device.objects.all(), required=False, selector=True, label=_('Device'))
     virtualdevicecontext = DynamicModelChoiceField(queryset=VirtualDeviceContext.objects.all(), required=False, selector=True, label=_('Virtual Device Context'))
     virtualmachine = DynamicModelChoiceField(queryset=VirtualMachine.objects.all(), required=False, selector=True, label=_('Virtual Machine'))
+    site = DynamicModelChoiceField(queryset=Site.objects.all(), required=False, selector=True, label=_('Site'))
+    sitegroup = DynamicModelChoiceField(queryset=SiteGroup.objects.all(), required=False, selector=True, label=_('Site Group'))
+    region = DynamicModelChoiceField(queryset=Region.objects.all(), required=False, label=_('Region'))
 
     fieldsets = (
         FieldSet('zabbixserver', 'sync_enabled', name=_('Generic')),
@@ -42,6 +45,9 @@ class ZabbixServerAssignmentForm(NetBoxModelForm):
                 FieldSet('device', name=_('Device')),
                 FieldSet('virtualdevicecontext', name=_('Virtual Device Context')),
                 FieldSet('virtualmachine', name=_('Virtual Machine')),
+                FieldSet('site', name=_('Site')),
+                FieldSet('sitegroup', name=_('Site Group')),
+                FieldSet('region', name=_('Region')),
                 FieldSet('zabbixconfigurationgroup', name=_('Zabbix Configuration Group')),
             ),
             name=_('Device Assignment'),
@@ -58,6 +64,9 @@ class ZabbixServerAssignmentForm(NetBoxModelForm):
             'device',
             'virtualdevicecontext',
             'virtualmachine',
+            'site',
+            'sitegroup',
+            'region',
             'zabbixconfigurationgroup',
         )
 

@@ -1,4 +1,11 @@
 PATH_LABELS = {
+    ('device', 'site'): 'Site',
+    ('site',): 'Site',
+    ('site', 'group'): 'Site Group',
+    ('site', 'region'): 'Region',
+    ('region',): 'Region',
+    ('region', 'parent'): 'Region',
+    ('cluster', 'site'): 'Site',
     ('device_type',): 'Device Type',
     ('device_type', 'manufacturer'): 'Manufacturer',
     ('zabbixconfigurationgroup'): 'Zabbix Configuration Group',

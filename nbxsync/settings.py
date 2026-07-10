@@ -57,6 +57,13 @@ class PluginSettingsModel(BaseModel):
     backgroundsync: BackgroundSync = Field(default_factory=BackgroundSync)
     inheritance_chain: List[Tuple[str, ...]] = Field(
         default_factory=lambda: [
+            ('device', 'site'),
+            ('site',),
+            ('site', 'group'),
+            ('site', 'region'),
+            ('region',),
+            ('region', 'parent'),
+            ('cluster', 'site'),
             ('device',),
             ('role',),
             (
