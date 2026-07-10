@@ -84,24 +84,16 @@ The plugin is configuration to do exactly what you want, by means of the plugin 
             },
             {
                 'name': 'switch',
-                'roles': ['switch', 'switches'],
+                'roles': ['switch', 'sw'],
                 'trigger_description': 'Switch status',
             },
             {
                 'name': 'gateway',
                 'roles': [
                     'gateway',
-                    'gateways',
                     'gw',
                     'firewall',
-                    'firewalls',
-                    'meraki gw',
-                    'meraki-gw',
-                    'meraki mx',
-                    'meraki-mx',
-                    'mx',
-                    'security appliance',
-                    'security-appliance',
+                    'router',
                 ],
                 'trigger_description': 'Gateway status',
             },
@@ -226,7 +218,7 @@ For example, an access point role named `Wireless AP` will not match the default
 
 The default levels are ordered as access point, switch, gateway/firewall. With those defaults, a connected access point depends on its connected switch, and a connected switch depends on its connected gateway or firewall. Cable direction does not matter; nbxSync looks at directly connected devices and uses the level order to decide which device is the child and which device is the parent.
 
-To support more device types, add their NetBox role names or slugs to the appropriate level. To support a different hierarchy, add or reorder levels from lowest child to highest parent.
+To support more device types or vendor-specific role names, add their NetBox role names or slugs to the appropriate level. To support a different hierarchy, add or reorder levels from lowest child to highest parent.
 
 Existing Zabbix dependencies whose descriptions do not match the managed parent trigger descriptions are preserved. Dependencies matching the managed parent trigger descriptions are replaced with the current cabling-derived parent triggers.
 

@@ -28,6 +28,8 @@ class PluginSettingsModelTestCase(TestCase):
         self.assertIsInstance(settings.backgroundsync.maintenance, BackgroundSyncConfig)
         self.assertIsInstance(settings.trigger_dependencies, TriggerDependencyConfig)
         self.assertFalse(settings.trigger_dependencies.enabled)
+        self.assertEqual(settings.trigger_dependencies.levels[1].roles, ['switch', 'sw'])
+        self.assertEqual(settings.trigger_dependencies.levels[2].roles, ['gateway', 'gw', 'firewall', 'router'])
 
     def test_snmp_macro_validation_valid(self):
         config = SNMPConfig(snmp_community='{$VALID_COMM}', snmp_authpass='{$VALID_AUTH}', snmp_privpass='{$VALID_PRIV}')

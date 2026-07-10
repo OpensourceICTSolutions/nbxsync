@@ -69,6 +69,8 @@ class TriggerDependencyLevelConfig(BaseModel):
 
 
 class TriggerDependencyConfig(BaseModel):
+    # TODO: Move trigger dependency levels to Django models so operators can
+    # manage roles and trigger descriptions through the UI/API without restart.
     enabled: bool = Field(default=False)
     levels: List[TriggerDependencyLevelConfig] = Field(
         default_factory=lambda: [
@@ -79,24 +81,16 @@ class TriggerDependencyConfig(BaseModel):
             ),
             TriggerDependencyLevelConfig(
                 name='switch',
-                roles=['switch', 'switches'],
+                roles=['switch', 'sw'],
                 trigger_description='Switch status',
             ),
             TriggerDependencyLevelConfig(
                 name='gateway',
                 roles=[
                     'gateway',
-                    'gateways',
                     'gw',
                     'firewall',
-                    'firewalls',
-                    'meraki gw',
-                    'meraki-gw',
-                    'meraki mx',
-                    'meraki-mx',
-                    'mx',
-                    'security appliance',
-                    'security-appliance',
+                    'router',
                 ],
                 trigger_description='Gateway status',
             ),
