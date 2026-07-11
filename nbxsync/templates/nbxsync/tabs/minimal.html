@@ -41,7 +41,9 @@
                                     {% if hostinventory_assignment %}
                                         <a href="{% url 'plugins:nbxsync:zabbixhostinventory' pk=hostinventory_assignment.pk %}">Host Inventory of {{ hostinventory_assignment.assigned_object }}</a>
                                     {% else %}
-                                        -
+                                        <a href="{% url 'plugins:nbxsync:zabbixhostinventory_add' %}?assigned_object_type={{ content_type.pk }}&assigned_object_id={{ object.pk }}&return_url={{ request.path }}" class="btn btn-primary btn-sm">
+                                            <i class="mdi mdi-plus-thick"></i> Add
+                                        </a>
                                     {% endif %}
                                 </td>
                             </tr>
@@ -51,7 +53,9 @@
                                     {% if configurationgroup_assignment %}
                                         <a href="{% url 'plugins:nbxsync:zabbixconfigurationgroup' pk=configurationgroup_assignment.zabbixconfigurationgroup.pk %}">{{ configurationgroup_assignment.zabbixconfigurationgroup }}</a>
                                     {% else %}
-                                        -
+                                        <a href="{% url 'plugins:nbxsync:zabbixconfigurationgroupassignment_add' %}?assigned_object_type={{ content_type.pk }}&assigned_object_id={{ object.pk }}&return_url={{ request.path }}" class="btn btn-primary btn-sm">
+                                            <i class="mdi mdi-plus-thick"></i> Add
+                                        </a>
                                     {% endif %}
                                 </td>
                         </tbody>
