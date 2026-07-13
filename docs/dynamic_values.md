@@ -38,7 +38,7 @@ Tags are rendered within a context that includes the following information:
 
 | Key         | Value                 | Explanation                                                                                  |
 |-------------|-----------------------|----------------------------------------------------------------------------------------------|
-| object      | assigned_object       | Refers to the assigned object; this could be a DeviceType, Device, VirtualMachine, etc.      |
+| object      | assigned_object       | Refers to the assigned object; this could be a DeviceType, Device, VirtualMachine, etc. During sync, this is overridden with the actual Device/VM being synced, so that Jinja2 templates can access host-level attributes like `object.name` even when the tag is inherited from a Role or Platform. |
 | tag         | zabbixtag.tag         | Contains the Zabbix Tag value that this assignment refers to                                 |
 | value       | zabbixtag.value       | The value of the Zabbix Tag (typically the Jinja2 template)                                  |
 | name        | zabbixtag.name        | The name of the Zabbix Tag                                                                   |

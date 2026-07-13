@@ -434,7 +434,7 @@ class HostSyncTestCase(TestCase):
             def __init__(self):
                 self.zabbixtag = DummyZabbixTag('env')
 
-            def render(self):
+            def render(self, **kwargs):
                 return ('production', True)
 
         dummy_tag = DummyAssignedTag()
