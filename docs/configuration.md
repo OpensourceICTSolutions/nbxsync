@@ -89,7 +89,8 @@ The plugin is configuration to do exactly what you want, by means of the plugin 
     'objtag_type': 'nb_type',
     'objtag_id': 'nb_id',
     'custom_field_hostname':'',
-    'custom_field_display_name':''
+    'custom_field_display_name':'',
+    'exclude_tag': '',
 }
 ```
 
@@ -243,6 +244,16 @@ These tags allow you to navigate from a Zabbix host back to the corresponding  N
 
 ### custom_field_hostname and custom_field_display_name
 You can use these fields to map the connection between NetBox and the Zabbix hostname and display name. The device name is used as the default.
+
+### exclude_tag
+
+When set to a non-empty string (e.g. `'do_not_monitor'`), any `ZabbixTagAssignment` with a tag matching this name — whether assigned directly on a Device/VM or inherited from a Role, Platform, Site, SiteGroup, Region, Manufacturer, or Configuration Group — causes the host to be excluded from Zabbix sync entirely. No Zabbix host is created, and if a host was previously synced it is deleted from Zabbix.
+
+This is useful for excluding device classes that should never be monitored (e.g. desktop PCs, VDI sessions, test lab devices) without removing their Site or Platform assignments.
+
+The tag itself is never pushed to Zabbix — it is only used as a signal during sync resolution and is filtered out before Jinja2 rendering.
+
+Defaults to `''` (empty string = feature disabled).
 
 ## Enabling and Disabling Synchronization
 

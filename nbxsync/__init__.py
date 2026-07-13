@@ -123,6 +123,7 @@ class nbxSync(PluginConfig):
         'maintenance_window_duration': 3600,
         'attach_objtag': False,
         'objtag_type': 'nb_type',
+        'exclude_tag': '',
         'objtag_id': 'nb_id',
         'custom_field_hostname': '',
         'custom_field_display_name': '',

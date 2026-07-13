@@ -333,8 +333,15 @@ class HostSync(ZabbixSyncBase):
         zabbix_status = status_mapping.get(status)
 
         result = []
+        exclude_tag = self.pluginsettings.exclude_tag
         for assigned_tag in self.context.get('all_objects', {}).get('tags'):
-            value, _ = assigned_tag.render()
+            # Skip the exclusion tag before rendering — it is a sync-time
+            # signal, not a Zabbix host tag. Filtering here avoids
+            # unnecessary Jinja2 rendering of a tag that will never reach
+            # Zabbix.
+            if exclude_tag and assigned_tag.zabbixtag.tag == exclude_tag:
+                continue
+            value, _ = assigned_tag.render(object=sync_target)
             result.append({'tag': assigned_tag.zabbixtag.tag, 'value': value})
 
         # Deduplicate tags by (tag, value). The same tag value can be

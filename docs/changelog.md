@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### New features
+
+- Added `exclude_tag` configuration setting to exclude hosts from Zabbix sync entirely via a ZabbixTag assigned to any object in the inheritance chain
+
+
 ## [1.0.0] - Initial Release
 
 - Loads of features, :)
