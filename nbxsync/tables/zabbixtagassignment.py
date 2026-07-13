@@ -1,12 +1,12 @@
-import django_tables2 as tables
 from django.utils.translation import gettext_lazy as _
-from django_tables2.utils import A
 
+import django_tables2 as tables
+from django_tables2.utils import A
 from netbox.tables import NetBoxTable
 
 from nbxsync.models import ZabbixTagAssignment
 from nbxsync.tables import ZabbixInheritedAssignmentTable
-from nbxsync.tables.columns import ContentTypeModelNameColumn, InheritanceAwareActionsColumn
+from nbxsync.tables.columns import ContentTypeModelNameColumn, InheritanceAwareActionsColumn, JinjaValueColumn
 
 __all__ = ('ZabbixTagAssignmentTable', 'ZabbixTagAssignmentObjectViewTable')
 
@@ -50,14 +50,7 @@ class ZabbixTagAssignmentObjectViewTable(ZabbixInheritedAssignmentTable, NetBoxT
     zabbixtag = tables.Column(accessor='zabbixtag.name', verbose_name=_('Zabbix Tag'), linkify={'viewname': 'plugins:nbxsync:zabbixtag', 'args': [A('zabbixtag.pk')]})
     actions = InheritanceAwareActionsColumn()
 
-    rendered_output = tables.TemplateColumn(
-        template_code="""
-        {% load zabbix_tags %}
-        {% render_zabbix_tag_assignment record as rendered_output %}
-        {{ rendered_output|escape }}
-        """,
-        verbose_name='Value',
-    )
+    rendered_output = JinjaValueColumn(accessor=tables.A('zabbixtag__name'), default='', verbose_name='Value')
 
     class Meta(NetBoxTable.Meta):
         model = ZabbixTagAssignment

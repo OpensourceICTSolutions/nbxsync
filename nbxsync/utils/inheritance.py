@@ -34,7 +34,7 @@ def get_zabbixassignments_for_request(instance, request):
         'zabbixserver_assignments_table': table_or_none(assignments.get('server_assignments'), ZabbixServerAssignmentObjectViewTable),
         'zabbix_template_table': table_or_none(assignments['templates'], ZabbixTemplateAssignmentObjectViewTable),
         'zabbix_macro_table': table_or_none(assignments['macros'], ZabbixMacroAssignmentObjectViewTable, attach_instance=True),
-        'zabbix_tag_table': table_or_none(assignments['tags'], ZabbixTagAssignmentObjectViewTable),
+        'zabbix_tag_table': table_or_none(assignments['tags'], ZabbixTagAssignmentObjectViewTable, attach_instance=True),
         'zabbix_hostgroup_table': table_or_none(assignments['hostgroups'], ZabbixHostgroupAssignmentObjectViewTable),
         'hostinventory_assignment': assignments.get('hostinventory'),
         'configurationgroup_assignment': assignments.get('configurationgroup'),
