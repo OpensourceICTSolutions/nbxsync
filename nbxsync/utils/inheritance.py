@@ -8,7 +8,7 @@ from django.db.models.manager import BaseManager
 from dcim.models import DeviceRole, Region, SiteGroup
 
 from nbxsync.constants import PATH_LABELS
-from nbxsync.models import ZabbixConfigurationGroupAssignment, ZabbixHostgroupAssignment, ZabbixHostInterface, ZabbixHostInventory, ZabbixMacroAssignment, ZabbixServerAssignment, ZabbixTagAssignment, ZabbixTemplateAssignment
+from nbxsync.models import ZabbixConfigurationGroupAssignment, ZabbixHostgroupAssignment, ZabbixHostInterface, ZabbixHostInventory, ZabbixMacroAssignment, ZabbixServerAssignment, ZabbixTagAssignment, ZabbixTemplateAssignment, ZabbixTemplateRule
 from nbxsync.settings import get_plugin_settings
 from nbxsync.tables import ZabbixHostgroupAssignmentObjectViewTable, ZabbixMacroAssignmentObjectViewTable, ZabbixServerAssignmentObjectViewTable, ZabbixTagAssignmentObjectViewTable, ZabbixTemplateAssignmentObjectViewTable
 
@@ -122,10 +122,32 @@ def get_assigned_zabbixobjects(instance, zabbixserver=None):
                 child.ip = primary_ip if primary_ip else None
                 hostinterfaces.append(child)
 
-    # Merge direct + inherited (direct takes priority)
+    # Resolve regex-based template rules (matched against platform name)
+    # These are applied after direct + inherited, so explicit assignments always win
     merged_templates = merge(direct_templates, inherited['templates'], 'zabbixtemplate_id')
+    resolved_template_ids = {getattr(obj, 'zabbixtemplate_id') for obj in merged_templates}
     merged_hostgroups = merge(direct_hostgroups, inherited['hostgroups'], 'zabbixhostgroup_id')
     merged_tags = merge(direct_tags, inherited['tags'], 'id')
+    platform = getattr(instance, 'platform', None)
+    if platform:
+        rules_qs = ZabbixTemplateRule.objects.filter(enabled=True).select_related('zabbixtemplate')
+        if zabbixserver:
+            rules_qs = rules_qs.filter(zabbixtemplate__zabbixserver=zabbixserver)
+        for rule in rules_qs.order_by('priority', 'name'):
+            if not rule.matches(platform.name):
+                continue
+            inherited_from = f'Regex: {rule.name}'
+            if rule.zabbixtemplate_id and rule.zabbixtemplate_id not in resolved_template_ids:
+                wrapper = ZabbixTemplateAssignment(
+                    zabbixtemplate=rule.zabbixtemplate,
+                    assigned_object_type=content_type,
+                    assigned_object_id=instance.id,
+                )
+                wrapper.pk = None
+                wrapper._is_inherited_copy = True
+                wrapper._inherited_from = inherited_from
+                merged_templates.append(wrapper)
+                resolved_template_ids.add(rule.zabbixtemplate_id)
 
     return {
         'templates': merged_templates,
