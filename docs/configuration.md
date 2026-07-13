@@ -49,6 +49,8 @@ The plugin is configuration to do exactly what you want, by means of the plugin 
         ['region', 'parent'],
         ['cluster', 'site'],
         ['device'],
+        ['group', 'parent'],
+        ['site', 'group', 'parent'],
         ['role'],
         ['device', 'role'],
         ['role', 'parent'],

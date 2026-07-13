@@ -2,6 +2,8 @@ PATH_LABELS = {
     ('device', 'site'): 'Site',
     ('site',): 'Site',
     ('site', 'group'): 'Site Group',
+    ('group', 'parent'): 'Site Group',
+    ('site', 'group', 'parent'): 'Site Group',
     ('site', 'region'): 'Region',
     ('region',): 'Region',
     ('region', 'parent'): 'Region',

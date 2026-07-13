@@ -79,6 +79,8 @@ class nbxSync(PluginConfig):
             ['device', 'site'],
             ['site'],
             ['site', 'group'],
+            ['group', 'parent'],
+            ['site', 'group', 'parent'],
             ['site', 'region'],
             ['region'],
             ['region', 'parent'],

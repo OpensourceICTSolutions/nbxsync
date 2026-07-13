@@ -60,6 +60,7 @@ class PluginSettingsModel(BaseModel):
             ('device', 'site'),
             ('site',),
             ('site', 'group'),
+            ('site', 'group', 'parent'),
             ('site', 'region'),
             ('region',),
             ('region', 'parent'),
