@@ -121,6 +121,11 @@ class PluginSettingsModel(BaseModel):
     custom_field_hostname: str = Field(default='')
     custom_field_display_name: str = Field(default='')
 
+    # Tag name that, when assigned (inherited or direct) to a Device/VM,
+    # excludes the host from Zabbix sync entirely. Uses the same inheritance
+    # chain as templates, hostgroups, and other tag assignments.
+    exclude_tag: str = Field(default='')
+
 
 # Helper function
 def get_plugin_settings() -> PluginSettingsModel:

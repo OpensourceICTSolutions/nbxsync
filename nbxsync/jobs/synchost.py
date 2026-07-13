@@ -37,6 +37,28 @@ class SyncHostJob:
             assignment._is_inherited_copy = True
         return assignment
 
+    def _is_excluded(self, pluginsettings, all_objects):
+        """Check whether this device/VM should be excluded from Zabbix sync.
+
+        When a ZabbixTag with the configured ``exclude_tag`` name (default:
+        empty string — disabled) is assigned to a DeviceRole, Platform, Site,
+        Manufacturer, ConfigGroup, or directly to the Device/VM, every host
+        that inherits from that object is excluded. The tag is never pushed
+        to Zabbix — it is only used as a signal during sync resolution.
+
+        Returns True if the host should be excluded.
+        """
+        exclude_tag = pluginsettings.exclude_tag
+        if not exclude_tag:
+            return False
+
+        for tag_assignment in all_objects.get('tags', []):
+            if tag_assignment.zabbixtag.tag == exclude_tag:
+                logger.debug('Excluding %s: exclude tag "%s" present', self.instance, exclude_tag)
+                return True
+
+        return False
+
     def run(self):
         all_objects = get_assigned_zabbixobjects(self.instance)
         zabbixserver_assignments = all_objects.get('server_assignments', [])
@@ -47,6 +69,16 @@ class SyncHostJob:
         status_mapping = getattr(pluginsettings.statusmapping, object_type, {})
         zabbix_status = status_mapping.get(status)
 
+        # --- Exclusion check ---
+        if self._is_excluded(pluginsettings, all_objects):
+            # Still delete the host from Zabbix if it was previously synced
+            if zabbix_status != ZabbixHostStatus.DELETED:
+                for assignment in zabbixserver_assignments:
+                    if assignment.sync_enabled and assignment.zabbixserver.sync_enabled:
+                        assignment = self._prepare_assignment(assignment)
+                        self.delete_host(assignment)
+            logger.info('Skipping sync for %s (excluded)', self.instance)
+            return
         for assignment in zabbixserver_assignments:
             if not assignment.sync_enabled or not assignment.zabbixserver.sync_enabled:
                 continue
