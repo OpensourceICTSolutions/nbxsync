@@ -4,7 +4,6 @@ import signal
 
 from django.core.exceptions import ValidationError
 from django.db import models
-
 from netbox.models import NetBoxModel
 
 logger = logging.getLogger(__name__)
@@ -53,6 +52,8 @@ class ZabbixTemplateRule(NetBoxModel):
     description = models.CharField(max_length=200, blank=True)
     pattern = models.CharField(max_length=500, blank=False, help_text='Regex pattern matched against Platform name')
     zabbixtemplate = models.ForeignKey(to='nbxsync.ZabbixTemplate', on_delete=models.CASCADE, related_name='zabbixtemplaterules')
+    zabbixhostgroup = models.ForeignKey(to='nbxsync.ZabbixHostgroup', on_delete=models.SET_NULL, related_name='zabbixtemplaterules', blank=True, null=True, help_text='Optional hostgroup assigned when the rule matches')
+    zabbixtag = models.ForeignKey(to='nbxsync.ZabbixTag', on_delete=models.SET_NULL, related_name='zabbixtemplaterules', blank=True, null=True, help_text='Optional tag assigned when the rule matches')
     enabled = models.BooleanField(default=True)
     priority = models.IntegerField(default=100, help_text='Lower value = higher priority')
 
