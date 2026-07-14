@@ -72,7 +72,10 @@ def get_assigned_zabbixobjects(instance, zabbixserver=None):
         hostinterfaces_qs = hostinterfaces_qs.filter(zabbixserver=zabbixserver)
     direct_hostinterfaces = list(hostinterfaces_qs)
 
-    direct_server_assignments = list(ZabbixServerAssignment.objects.filter(assigned_object_type=content_type, assigned_object_id=instance.id).select_related('zabbixproxy', 'zabbixproxygroup'))
+    direct_server_assignments = ZabbixServerAssignment.objects.filter(assigned_object_type=content_type, assigned_object_id=instance.id).select_related('zabbixproxy', 'zabbixproxygroup')
+    if zabbixserver:
+        direct_server_assignments = direct_server_assignments.filter(zabbixserver=zabbixserver)
+    direct_server_assignments = list(direct_server_assignments)
 
     hostinventory = ZabbixHostInventory.objects.filter(assigned_object_type=content_type, assigned_object_id=instance.id).first()
     direct_configurationgroup = ZabbixConfigurationGroupAssignment.objects.filter(assigned_object_type=content_type, assigned_object_id=instance.id).first()
@@ -95,6 +98,28 @@ def get_assigned_zabbixobjects(instance, zabbixserver=None):
     # HostInterfaceSync.get_create_params() falls back to the device's
     # primary IP automatically.
     hostinterfaces = merge(direct_hostinterfaces, inherited.get('hostinterfaces', {}), 'id')
+    # Expand ConfigGroup-defined interfaces for this specific instance.
+    # When a ConfigGroup is assigned at Site/Platform level, the signal-based
+    # propagation cannot clone per-device interfaces (Site has no primary_ip).
+    # Resolve them here so HostSync and HostInterfaceSync get device-specific interfaces.
+    if configurationgroup:
+        cg_ct = ContentType.objects.get_for_model(configurationgroup.zabbixconfigurationgroup)
+        cg_interfaces = ZabbixHostInterface.objects.filter(
+            assigned_object_type=cg_ct,
+            assigned_object_id=configurationgroup.zabbixconfigurationgroup_id,
+        )
+        existing_types = {hi.type for hi in hostinterfaces}
+        primary_ip = getattr(instance, 'primary_ip4', None) or getattr(instance, 'primary_ip6', None)
+        for cg_iface in cg_interfaces:
+            if cg_iface.type not in existing_types:
+                # Clone the interface with the device's primary IP
+                child = _copy.copy(cg_iface)
+                child.pk = None
+                child._is_inherited_copy = True
+                child.assigned_object_type = content_type
+                child.assigned_object_id = instance.id
+                child.ip = primary_ip if primary_ip else None
+                hostinterfaces.append(child)
 
     # Merge direct + inherited (direct takes priority)
     merged_templates = merge(direct_templates, inherited['templates'], 'zabbixtemplate_id')
@@ -130,6 +155,7 @@ def resolve_inherited_zabbix_assignments(assigned_object, zabbixserver=None):
 
     def resolve_path(obj, path):
         cur = obj
+        seen = set()
         for attr in path:
             cur = getattr(cur, attr, None)
             if cur is None:
@@ -140,6 +166,9 @@ def resolve_inherited_zabbix_assignments(assigned_object, zabbixserver=None):
             # If it's something that still isn't a model instance after collapsing, bail
             if cur is None:
                 return None
+            if cur in seen:
+                return None  # cycle detected
+            seen.add(cur)
         return cur
 
     pluginsettings = get_plugin_settings()
@@ -164,6 +193,10 @@ def resolve_inherited_zabbix_assignments(assigned_object, zabbixserver=None):
 
         server_assignments = ZabbixServerAssignment.objects.filter(assigned_object_type=ct, assigned_object_id=related_obj.pk).select_related('zabbixproxy', 'zabbixproxygroup')
         hostinterfaces = ZabbixHostInterface.objects.filter(assigned_object_type=ct, assigned_object_id=related_obj.pk)
+
+        if zabbixserver:
+            server_assignments = server_assignments.filter(zabbixserver=zabbixserver)
+            hostinterfaces = hostinterfaces.filter(zabbixserver=zabbixserver)
         hostinventory = ZabbixHostInventory.objects.filter(assigned_object_type=ct, assigned_object_id=related_obj.pk).first()
         # print(f'[Resolved from {label}] {related_obj}: inherited {len(templates)} templates, {len(macros)} macros, {len(tags)} tags, {len(hostgroups)} hostgroups, {len(configurationgroups)} configurationgroups,')
 
