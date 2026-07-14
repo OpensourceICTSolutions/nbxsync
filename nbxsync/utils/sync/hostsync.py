@@ -43,19 +43,21 @@ class HostSync(ZabbixSyncBase):
         return str(sync_target)
 
     def get_name_value(self):
+        sync_target = self._get_sync_target()
         base_name = self.get_base_name()
         cf_name = getattr(self.pluginsettings, 'custom_field_hostname', '')
-        if cf_name and hasattr(self.obj.assigned_object, 'custom_field_data'):
-            cf_value = self.obj.assigned_object.custom_field_data.get(cf_name)
+        if cf_name and hasattr(sync_target, 'custom_field_data'):
+            cf_value = sync_target.custom_field_data.get(cf_name)
             if cf_value:
                 return str(cf_value)
         return base_name
 
     def get_display_name(self):
+        sync_target = self._get_sync_target()
         base_name = self.get_base_name()
         cf_name = getattr(self.pluginsettings, 'custom_field_display_name', '')
-        if cf_name and hasattr(self.obj.assigned_object, 'custom_field_data'):
-            cf_value = self.obj.assigned_object.custom_field_data.get(cf_name)
+        if cf_name and hasattr(sync_target, 'custom_field_data'):
+            cf_value = sync_target.custom_field_data.get(cf_name)
             if cf_value:
                 return str(cf_value)
         return base_name

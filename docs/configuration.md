@@ -39,6 +39,15 @@ The plugin is configuration to do exactly what you want, by means of the plugin 
         'snmp_privpass': '{$SNMP_PRIVPASS}',
     },
     'inheritance_chain': [
+        ['device', 'site'],
+        ['site'],
+        ['site', 'group'],
+        ['group', 'parent'],
+        ['site', 'group', 'parent'],
+        ['site', 'region'],
+        ['region'],
+        ['region', 'parent'],
+        ['cluster', 'site'],
         ['device'],
         ['role'],
         ['device', 'role'],
@@ -83,6 +92,28 @@ The plugin is configuration to do exactly what you want, by means of the plugin 
     'custom_field_display_name':''
 }
 ```
+
+## Inheritance Chain
+
+The `inheritance_chain` setting defines which NetBox objects are traversed when resolving Zabbix assignments. Assignments (templates, tags, hostgroups, macros, proxy/server, interfaces, inventory) made on any object in the chain are inherited by the device or VM being synced, with direct assignments taking priority.
+
+### Site, SiteGroup, and Region Inheritance
+
+The chain includes paths for site-level inheritance, allowing assignments made at the `Site`, `SiteGroup`, or `Region` level to be inherited by all devices and VMs at that site or below:
+
+| Path | Description |
+|------|-------------|
+| `['device', 'site']` | The device's site |
+| `['site']` | Site (direct) |
+| `['site', 'group']` | The site's SiteGroup |
+| `['group', 'parent']` | Parent SiteGroup (traverses the full hierarchy) |
+| `['site', 'group', 'parent']` | Full path: device → site → group → parent group |
+| `['site', 'region']` | The site's region |
+| `['region']` | Region (direct) |
+| `['region', 'parent']` | Parent region (traverses the full hierarchy) |
+| `['cluster', 'site']` | The cluster's site (for VMs) |
+
+For example, assigning a `ZabbixServerAssignment` (proxy) to a `SiteGroup` means every device at every site in that SiteGroup inherits the proxy — no per-device assignment needed.
 
 ## Configuration values
 

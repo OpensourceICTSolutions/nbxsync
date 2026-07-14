@@ -102,6 +102,12 @@ None
 - Ensure that the worker doesn't crash on certain race conditions with regards to the hostinterfacesync job ([#86])
 - Fix issue with DeleteHost so it now actually removed the device/object from Zabbix when its deleted from NetBox ([#88])
 
+
+## [Unreleased]
+
+### New features
+
+- Added Site, SiteGroup, and Region as assignment targets with inheritance. Assignments (proxy, templates, tags, hostgroups, interfaces, inventory) made at the Site/SiteGroup/Region level are now inherited by all devices and VMs at that site or below.
 ## [1.0.5] - Minor update
 
 ### New features
