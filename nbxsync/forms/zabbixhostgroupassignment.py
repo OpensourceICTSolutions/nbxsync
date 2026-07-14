@@ -59,6 +59,7 @@ class ZabbixHostgroupAssignmentForm(NetBoxModelForm):
         fields = (
             'zabbixhostgroup',
             'device',
+            'virtualdevicecontext',
             'virtualmachine',
             'cluster',
             'clustertype',
@@ -67,6 +68,8 @@ class ZabbixHostgroupAssignmentForm(NetBoxModelForm):
             'manufacturer',
             'platform',
             'zabbixconfigurationgroup',
+            'site',
+            'sitegroup',
             'region',
         )
 

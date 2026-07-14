@@ -72,6 +72,8 @@ class ZabbixMacroAssignmentForm(NetBoxModelForm):
             'manufacturer',
             'platform',
             'zabbixconfigurationgroup',
+            'site',
+            'sitegroup',
             'region',
         )
 

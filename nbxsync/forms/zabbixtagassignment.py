@@ -69,6 +69,8 @@ class ZabbixTagAssignmentForm(NetBoxModelForm):
             'manufacturer',
             'platform',
             'zabbixconfigurationgroup',
+            'site',
+            'sitegroup',
             'region',
         )
 

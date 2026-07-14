@@ -281,6 +281,7 @@ class ZabbixHostInventoryForm(NetBoxModelForm):
             'name',
             'notes',
             'device',
+            'virtualdevicecontext',
             'virtualmachine',
             'site',
             'sitegroup',
