@@ -116,6 +116,26 @@ The chain includes paths for site-level inheritance, allowing assignments made a
 
 For example, assigning a `ZabbixServerAssignment` (proxy) to a `SiteGroup` means every device at every site in that SiteGroup inherits the proxy — no per-device assignment needed.
 
+## Zabbix Template Rules
+
+`ZabbixTemplateRule` allows automatic template assignment based on the device's or VM's platform name. Each rule has a regex pattern that is matched (case-insensitive) against the platform name. When a rule matches, the configured Zabbix template is assigned to the host.
+
+Rules are resolved after all direct and inherited assignments, so explicit `ZabbixTemplateAssignment` objects always take priority.
+
+Each rule can optionally also assign a hostgroup and a tag when the pattern matches — useful for OS-family grouping (e.g. a `Windows` rule that assigns the `Windows by Zabbix agent` template, a `Windows` hostgroup, and an `os_family=Windows` tag in one rule).
+
+| Field | Description |
+|-------|-------------|
+| `name` | Human-readable name |
+| `pattern` | Regex pattern matched against platform name (case-insensitive) |
+| `zabbixtemplate` | Template assigned when the rule matches |
+| `zabbixhostgroup` | Optional hostgroup assigned on match (nullable) |
+| `zabbixtag` | Optional tag assigned on match (nullable) |
+| `enabled` | Enable/disable rule without deleting it |
+| `priority` | Lower value = higher priority (rules evaluated in order) |
+
+Patterns are validated at save time (`re.compile`). A timeout (2 seconds) protects against catastrophic backtracking during matching.
+
 ## Configuration values
 
 ### Source of Truth

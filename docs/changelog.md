@@ -115,6 +115,7 @@ None
 ### New features
 
 - Added Site, SiteGroup, and Region as assignment targets with inheritance. Assignments (proxy, templates, tags, hostgroups, interfaces, inventory) made at the Site/SiteGroup/Region level are now inherited by all devices and VMs at that site or below.
+- Added `ZabbixTemplateRule` model for regex-based template, hostgroup, and tag assignment by platform name. Includes a 2-second timeout to prevent catastrophic backtracking (ReDoS).
 ## [1.0.5] - Minor update
 
 ### New features
