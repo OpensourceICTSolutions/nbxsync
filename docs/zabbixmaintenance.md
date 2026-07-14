@@ -205,3 +205,54 @@ When the host's status changes away from `enabled_in_maintenance` on the next sy
 Automatically created maintenance windows have `automatic = True` and cannot be manually edited in a way that would prevent this cleanup logic from working. Manual maintenance windows (`automatic = False`) are never touched by this mechanism.
 
 See [`maintenance_window_duration`](configuration.md) for the configuration option that controls the duration.
+
+## Tag-triggered maintenance windows
+
+In addition to status-triggered automatic maintenance, nbxSync can create
+maintenance windows when an operator adds a specific NetBox tag to a device
+or VM. This is useful for ad-hoc alert suppression without changing the
+device status.
+
+### How it works
+
+1. Configure `maintenance_tag_prefix` in your plugin settings (e.g. `'maintenance_'`)
+2. Operator adds a NetBox native tag like `maintenance_2h` to a device/VM
+3. On the next sync, nbxSync:
+   - Creates a `ZabbixMaintenance` (automatic=True) with the matching duration
+   - Creates a one-time `ZabbixMaintenancePeriod` starting now
+   - Assigns the maintenance directly to the device/VM
+   - Keeps the trigger tag on the device for operator visibility
+   - Enqueues `syncmaintenance` to push the window to Zabbix
+
+4. After the duration expires:
+   - The next sync cycle detects the expired `automatic=True` maintenance
+   - Deletes it from NetBox and Zabbix
+   - Removes the matching `maintenance_*` tag from the device
+
+### Configuration
+
+See [Configuration → maintenance_tag_prefix](configuration.md#maintenance_tag_prefix)
+and [Configuration → maintenance_tag_durations](configuration.md#maintenance_tag_durations).
+
+### Example
+
+With `maintenance_tag_prefix = 'maintenance_'` (default durations):
+
+| NetBox Tag | Duration |
+|---|---|
+| `maintenance_2h` | 2 hours |
+| `maintenance_4h` | 4 hours |
+| `maintenance_8h` | 8 hours |
+| `maintenance_24h` | 24 hours |
+
+### Behavior
+
+| Scenario | What Happens |
+|---|---|
+| Tag added | Maintenance created, tag stays on device |
+| Multiple tags at once | Longest duration used, all tags stay |
+| Extend (add longer tag while active) | Old maintenance deleted, new one created |
+| Re-sync with same tag | No duplicate created |
+| Unknown tag suffix | Tag removed, warning logged |
+| Maintenance expires | Tag removed, maintenance deleted |
+| Feature disabled (`prefix = ''`) | No action |

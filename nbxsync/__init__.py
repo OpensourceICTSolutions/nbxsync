@@ -114,10 +114,16 @@ class nbxSync(PluginConfig):
         'no_alerting_tag': 'NO_ALERTING',
         'no_alerting_tag_value': '1',
         'maintenance_window_duration': 3600,
+        'maintenance_tag_prefix': '',
+        'maintenance_tag_durations': {
+            '2h': 7200,
+            '4h': 14400,
+            '8h': 28800,
+            '24h': 86400,
+        },
         'attach_objtag': False,
         'objtag_type': 'nb_type',
         'objtag_id': 'nb_id',
-        'custom_field_hostname': '',
         'custom_field_display_name': '',
     }
     queues = []

@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+### New features
+
+- Tag-triggered maintenance windows: when a NetBox tag like `maintenance_2h`
+  is added to a device/VM, nbxSync creates a Zabbix maintenance window
+  scoped to that host. See [Zabbix Maintenance → Tag-triggered](zabbixmaintenance.md#tag-triggered-maintenance-windows).
+- Automatic cleanup of expired `automatic=True` maintenance windows on every
+  sync cycle.
+
 ## [1.0.0] - Initial Release
 
 - Loads of features, :)

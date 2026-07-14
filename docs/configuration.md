@@ -76,6 +76,11 @@ The plugin is configuration to do exactly what you want, by means of the plugin 
     },
     'no_alerting_tag': 'NO_ALERTING',
     'no_alerting_tag_value': '1',
+    'maintenance_window_duration': 3600,
+    'maintenance_tag_prefix': '',
+    'maintenance_tag_durations': {
+        '2h': 7200, '4h': 14400, '8h': 28800, '24h': 86400,
+    },
     'attach_objtag': True,
     'objtag_type': 'nb_type',
     'objtag_id': 'nb_id',
@@ -179,6 +184,37 @@ Defines the value to be set to the no_alerting_tag. Defaults to '1'
 
 This sets the value of the duration of the maintenance window that is automatically created when a host has the status 'enabled_in_maintenance'
 Is defined in seconds; defaults to 3600 (1 hour)
+
+### maintenance_tag_prefix
+
+When set to a non-empty string, this enables **tag-triggered maintenance windows**.
+If a device or VM has a NetBox native tag matching `{prefix}{duration_key}`,
+nbxSync creates a Zabbix maintenance window scoped to that specific host. The
+trigger tag is kept on the device for visibility and is removed automatically
+when the maintenance expires.
+
+Set to `''` (empty string) to disable. Default: `''` (disabled).
+
+Example: with `maintenance_tag_prefix = 'maintenance_'`, adding the NetBox tag
+`maintenance_2h` to a device creates a 2-hour maintenance window for that host.
+
+See [Zabbix Maintenance → Tag-triggered](zabbixmaintenance.md#tag-triggered-maintenance-windows)
+for details.
+
+### maintenance_tag_durations
+
+Defines the mapping of tag suffixes to durations in seconds.
+
+Default:
+
+```python
+'maintenance_tag_durations': {
+    '2h': 7200, '4h': 14400, '8h': 28800, '24h': 86400,
+}
+```
+
+You can add or remove entries. If multiple `maintenance_*` tags are present,
+the longest duration is used.
 
 ### snmpconfig
 

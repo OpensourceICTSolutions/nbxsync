@@ -107,10 +107,18 @@ class PluginSettingsModel(BaseModel):
     no_alerting_tag: str = Field(default='NO_ALERTING')
     no_alerting_tag_value: str = Field(default='1')
     maintenance_window_duration: int = Field(default=3600)
+
+    # Tag-triggered maintenance windows
+    maintenance_tag_prefix: str = Field(default='')
+    maintenance_tag_durations: Dict[str, int] = Field(
+        default_factory=lambda: {
+            '2h': 7200, '4h': 14400, '8h': 28800, '24h': 86400,
+        }
+    )
+
     attach_objtag: bool = Field(default=True)
     objtag_type: str = Field(default='nb_type')
     objtag_id: str = Field(default='nb_id')
-
 
     custom_field_hostname: str = Field(default='')
     custom_field_display_name: str = Field(default='')

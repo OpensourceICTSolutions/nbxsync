@@ -1,17 +1,33 @@
+import logging
 import re
 from datetime import datetime, timedelta
 
+from django.utils import timezone
 from django_rq import get_queue
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 
 from .syncbase import ZabbixSyncBase
-from nbxsync.choices import HostInterfaceRequirementChoices, ZabbixHostInterfaceSNMPVersionChoices, ZabbixHostInterfaceTypeChoices, ZabbixInterfaceSNMPV3SecurityLevelChoices
+from nbxsync.choices import (
+    HostInterfaceRequirementChoices,
+    ZabbixHostInterfaceSNMPVersionChoices,
+    ZabbixHostInterfaceTypeChoices,
+    ZabbixInterfaceSNMPV3SecurityLevelChoices,
+    ZabbixMaintenanceTypeChoices,
+    ZabbixMaintenanceTagsEvalChoices,
+    ZabbixTimePeriodTypeChoices,
+)
 from nbxsync.choices.syncsot import SyncSOT
 from nbxsync.choices.zabbixstatus import ZabbixHostStatus
-from nbxsync.models import ZabbixHostInterface, ZabbixMaintenance, ZabbixMaintenancePeriod, ZabbixMaintenanceObjectAssignment
+from nbxsync.models import (
+    ZabbixHostInterface,
+    ZabbixMaintenance,
+    ZabbixMaintenanceObjectAssignment,
+    ZabbixMaintenancePeriod,
+)
 from nbxsync.utils.sync.hostinterfacesync import HostInterfaceSync
 
+logger = logging.getLogger(__name__)
 
 class HostSync(ZabbixSyncBase):
     id_field = 'hostid'
@@ -375,21 +391,34 @@ class HostSync(ZabbixSyncBase):
         return result
 
     def verify_maintenancewindow(self):
-        status = self.obj.assigned_object.status
-        object_type = self.obj.assigned_object._meta.model_name  # "device" or "virtualmachine"
+        sync_target = self.obj.assigned_object
+        status = sync_target.status
+        object_type = sync_target._meta.model_name  # "device" or "virtualmachine"
         status_mapping = getattr(self.pluginsettings.statusmapping, object_type, {})
         zabbix_status = status_mapping.get(status)
 
-        object_ct = ContentType.objects.get_for_model(self.obj.assigned_object)
-        mw_assignments = ZabbixMaintenanceObjectAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=self.obj.assigned_object.id)
+        object_ct = ContentType.objects.get_for_model(sync_target)
+        mw_assignments = ZabbixMaintenanceObjectAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=sync_target.id)
+
+        # Clean up expired automatic maintenance windows.
+        now = timezone.now()
+        for assignment in mw_assignments:
+            mw = assignment.zabbixmaintenance
+            if mw.automatic and mw.active_till and mw.active_till < now:
+                self._remove_maintenance_tags(sync_target)
+                mw.delete()
 
         if zabbix_status != ZabbixHostStatus.ENABLED_IN_MAINTENANCE:
             for assignment in mw_assignments:
-                # If its a automatically created assignment, just delete the maintenance window
-                # This will trigger the deletion of the assignment as well.
-                if assignment.zabbixmaintenance.automatic:
-                    assignment.zabbixmaintenance.delete()
+                # Delete status-triggered automatic maintenance windows.
+                # Tag-triggered windows (identified by containing a tag suffix
+                # in parentheses in the name) are time-limited and are only
+                # cleaned up when expired — not when status changes.
+                mw = assignment.zabbixmaintenance
+                if mw.automatic and '(' not in mw.name:
+                    mw.delete()
 
+            self._handle_maintenance_tags(sync_target)
             return
 
         # Determine if a maintenance object should be created
@@ -398,14 +427,13 @@ class HostSync(ZabbixSyncBase):
         should_create_maintenance_object = not any(mw_assignment.zabbixmaintenance.automatic for mw_assignment in mw_assignments)
 
         if should_create_maintenance_object:
-            now = datetime.now()
             end_date = now + timedelta(seconds=int(self.pluginsettings.maintenance_window_duration))
             # Create the Maintenance object
-            maintenance = ZabbixMaintenance(name=f'[AUTOMATIC] {str(self.obj.assigned_object)}', description='Automatically created maintenance object due to the object status', automatic=True, active_since=now, active_till=end_date, zabbixserver=self.obj.zabbixserver)
+            maintenance = ZabbixMaintenance(name=f'[AUTOMATIC] {str(sync_target)}', description='Automatically created maintenance object due to the object status', automatic=True, active_since=now, active_till=end_date, zabbixserver=self.obj.zabbixserver)
             maintenance.save()
 
             # Assign this host to the Maintenance object
-            ZabbixMaintenanceObjectAssignment(zabbixmaintenance=maintenance, assigned_object_type=object_ct, assigned_object_id=self.obj.assigned_object.id).save()
+            ZabbixMaintenanceObjectAssignment(zabbixmaintenance=maintenance, assigned_object_type=object_ct, assigned_object_id=sync_target.id).save()
             # And create the maintenance period
             seconds_of_day = now.hour * 3600 + now.minute * 60 + now.second
             ZabbixMaintenancePeriod(zabbixmaintenance=maintenance, start_date=now, start_time=seconds_of_day, period=int(self.pluginsettings.maintenance_window_duration)).save()
@@ -419,6 +447,135 @@ class HostSync(ZabbixSyncBase):
                     timeout=9000,
                 )
             )
+
+        self._handle_maintenance_tags(sync_target)
+
+    def _handle_maintenance_tags(self, sync_target):
+        """
+        Create ad-hoc maintenance windows when maintenance_* tags are present.
+
+        When a NetBox tag like 'maintenance_2h' is added to a device/VM,
+        this creates a ZabbixMaintenance (automatic=True) scoped directly
+        to that host — identical to the status-based path above, but with
+        the duration derived from the tag suffix.
+
+        The trigger tag is kept on the device for visibility and is removed
+        automatically when the maintenance expires.
+
+        Requires: ``maintenance_tag_prefix`` set to a non-empty string.
+        Uses: ``maintenance_tag_durations`` to resolve tag suffix → seconds.
+        """
+        prefix = getattr(self.pluginsettings, 'maintenance_tag_prefix', '')
+        if not prefix:
+            return
+
+        device_tags = list(sync_target.tags.values_list('name', flat=True))
+        tag_names = [t for t in device_tags if t.startswith(prefix)]
+        if not tag_names:
+            return
+
+        durations = getattr(self.pluginsettings, 'maintenance_tag_durations', {})
+        best_tag = None
+        best_seconds = 0
+        for tag in tag_names:
+            seconds = durations.get(tag[len(prefix):], 0)
+            if seconds > best_seconds:
+                best_seconds = seconds
+                best_tag = tag
+
+        if not best_tag:
+            logger.warning(
+                'Maintenance tag prefix "%s" matched but no duration found for '
+                'tags %s on %s. Available suffixes: %s. Tags removed.',
+                prefix, tag_names, sync_target.name, list(durations.keys()),
+            )
+            sync_target.tags.remove(*tag_names)
+            sync_target.save()
+            return
+
+        mw_name = f'[AUTOMATIC] {sync_target.name} ({best_tag})'
+
+        # Skip if this exact maintenance already exists and is active.
+        # This handles repeated verify_maintenancewindow() calls during a
+        # single sync job (get_create_params can be called multiple times).
+        existing = ZabbixMaintenance.objects.filter(
+            name=mw_name,
+            zabbixserver=self.obj.zabbixserver,
+            active_till__gt=timezone.now(),
+        ).first()
+        if existing:
+            return
+
+        # If a different-tag maintenance exists (operator is extending),
+        # delete the old one before creating the new one.
+        existing_any = ZabbixMaintenance.objects.filter(
+            name__startswith=f'[AUTOMATIC] {sync_target.name} (',
+            zabbixserver=self.obj.zabbixserver,
+            active_till__gt=timezone.now(),
+        ).first()
+        if existing_any:
+            existing_any.delete()
+
+        # Create the maintenance window — same pattern as status-based path
+        now = timezone.now()
+        end_date = now + timedelta(seconds=best_seconds)
+        object_ct = ContentType.objects.get_for_model(sync_target)
+        seconds_of_day = now.hour * 3600 + now.minute * 60 + now.second
+
+        maintenance = ZabbixMaintenance(
+            name=mw_name,
+            zabbixserver=self.obj.zabbixserver,
+            active_since=now,
+            active_till=end_date,
+            description=f'Ad-hoc maintenance triggered by NetBox tag "{best_tag}". Duration: {best_seconds}s.',
+            maintenance_type=ZabbixMaintenanceTypeChoices.WITH_COLLECTION,
+            tags_evaltype=ZabbixMaintenanceTagsEvalChoices.AND_OR,
+            automatic=True,
+        )
+        maintenance.save()
+
+        ZabbixMaintenanceObjectAssignment(
+            zabbixmaintenance=maintenance,
+            assigned_object_type=object_ct,
+            assigned_object_id=sync_target.id,
+        ).save()
+
+        ZabbixMaintenancePeriod(
+            zabbixmaintenance=maintenance,
+            timeperiod_type=ZabbixTimePeriodTypeChoices.ONE_TIME,
+            start_date=now,
+            start_time=seconds_of_day,
+            period=best_seconds,
+        ).save()
+
+        queue = get_queue('low')
+        queue.enqueue_job(
+            queue.create_job(
+                func='nbxsync.worker.syncmaintenance',
+                args=[maintenance],
+                timeout=9000,
+            )
+        )
+
+        logger.info(
+            'Created maintenance "%s" for %s (duration=%ds)',
+            mw_name, sync_target.name, best_seconds,
+        )
+
+    def _remove_maintenance_tags(self, sync_target):
+        """
+        Remove ALL maintenance_* trigger tags from a device/VM when an
+        automatic maintenance window is deleted or expired.
+        """
+        prefix = getattr(self.pluginsettings, 'maintenance_tag_prefix', '')
+        if not prefix:
+            return
+
+        device_tags = list(sync_target.tags.values_list('name', flat=True))
+        tag_names = [t for t in device_tags if t.startswith(prefix)]
+        if tag_names:
+            sync_target.tags.remove(*tag_names)
+            sync_target.save()
 
     def delete(self):
         if not self.obj.hostid:
