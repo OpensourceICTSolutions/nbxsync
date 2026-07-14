@@ -1,14 +1,27 @@
 import logging
 
+from django.contrib.contenttypes.models import ContentType
 from django_rq import job
-from nbxsync.jobs import *
 
+from nbxsync.jobs import *
 
 logger = logging.getLogger('worker')
 
 
 @job('low')
-def synchost(instance):
+def synchost(app_label, model_name, object_id):
+    content_type = ContentType.objects.get_by_natural_key(app_label, model_name)
+    model = content_type.model_class()
+    if model is None:
+        logger.warning('Cannot sync removed content type %s.%s', app_label, model_name)
+        return
+
+    try:
+        instance = model.objects.get(pk=object_id)
+    except model.DoesNotExist:
+        logger.info('Skipping deleted sync target %s.%s:%s', app_label, model_name, object_id)
+        return
+
     worker = SyncHostJob(instance=instance)
     worker.run()
 
