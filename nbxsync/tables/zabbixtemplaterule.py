@@ -9,6 +9,8 @@ __all__ = ('ZabbixTemplateRuleTable',)
 class ZabbixTemplateRuleTable(NetBoxTable):
     name = tables.Column(linkify=True)
     zabbixtemplate = tables.Column(linkify=True)
+    zabbixhostgroup = tables.Column(linkify=True)
+    zabbixtag = tables.Column(linkify=True)
 
     class Meta(NetBoxTable.Meta):
         model = ZabbixTemplateRule
@@ -18,6 +20,8 @@ class ZabbixTemplateRuleTable(NetBoxTable):
             'description',
             'pattern',
             'zabbixtemplate',
+            'zabbixhostgroup',
+            'zabbixtag',
             'enabled',
             'priority',
             'created',
@@ -28,6 +32,7 @@ class ZabbixTemplateRuleTable(NetBoxTable):
             'name',
             'pattern',
             'zabbixtemplate',
+            'zabbixhostgroup',
             'enabled',
             'priority',
         )

@@ -5,7 +5,7 @@ from netbox.forms import NetBoxModelBulkEditForm, NetBoxModelFilterSetForm, NetB
 from utilities.forms.fields import DynamicModelChoiceField
 from utilities.forms.rendering import FieldSet
 
-from nbxsync.models import ZabbixTemplate, ZabbixTemplateRule
+from nbxsync.models import ZabbixHostgroup, ZabbixTag, ZabbixTemplate, ZabbixTemplateRule
 
 __all__ = (
     'ZabbixTemplateRuleForm',
@@ -16,6 +16,8 @@ __all__ = (
 
 class ZabbixTemplateRuleForm(NetBoxModelForm):
     zabbixtemplate = DynamicModelChoiceField(queryset=ZabbixTemplate.objects.all(), selector=True, label=_('Zabbix Template'))
+    zabbixhostgroup = DynamicModelChoiceField(queryset=ZabbixHostgroup.objects.all(), required=False, selector=True, label=_('Zabbix Hostgroup'))
+    zabbixtag = DynamicModelChoiceField(queryset=ZabbixTag.objects.all(), required=False, selector=True, label=_('Zabbix Tag'))
 
     class Meta:
         model = ZabbixTemplateRule
@@ -24,6 +26,8 @@ class ZabbixTemplateRuleForm(NetBoxModelForm):
             'description',
             'pattern',
             'zabbixtemplate',
+            'zabbixhostgroup',
+            'zabbixtag',
             'enabled',
             'priority',
         )
@@ -45,8 +49,10 @@ class ZabbixTemplateRuleBulkEditForm(NetBoxModelBulkEditForm):
     description = forms.CharField(label=_('Description'), max_length=200, required=False)
     pattern = forms.CharField(label=_('Pattern'), max_length=500, required=False)
     zabbixtemplate = forms.ModelChoiceField(queryset=ZabbixTemplate.objects.all(), required=False, label=_('Zabbix Template'))
+    zabbixhostgroup = forms.ModelChoiceField(queryset=ZabbixHostgroup.objects.all(), required=False, label=_('Zabbix Hostgroup'))
+    zabbixtag = forms.ModelChoiceField(queryset=ZabbixTag.objects.all(), required=False, label=_('Zabbix Tag'))
     enabled = forms.NullBooleanField(required=False, label=_('Enabled'))
     priority = forms.IntegerField(required=False, label=_('Priority'))
 
-    fieldsets = (FieldSet('description', 'pattern', 'zabbixtemplate', 'enabled', 'priority', name=_('Zabbix Template Rule')),)
-    nullable_fields = ('description',)
+    fieldsets = (FieldSet('description', 'pattern', 'zabbixtemplate', 'zabbixhostgroup', 'zabbixtag', 'enabled', 'priority', name=_('Zabbix Template Rule')),)
+    nullable_fields = ('description', 'zabbixhostgroup', 'zabbixtag')

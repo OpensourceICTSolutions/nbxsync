@@ -127,10 +127,12 @@ def get_assigned_zabbixobjects(instance, zabbixserver=None):
     merged_templates = merge(direct_templates, inherited['templates'], 'zabbixtemplate_id')
     resolved_template_ids = {getattr(obj, 'zabbixtemplate_id') for obj in merged_templates}
     merged_hostgroups = merge(direct_hostgroups, inherited['hostgroups'], 'zabbixhostgroup_id')
+    resolved_hostgroup_ids = {getattr(obj, 'zabbixhostgroup_id') for obj in merged_hostgroups}
     merged_tags = merge(direct_tags, inherited['tags'], 'id')
+    resolved_tag_ids = {obj.zabbixtag_id for obj in merged_tags}
     platform = getattr(instance, 'platform', None)
     if platform:
-        rules_qs = ZabbixTemplateRule.objects.filter(enabled=True).select_related('zabbixtemplate')
+        rules_qs = ZabbixTemplateRule.objects.filter(enabled=True).select_related('zabbixtemplate', 'zabbixhostgroup', 'zabbixtag')
         if zabbixserver:
             rules_qs = rules_qs.filter(zabbixtemplate__zabbixserver=zabbixserver)
         for rule in rules_qs.order_by('priority', 'name'):
@@ -150,6 +152,28 @@ def get_assigned_zabbixobjects(instance, zabbixserver=None):
                 wrapper._inherited_from = inherited_from
                 merged_templates.append(wrapper)
                 resolved_template_ids.add(rule.zabbixtemplate_id)
+            if rule.zabbixhostgroup_id and rule.zabbixhostgroup_id not in resolved_hostgroup_ids:
+                wrapper = ZabbixHostgroupAssignment(
+                    zabbixhostgroup=rule.zabbixhostgroup,
+                    assigned_object_type=content_type,
+                    assigned_object_id=instance.id,
+                )
+                wrapper.pk = None
+                wrapper._is_inherited_copy = True
+                wrapper._inherited_from = inherited_from
+                merged_hostgroups.append(wrapper)
+                resolved_hostgroup_ids.add(rule.zabbixhostgroup_id)
+            if rule.zabbixtag_id and rule.zabbixtag_id not in resolved_tag_ids:
+                wrapper = ZabbixTagAssignment(
+                    zabbixtag=rule.zabbixtag,
+                    assigned_object_type=content_type,
+                    assigned_object_id=instance.id,
+                )
+                wrapper.pk = None
+                wrapper._is_inherited_copy = True
+                wrapper._inherited_from = inherited_from
+                merged_tags.append(wrapper)
+                resolved_tag_ids.add(rule.zabbixtag_id)
 
     return {
         'templates': merged_templates,
