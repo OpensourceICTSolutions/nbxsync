@@ -88,7 +88,7 @@ class SyncObjectsJob(JobRunner):
         name = 'Zabbix Sync Hosts job'
 
     def run(self, *args, **kwargs):
-        queue = get_queue('low')
+        queue = None
         enqueued_keys = set()
 
         for assignment in ZabbixServerAssignment.objects.all().select_related('zabbixserver'):
@@ -101,6 +101,9 @@ class SyncObjectsJob(JobRunner):
             eligible_instances = _get_eligible_instances(assignment)
 
             for instance in eligible_instances:
+                if queue is None:
+                    queue = get_queue('low')
+
                 ct = ContentType.objects.get_for_model(instance)
                 key = (ct.app_label, ct.model, instance.pk)
                 if key in enqueued_keys:
