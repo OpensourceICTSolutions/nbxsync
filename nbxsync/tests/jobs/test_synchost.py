@@ -21,7 +21,12 @@ class SyncHostJobTestCase(TestCase):
 
         self.zabbixserver = ZabbixServer.objects.create(name='Zabbix1', url='http://zabbix.local', token='abc123')
 
-        self.proxygroup = ZabbixProxyGroup.objects.create(failover_delay="1m", name='Test Proxy Group123', zabbixserver=self.zabbixserver, proxy_groupid=99, )
+        self.proxygroup = ZabbixProxyGroup.objects.create(
+            failover_delay='1m',
+            name='Test Proxy Group123',
+            zabbixserver=self.zabbixserver,
+            proxy_groupid=99,
+        )
         self.proxy = ZabbixProxy.objects.create(
             name='Active Proxy #1',
             zabbixserver=self.zabbixserver,

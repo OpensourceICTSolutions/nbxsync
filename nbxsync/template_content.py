@@ -55,10 +55,7 @@ class ZabbixDeviceButtonsExtension(PluginTemplateExtension):
         has_hostgroup_assignment = bool(assigned.get('hostgroups'))
 
         hostinterfaces = assigned.get('hostinterfaces') or []
-        assigned_hostinterface_types = set(
-            hi.type for hi in hostinterfaces
-            if int(getattr(hi, 'interface_type', 0)) == ZabbixInterfaceTypeChoices.DEFAULT
-        )
+        assigned_hostinterface_types = set(hi.type for hi in hostinterfaces if int(getattr(hi, 'interface_type', 0)) == ZabbixInterfaceTypeChoices.DEFAULT)
         assigned_zabbixtemplates = assigned.get('templates') or []
 
         has_hostinterface_assignment = True
