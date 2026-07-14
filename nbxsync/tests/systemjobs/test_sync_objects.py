@@ -173,9 +173,7 @@ class SyncObjectsSystemJobTestCase(TestCase):
 
         SyncObjectsJob(job=MagicMock()).run()
 
-        self.mock_job_is_active.assert_called_once_with(
-            queue, f'nbxsync-host-dcim-device-{self.device1.pk}'
-        )
+        self.mock_job_is_active.assert_called_once_with(queue, f'nbxsync-host-dcim-device-{self.device1.pk}')
         queue.create_job.assert_not_called()
         queue.enqueue_job.assert_not_called()
 

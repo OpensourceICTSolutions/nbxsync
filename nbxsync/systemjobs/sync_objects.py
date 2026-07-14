@@ -23,12 +23,11 @@ def GetSyncInterval():
     return pluginsettings.backgroundsync.objects.interval
 
 
-
-
 def _object_with_descendants_qs(obj, child_attr, manager):
     """Return a queryset of objects matching *child_attr* on obj and its descendants."""
     descendants = obj.get_descendants(include_self=True)
     return manager.filter(**{f'{child_attr}__in': descendants})
+
 
 def _sync_job_id(content_type, object_id):
     return f'nbxsync-host-{content_type.app_label}-{content_type.model}-{object_id}'
@@ -150,8 +149,7 @@ class SyncObjectsJob(JobRunner):
                 jobs_enqueued += 1
 
         logger.info(
-            'Zabbix host reconciliation complete: assignments=%d resolved=%d deduplicated=%d '
-            'active_skipped=%d enqueued=%d disabled=%d duration_seconds=%.3f',
+            'Zabbix host reconciliation complete: assignments=%d resolved=%d deduplicated=%d ' 'active_skipped=%d enqueued=%d disabled=%d duration_seconds=%.3f',
             assignments_inspected,
             hosts_resolved,
             hosts_deduplicated,

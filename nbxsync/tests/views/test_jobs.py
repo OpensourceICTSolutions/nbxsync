@@ -46,9 +46,7 @@ class TriggerSyncJobViewTestCase(TestCase):
             interface_requirements=[HostInterfaceRequirementChoices.AGENT, HostInterfaceRequirementChoices.ANY],
         )
 
-    def _run_sync_view_test(
-        self, urlname, kwargs, expected_obj, job_func, message_snippet, expected_return=204, expected_args=None
-    ):
+    def _run_sync_view_test(self, urlname, kwargs, expected_obj, job_func, message_snippet, expected_return=204, expected_args=None):
         url = reverse(f'plugins:nbxsync:{urlname}', kwargs=kwargs)
         with patch('nbxsync.views.jobs.get_queue') as mock_get_queue:
             mock_queue = mock_get_queue.return_value
