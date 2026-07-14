@@ -67,12 +67,8 @@ class RecursiveInheritanceTestCase(TestCase):
 
     def test_nearest_ancestor_wins(self):
         """The nearest assignment wins when ancestors target the same server."""
-        root_proxy = ZabbixProxy.objects.create(
-            name='Root Proxy', zabbixserver=self.server, local_address='192.0.2.10', operating_mode=0
-        )
-        leaf_proxy = ZabbixProxy.objects.create(
-            name='Leaf Proxy', zabbixserver=self.server, local_address='192.0.2.11', operating_mode=0
-        )
+        root_proxy = ZabbixProxy.objects.create(name='Root Proxy', zabbixserver=self.server, local_address='192.0.2.10', operating_mode=0)
+        leaf_proxy = ZabbixProxy.objects.create(name='Leaf Proxy', zabbixserver=self.server, local_address='192.0.2.11', operating_mode=0)
         ZabbixServerAssignment.objects.create(
             zabbixserver=self.server,
             assigned_object_type=self.sg_ct,
