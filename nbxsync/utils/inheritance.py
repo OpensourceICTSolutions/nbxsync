@@ -138,6 +138,8 @@ def get_assigned_zabbixobjects(instance, zabbixserver=None):
                 continue
             inherited_from = f'Regex: {rule.name}'
             if rule.zabbixtemplate_id and rule.zabbixtemplate_id not in resolved_template_ids:
+                # Create an unsaved ZabbixTemplateAssignment wrapper so downstream
+                # code (table rendering, sync) sees the same interface as real assignments.
                 wrapper = ZabbixTemplateAssignment(
                     zabbixtemplate=rule.zabbixtemplate,
                     assigned_object_type=content_type,
