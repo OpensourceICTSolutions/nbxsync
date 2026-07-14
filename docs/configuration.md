@@ -128,11 +128,13 @@ This key is used to determine if 'objects' (that is: Devices and/or Virtual Mach
 
 ##### enabled
 
-Either true or false (default: True)
+Either true or false (default: True). When enabled, a periodic job enumerates all Devices and VirtualMachines that inherit a `ZabbixServerAssignment` (direct or from SiteGroup/Site/Region/Role/Platform/etc.) and enqueues each for sync.
 
 ##### interval
 
 Used to determine the interval to sync Devices and Virtual Machines to/from Zabbix, in minutes (default: 60)
+
+Set `objects.interval` to at least 360 (6 hours) for production — a full reconciliation of ~1127 hosts takes ~80 minutes at ~14 hosts/min; intervals shorter than 90 minutes will cause queue overlap.
 
 #### templates
 
