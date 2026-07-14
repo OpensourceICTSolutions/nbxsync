@@ -50,7 +50,7 @@ class ZabbixTagAssignmentObjectViewTable(ZabbixInheritedAssignmentTable, NetBoxT
     zabbixtag = tables.Column(accessor='zabbixtag.name', verbose_name=_('Zabbix Tag'), linkify={'viewname': 'plugins:nbxsync:zabbixtag', 'args': [A('zabbixtag.pk')]})
     actions = InheritanceAwareActionsColumn()
 
-    rendered_output = JinjaValueColumn(accessor=tables.A('zabbixtag__name'), default='', verbose_name='Value')
+    rendered_output = JinjaValueColumn(accessor='value', default='', verbose_name='Value')
 
     class Meta(NetBoxTable.Meta):
         model = ZabbixTagAssignment
