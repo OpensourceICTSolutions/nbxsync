@@ -614,7 +614,7 @@ class HostSync(ZabbixSyncBase):
         # The ConfigGroup-expanded interface has interfaceid=None, so it's
         # not in expected_ids — but trying to delete it fails when items are linked.
         # Skip deletion entirely for inherited copies.
-        if getattr(self.obj, '_is_inherited_copy', False):
+        if not self._should_persist():
             return
 
         to_be_deleted = current_ids - expected_ids
