@@ -89,8 +89,8 @@ def get_assigned_zabbixobjects(instance, zabbixserver=None):
 
     def merge(direct, inherited_map, key):
         direct_ids = {getattr(obj, key) for obj in direct}
-        inherited_filtered = [obj for obj in inherited_map.values() if getattr(obj, key) not in direct_ids]
-        return direct + inherited_filtered
+        merged_filtered = [obj for obj in list(inherited_map.values()) if getattr(obj, key) not in direct_ids]
+        return direct + merged_filtered
 
     # Merge direct + inherited (direct takes priority)
     # ZabbixHostInterfaces assigned to SiteGroup/Role/Site are resolved

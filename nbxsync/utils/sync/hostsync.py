@@ -34,13 +34,6 @@ class HostSync(ZabbixSyncBase):
         """
         return self.context.get('all_objects', {}).get('_instance') or self.obj.assigned_object
 
-    def _get_all_objects(self, key, default=None):
-        """Return the values of an all_objects collection, handling both dict and list."""
-        val = self.context.get('all_objects', {}).get(key, default if default is not None else [])
-        if hasattr(val, 'values'):
-            return val.values()
-        return val
-
     def get_base_name(self):
         # If the object has the "name" attribute, only return that (Device). If not (cornercase?), return the display string
         sync_target = self._get_sync_target()
@@ -141,7 +134,7 @@ class HostSync(ZabbixSyncBase):
 
     def get_defined_macros(self):
         result = []
-        for macro in self._get_all_objects('macros'):
+        for macro in (self.context.get('all_objects', {}).get('macros', []) or []):
             rendered_value, _ = macro.render(object=self._get_sync_target())
             result.append(
                 {
@@ -173,7 +166,7 @@ class HostSync(ZabbixSyncBase):
 
     def get_snmp_macros(self):
         result = []
-        hostinterfaces = self._get_all_objects('hostinterfaces')
+        hostinterfaces = (self.context.get('all_objects', {}).get('hostinterfaces', []) or [])
         snmpconf = self.pluginsettings.snmpconfig
 
         for hostinterface in hostinterfaces:
@@ -244,7 +237,7 @@ class HostSync(ZabbixSyncBase):
 
     def get_hostinterface_attributes(self):
         result = {}
-        for hostinterface in self._get_all_objects('hostinterfaces'):
+        for hostinterface in (self.context.get('all_objects', {}).get('hostinterfaces', []) or []):
             if hostinterface.type == ZabbixHostInterfaceTypeChoices.AGENT:
                 result['tls_connect'] = hostinterface.tls_connect
                 result['tls_accept'] = 0
@@ -264,7 +257,7 @@ class HostSync(ZabbixSyncBase):
         return result
 
     def get_hostinterface_types(self):
-        hostinterfaces = self._get_all_objects('hostinterfaces')
+        hostinterfaces = (self.context.get('all_objects', {}).get('hostinterfaces', []) or [])
         return list({interface.type for interface in hostinterfaces})
 
     def get_templates_clear_attributes(self):
@@ -307,7 +300,7 @@ class HostSync(ZabbixSyncBase):
         result = []
         hostinterface_types = set(self.get_hostinterface_types() or [])
 
-        for assigned_template in self._get_all_objects('templates'):
+        for assigned_template in (self.context.get('all_objects', {}).get('templates', []) or []):
             required = set(assigned_template.zabbixtemplate.interface_requirements or [])
 
             # Extract special modifiers
@@ -340,7 +333,7 @@ class HostSync(ZabbixSyncBase):
         zabbix_status = status_mapping.get(status)
 
         result = []
-        for assigned_tag in self._get_all_objects('tags'):
+        for assigned_tag in (self.context.get('all_objects', {}).get('tags', []) or []):
             value, _ = assigned_tag.render(object=sync_target)
             result.append({'tag': assigned_tag.zabbixtag.tag, 'value': value})
 
@@ -529,7 +522,7 @@ class HostSync(ZabbixSyncBase):
             return
 
         hostid = str(int(self.obj.hostid))
-        netbox_hostinterfaces = list(self._get_all_objects('hostinterfaces'))
+        netbox_hostinterfaces = list(self.context.get('all_objects', {}).get('hostinterfaces', []) or [])
         zabbix_hostinterfaces = self.api.hostinterface.get(hostids=hostid)
 
         netbox_default_obj_by_type = {}
@@ -604,7 +597,7 @@ class HostSync(ZabbixSyncBase):
             return {}
 
         # Extract the currently expected interfaces
-        expected_hostinterfaces = list(self._get_all_objects('hostinterfaces'))
+        expected_hostinterfaces = list(self.context.get('all_objects', {}).get('hostinterfaces', []) or [])
         expected_ids = {int(expected_hostinterface.interfaceid) for expected_hostinterface in expected_hostinterfaces if expected_hostinterface.interfaceid}
 
         # Get currently assigned hostinterface from Zabbix
