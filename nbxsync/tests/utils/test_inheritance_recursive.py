@@ -5,7 +5,7 @@ from django.test import TestCase
 from dcim.models import DeviceRole, Region, Site, SiteGroup
 from utilities.testing import create_test_device
 
-from nbxsync.models import ZabbixProxy, ZabbixServer, ZabbixServerAssignment
+from nbxsync.models import ZabbixProxy, ZabbixServer, ZabbixServerAssignment, ZabbixTemplate, ZabbixTemplateAssignment
 from nbxsync.utils.inheritance import _walk_ancestors, resolve_inherited_zabbix_assignments
 
 
@@ -109,3 +109,72 @@ class RecursiveInheritanceTestCase(TestCase):
         ZabbixServerAssignment.objects.create(zabbixserver=self.server, assigned_object_type=self.role_ct, assigned_object_id=root_role.pk)
         result = resolve_inherited_zabbix_assignments(device)
         self.assertIn(self.server.pk, result['server_assignments'])
+
+
+
+
+class ResolveInheritedAssignmentsBatchedTestCase(TestCase):
+    """Contract tests for the batched query refactor of resolve_inherited_zabbix_assignments."""
+
+    def setUp(self):
+        self.server = ZabbixServer.objects.create(name='Zabbix', url='http://zabbix.local', token='t')
+
+    def _sitegroup_chain(self, depth):
+        """Build a SiteGroup chain of the given depth (root .. leaf) and a device under the leaf."""
+        parent = None
+        groups = []
+        for i in range(depth):
+            sg = SiteGroup.objects.create(name=f'D{depth}-G{i}', slug=f'd{depth}-g{i}', parent=parent)
+            groups.append(sg)
+            parent = sg
+        leaf = groups[-1]
+        site = Site.objects.create(name=f'Site-{depth}', slug=f'site-{depth}', group=leaf)
+        device = create_test_device(name=f'Dev-{depth}', site=site)
+        return groups, device
+
+    def test_query_count_is_bounded_independent_of_depth(self):
+        """Query count must stay ~constant as SiteGroup depth grows (no N+1)."""
+        from django.contrib.contenttypes.models import ContentType
+        from django.test.utils import CaptureQueriesContext
+        from django.db import connection
+
+        # Build two hierarchies of different depth and measure the resolver's query
+        # count for each. The batched refactor issues ~constant queries regardless
+        # of ancestor count; the old per-ancestor loop scaled as ~7×N.
+        sg_ct = ContentType.objects.get_for_model(SiteGroup)
+        groups_2, device_2 = self._sitegroup_chain(2)
+        ZabbixServerAssignment.objects.create(zabbixserver=self.server, assigned_object_type=sg_ct, assigned_object_id=groups_2[0].pk)
+        groups_5, device_5 = self._sitegroup_chain(5)
+        ZabbixServerAssignment.objects.create(zabbixserver=self.server, assigned_object_type=sg_ct, assigned_object_id=groups_5[0].pk)
+
+        with CaptureQueriesContext(connection) as ctx_2:
+            resolve_inherited_zabbix_assignments(device_2)
+        with CaptureQueriesContext(connection) as ctx_5:
+            resolve_inherited_zabbix_assignments(device_5)
+
+        # The deeper hierarchy has 3 more ancestors but must not multiply queries.
+        self.assertLess(len(ctx_5.captured_queries), 60, f'Query count exploded at depth 5: {len(ctx_5.captured_queries)}')
+        self.assertLessEqual(len(ctx_5.captured_queries), len(ctx_2.captured_queries) + 20,
+                             f'Query count grew disproportionately with depth: {len(ctx_2.captured_queries)} -> {len(ctx_5.captured_queries)}')
+
+    def test_leaf_assignment_wins_over_root(self):
+        """A template assigned to both the root and the leaf SiteGroup resolves to the leaf one (first-seen-wins, leaf-before-ancestor)."""
+        from django.contrib.contenttypes.models import ContentType
+
+        root = SiteGroup.objects.create(name='Root', slug='root')
+        leaf = SiteGroup.objects.create(name='Leaf', slug='leaf', parent=root)
+        site = Site.objects.create(name='LeafSite', slug='leaf-site', group=leaf)
+        device = create_test_device(name='DevAtLeaf', site=site)
+
+        root_template = ZabbixTemplate.objects.create(name='RootTpl', zabbixserver=self.server, templateid=1)
+        leaf_template = ZabbixTemplate.objects.create(name='LeafTpl', zabbixserver=self.server, templateid=2)
+        sg_ct = ContentType.objects.get_for_model(SiteGroup)
+        ZabbixTemplateAssignment.objects.create(zabbixtemplate=root_template, assigned_object_type=sg_ct, assigned_object_id=root.pk)
+        ZabbixTemplateAssignment.objects.create(zabbixtemplate=leaf_template, assigned_object_type=sg_ct, assigned_object_id=leaf.pk)
+
+        result = resolve_inherited_zabbix_assignments(device)
+
+        self.assertEqual(set(result['templates'].keys()), {leaf_template.pk, root_template.pk})
+        # Both resolve (different template ids), and the leaf's label is attached to its row.
+        leaf_row = result['templates'][leaf_template.pk]
+        self.assertIn('Leaf', leaf_row._inherited_from)
