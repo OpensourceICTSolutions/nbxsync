@@ -2,7 +2,7 @@ import copy as _copy
 from collections import OrderedDict
 
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 from django.db.models.manager import BaseManager
 
 from dcim.models import DeviceRole, Region, SiteGroup
@@ -196,6 +196,12 @@ def resolve_inherited_zabbix_assignments(assigned_object, zabbixserver=None):  #
         return cur
 
     pluginsettings = get_plugin_settings()
+
+    # --- Collect phase ---
+    # Walk every inheritance-chain path and gather (content_type, object_pk, label)
+    # triples in leaf-first order. No queries are issued here. The seen_objects
+    # dedup preserves the original "first path an object is seen on wins" semantics.
+    triples = []
     seen_objects = set()
     for path in pluginsettings.inheritance_chain:
         related_obj = resolve_path(assigned_object, path)
@@ -214,68 +220,25 @@ def resolve_inherited_zabbix_assignments(assigned_object, zabbixserver=None):  #
             if object_key in seen_objects:
                 continue
             seen_objects.add(object_key)
-            inherited_from = _inheritance_source(path, ancestor_obj)
-            templates = ZabbixTemplateAssignment.objects.filter(assigned_object_type=ct, assigned_object_id=ancestor_obj.pk).select_related('zabbixtemplate')
-            macros = ZabbixMacroAssignment.objects.filter(assigned_object_type=ct, assigned_object_id=ancestor_obj.pk).select_related('zabbixmacro')
-            tags = ZabbixTagAssignment.objects.filter(assigned_object_type=ct, assigned_object_id=ancestor_obj.pk).select_related('zabbixtag')
-            hostgroups = ZabbixHostgroupAssignment.objects.filter(assigned_object_type=ct, assigned_object_id=ancestor_obj.pk).select_related('zabbixhostgroup')
-            configurationgroups = ZabbixConfigurationGroupAssignment.objects.filter(assigned_object_type=ct, assigned_object_id=ancestor_obj.pk).select_related('zabbixconfigurationgroup')
+            label = _inheritance_source(path, ancestor_obj)
+            triples.append((ct, ancestor_obj.pk, label))
 
-            if zabbixserver:
-                templates = templates.filter(zabbixtemplate__zabbixserver=zabbixserver)
-                hostgroups = hostgroups.filter(zabbixhostgroup__zabbixserver=zabbixserver)
-
-            server_assignments = ZabbixServerAssignment.objects.filter(assigned_object_type=ct, assigned_object_id=ancestor_obj.pk).select_related('zabbixproxy', 'zabbixproxygroup')
-            hostinterfaces = ZabbixHostInterface.objects.filter(assigned_object_type=ct, assigned_object_id=ancestor_obj.pk)
-
-            if zabbixserver:
-                server_assignments = server_assignments.filter(zabbixserver=zabbixserver)
-                hostinterfaces = hostinterfaces.filter(zabbixserver=zabbixserver)
-            hostinventory = ZabbixHostInventory.objects.filter(assigned_object_type=ct, assigned_object_id=ancestor_obj.pk).first()
-            # print(f'[Resolved from {label}] {ancestor_obj}: inherited {len(templates)} templates, {len(macros)} macros, {len(tags)} tags, {len(hostgroups)} hostgroups, {len(configurationgroups)} configurationgroups,')
-
-            for template in templates:
-                if template.zabbixtemplate_id not in seen_template_ids:
-                    template._inherited_from = inherited_from
-                    resolved_templates[template.zabbixtemplate_id] = template
-                    seen_template_ids.add(template.zabbixtemplate_id)
-            for sa in server_assignments:
-                if sa.zabbixserver_id not in resolved_server_assignments:
-                    sa._inherited_from = inherited_from
-                    resolved_server_assignments[sa.zabbixserver_id] = sa
-
-            if hostinventory and not resolved_hostinventory:
-                hostinventory._inherited_from = inherited_from
-                resolved_hostinventory = hostinventory
-
-            for hi in hostinterfaces:
-                if hi.id not in resolved_hostinterfaces:
-                    hi._inherited_from = inherited_from
-                    resolved_hostinterfaces[hi.id] = hi
-
-            for macro in macros:
-                if macro.zabbixmacro_id not in seen_macro_ids:
-                    macro._inherited_from = inherited_from
-                    resolved_macros[macro.zabbixmacro_id] = macro
-                    seen_macro_ids.add(macro.zabbixmacro_id)
-
-            for tag in tags:
-                if tag.id not in seen_tag_ids:
-                    tag._inherited_from = inherited_from
-                    resolved_tags[tag.id] = tag
-                    seen_tag_ids.add(tag.id)
-
-            for hostgroup in hostgroups:
-                if hostgroup.zabbixhostgroup_id not in seen_hostgroup_ids:
-                    hostgroup._inherited_from = inherited_from
-                    resolved_hostgroups[hostgroup.zabbixhostgroup_id] = hostgroup
-                    seen_hostgroup_ids.add(hostgroup.zabbixhostgroup_id)
-
-            for configurationgroup in configurationgroups:
-                if configurationgroup.zabbixconfigurationgroup_id not in seen_configurationgroup_ids:
-                    configurationgroup._inherited_from = inherited_from
-                    resolved_configurationgroups[configurationgroup.zabbixconfigurationgroup_id] = configurationgroup
-                    seen_configurationgroup_ids.add(configurationgroup.zabbixconfigurationgroup_id)
+    resolved_hostinventory = _resolve_inherited_assignments_batched(
+        triples,
+        zabbixserver,
+        resolved_templates,
+        resolved_server_assignments,
+        resolved_hostinterfaces,
+        resolved_macros,
+        resolved_tags,
+        resolved_hostgroups,
+        resolved_configurationgroups,
+        seen_template_ids,
+        seen_macro_ids,
+        seen_tag_ids,
+        seen_hostgroup_ids,
+        seen_configurationgroup_ids,
+    )
 
     return {
         'server_assignments': resolved_server_assignments,
@@ -287,3 +250,131 @@ def resolve_inherited_zabbix_assignments(assigned_object, zabbixserver=None):  #
         'hostgroups': resolved_hostgroups,
         'configurationgroups': resolved_configurationgroups,
     }
+
+
+def _resolve_inherited_assignments_batched(
+    triples,
+    zabbixserver,
+    resolved_templates,
+    resolved_server_assignments,
+    resolved_hostinterfaces,
+    resolved_macros,
+    resolved_tags,
+    resolved_hostgroups,
+    resolved_configurationgroups,
+    seen_template_ids,
+    seen_macro_ids,
+    seen_tag_ids,
+    seen_hostgroup_ids,
+    seen_configurationgroup_ids,
+):
+    """Batch-query all assignment models across every collected ancestor triple.
+
+    Replaces the former per-ancestor 7-query loop: one query per assignment model
+    (plus one for hostinventory) instead of 7×N. Distribution iterates the batched
+    rows in ancestor (triple) order so first-seen-wins dedup matches the original
+    per-ancestor loop exactly.
+    """
+    if not triples:
+        return None
+
+    # Build a single Q OR across all (content_type, object_pk) pairs per model.
+    base_q = Q()
+    for ct, pk, _label in triples:
+        base_q |= Q(assigned_object_type=ct, assigned_object_id=pk)
+    label_by_obj = {(ct.pk, pk): label for ct, pk, label in triples}
+
+    def _batch(model, *, select_related=(), server_filter=None):
+        qs = model.objects.filter(base_q)
+        if select_related:
+            qs = qs.select_related(*select_related)
+        if zabbixserver and server_filter:
+            qs = qs.filter(**server_filter)
+        return qs
+
+    templates_qs = _batch(
+        ZabbixTemplateAssignment,
+        select_related=('zabbixtemplate',),
+        server_filter={'zabbixtemplate__zabbixserver': zabbixserver},
+    )
+    macros_qs = _batch(ZabbixMacroAssignment, select_related=('zabbixmacro',))
+    tags_qs = _batch(ZabbixTagAssignment, select_related=('zabbixtag',))
+    hostgroups_qs = _batch(
+        ZabbixHostgroupAssignment,
+        select_related=('zabbixhostgroup',),
+        server_filter={'zabbixhostgroup__zabbixserver': zabbixserver},
+    )
+    configurationgroups_qs = _batch(ZabbixConfigurationGroupAssignment, select_related=('zabbixconfigurationgroup',))
+    server_assignments_qs = _batch(
+        ZabbixServerAssignment,
+        select_related=('zabbixproxy', 'zabbixproxygroup'),
+        server_filter={'zabbixserver': zabbixserver},
+    )
+    hostinterfaces_qs = _batch(ZabbixHostInterface, server_filter={'zabbixserver': zabbixserver})
+
+    # Group rows by their (assigned_object_type_id, assigned_object_id) source so
+    # distribution can walk ancestors in collection (leaf-first) order.
+    def _group(qs):
+        grouped = {}
+        for obj in qs:
+            key = (obj.assigned_object_type_id, obj.assigned_object_id)
+            grouped.setdefault(key, []).append(obj)
+        return grouped
+
+    templates_by_obj = _group(templates_qs)
+    macros_by_obj = _group(macros_qs)
+    tags_by_obj = _group(tags_qs)
+    hostgroups_by_obj = _group(hostgroups_qs)
+    configurationgroups_by_obj = _group(configurationgroups_qs)
+    server_assignments_by_obj = _group(server_assignments_qs)
+    hostinterfaces_by_obj = _group(hostinterfaces_qs)
+
+    resolved_hostinventory = None
+    hostinventory_by_obj = _group(ZabbixHostInventory.objects.filter(base_q))
+
+    for ct, pk, label in triples:
+        key = (ct.pk, pk)
+        inherited_from = label_by_obj[key]
+
+        for template in templates_by_obj.get(key, []):
+            if template.zabbixtemplate_id not in seen_template_ids:
+                template._inherited_from = inherited_from
+                resolved_templates[template.zabbixtemplate_id] = template
+                seen_template_ids.add(template.zabbixtemplate_id)
+        for sa in server_assignments_by_obj.get(key, []):
+            if sa.zabbixserver_id not in resolved_server_assignments:
+                sa._inherited_from = inherited_from
+                resolved_server_assignments[sa.zabbixserver_id] = sa
+        for hi in hostinterfaces_by_obj.get(key, []):
+            if hi.id not in resolved_hostinterfaces:
+                hi._inherited_from = inherited_from
+                resolved_hostinterfaces[hi.id] = hi
+        for macro in macros_by_obj.get(key, []):
+            if macro.zabbixmacro_id not in seen_macro_ids:
+                macro._inherited_from = inherited_from
+                resolved_macros[macro.zabbixmacro_id] = macro
+                seen_macro_ids.add(macro.zabbixmacro_id)
+        for tag in tags_by_obj.get(key, []):
+            if tag.id not in seen_tag_ids:
+                tag._inherited_from = inherited_from
+                resolved_tags[tag.id] = tag
+                seen_tag_ids.add(tag.id)
+        for hostgroup in hostgroups_by_obj.get(key, []):
+            if hostgroup.zabbixhostgroup_id not in seen_hostgroup_ids:
+                hostgroup._inherited_from = inherited_from
+                resolved_hostgroups[hostgroup.zabbixhostgroup_id] = hostgroup
+                seen_hostgroup_ids.add(hostgroup.zabbixhostgroup_id)
+        for configurationgroup in configurationgroups_by_obj.get(key, []):
+            if configurationgroup.zabbixconfigurationgroup_id not in seen_configurationgroup_ids:
+                configurationgroup._inherited_from = inherited_from
+                resolved_configurationgroups[configurationgroup.zabbixconfigurationgroup_id] = configurationgroup
+                seen_configurationgroup_ids.add(configurationgroup.zabbixconfigurationgroup_id)
+
+        if not resolved_hostinventory:
+            inventory_rows = hostinventory_by_obj.get(key, [])
+            if inventory_rows:
+                hostinventory = inventory_rows[0]
+                hostinventory._inherited_from = inherited_from
+                resolved_hostinventory = hostinventory
+
+    return resolved_hostinventory
