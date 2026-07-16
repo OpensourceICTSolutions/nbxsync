@@ -31,7 +31,23 @@ class HostInterfaceSync(ZabbixSyncBase):
         ipaddr = ''
         if self.obj.ip_id:
             ipaddr = IPAddress.objects.get(id=self.obj.ip_id).address.ip
-
+        elif self.context.get('_instance'):
+            instance = self.context.get('_instance')
+            # Check for a management (OOB) interface — e.g. iDRAC, iLO, BMC.
+            # If the device has an interface flagged mgmt_only with a name
+            # starting with "iDRAC", use its IP for this interface.
+            mgmt_iface = getattr(instance, 'interfaces', None)
+            if mgmt_iface is not None:
+                idrac = mgmt_iface.filter(mgmt_only=True, name__istartswith='iDRAC').first()
+                if idrac:
+                    idrac_ip = idrac.ip_addresses.first()
+                    if idrac_ip:
+                        ipaddr = idrac_ip.address.ip
+            # Fall back to the device's primary IP
+            if not ipaddr:
+                primary_ip = getattr(instance, 'primary_ip4', None) or getattr(instance, 'primary_ip6', None)
+                if primary_ip:
+                    ipaddr = primary_ip.address.ip
         dns_name, _ = self.obj.render_dns()
         result = {
             'hostid': hostid,
