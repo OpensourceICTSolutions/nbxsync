@@ -1,0 +1,60 @@
+{% extends template_extends|default:'generic/object.html' %}
+{% load buttons %}
+{% load custom_links %}
+{% load helpers %}
+{% load perms %}
+{% load static %}
+{% load plugins %}
+{% load render_table from django_tables2 %}
+{% block content %}
+    <div class="row">
+        <div class="col col-md-6">
+            <div class="card">
+                <h5 class="card-header">Zabbix Template Rule</h5>
+                <table class="table table-hover attr-table">
+                    <tr>
+                        <td>Name</td>
+                        <td>{{ object.name }}</td>
+                    </tr>
+                    <tr>
+                        <td>Description</td>
+                        <td>{{ object.description|placeholder }}</td>
+                    </tr>
+                    <tr>
+                        <td>Pattern</td>
+                        <td><code>{{ object.pattern }}</code></td>
+                    </tr>
+                    <tr>
+                        <td>Zabbix Template</td>
+                        <td>{{ object.zabbixtemplate|linkify }}</td>
+                    </tr>
+                    <tr>
+                        <td>Hostgroup</td>
+                        <td>{{ object.zabbixhostgroup|linkify|placeholder }}</td>
+                    </tr>
+                    <tr>
+                        <td>Tag</td>
+                        <td>{{ object.zabbixtag|linkify|placeholder }}</td>
+                    </tr>
+                    <tr>
+                        <td>Priority</td>
+                        <td>{{ object.priority }}</td>
+                    </tr>
+                    <tr>
+                        <td>Enabled</td>
+                        <td>{% checkmark object.enabled %}</td>
+                    </tr>
+                </table>
+            </div>
+            {% plugin_left_page object %}
+        </div>
+        <div class="col col-md-6">
+            {% plugin_right_page object %}
+        </div>
+    </div>
+    <div class="row">
+        <div class="col col-md-12">
+            {% plugin_full_width_page object %}
+        </div>
+    </div>
+{% endblock %}
