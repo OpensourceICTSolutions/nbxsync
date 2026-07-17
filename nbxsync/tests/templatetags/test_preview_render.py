@@ -7,16 +7,28 @@ with a template that traverses device-level attributes (``object.role.name``,
 the NetBox UI. The template tag now substitutes a representative Device/VM
 so the preview renders the same value the sync engine produces.
 """
-from dcim.models import Device, DeviceRole, Site, SiteGroup
 from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
-from nbxsync.models import ZabbixHostgroup, ZabbixHostgroupAssignment, ZabbixServer, ZabbixTag, ZabbixTagAssignment
+
+from dcim.models import Device, DeviceRole, Site, SiteGroup
+from utilities.testing import create_test_device
+
+from nbxsync.models import (ZabbixHostgroup, ZabbixHostgroupAssignment,
+                            ZabbixServer, ZabbixTag, ZabbixTagAssignment)
 from nbxsync.templatetags.zabbix_hostgroups import (
     render_zabbix_hostgroup_assignment,
 )
 from nbxsync.templatetags.zabbix_tags import render_zabbix_tag_assignment
 from nbxsync.utils.preview import get_representative_device
-from utilities.testing import create_test_device
+
+
+def _make_device(name, role=None, site=None):
+    """create_test_device wrapper that overrides role/site after creation."""
+    device = create_test_device(name=name, site=site)
+    if role is not None:
+        device.role = role
+        device.save()
+    return device
 
 
 class RepresentativeDeviceTestCase(TestCase):
@@ -28,11 +40,11 @@ class RepresentativeDeviceTestCase(TestCase):
         )
 
     def test_devicerole_returns_matching_device(self):
-        """A DeviceRole assignment resolves to the first device with that role."""
+        """DeviceRole assignment → first device with that role."""
         role = DeviceRole.objects.create(
             name='Preview Role', slug='preview-role'
         )
-        create_test_device(name='dev-1', role=role)
+        _make_device(name='dev-1', role=role)
 
         hg = ZabbixHostgroup.objects.create(
             name='Roles', value='Roles/{{ object.role.name }}',
@@ -56,8 +68,10 @@ class RepresentativeDeviceTestCase(TestCase):
         child = SiteGroup.objects.create(
             name='COUNTRY-STA', slug='country-sta', parent=parent
         )
-        site = Site.objects.create(name='COUNTRY-STA-L26', slug='l26', group=child)
-        create_test_device(name='dev-site-1', site=site)
+        site = Site.objects.create(
+            name='COUNTRY-STA-L26', slug='l26', group=child
+        )
+        _make_device(name='dev-site-1', site=site)
 
         hg = ZabbixHostgroup.objects.create(
             name='Sites',
@@ -75,7 +89,7 @@ class RepresentativeDeviceTestCase(TestCase):
         self.assertEqual(rep.site_id, site.id)
 
     def test_empty_devicerole_returns_none(self):
-        """A DeviceRole with no matching devices resolves to None (no error)."""
+        """DeviceRole with no matching devices → None (cached as sentinel)."""
         role = DeviceRole.objects.create(
             name='Empty Role', slug='empty-role'
         )
@@ -93,8 +107,8 @@ class RepresentativeDeviceTestCase(TestCase):
         self.assertIsNone(rep)
 
     def test_direct_device_assignment_returns_target(self):
-        """A Device-targeted assignment returns the Device itself."""
-        device = create_test_device(name='direct-dev')
+        """Device-targeted assignment → returns the Device itself."""
+        device = _make_device(name='direct-dev')
         hg = ZabbixHostgroup.objects.create(
             name='Direct', value='{{ object.name }}',
             zabbixserver=self.zabbixserver,
@@ -106,11 +120,12 @@ class RepresentativeDeviceTestCase(TestCase):
         )
 
         rep = get_representative_device(assignment)
-        self.assertIs(rep, device)
+        self.assertIsNotNone(rep)
+        self.assertEqual(rep.pk, device.pk)
 
 
 class HostgroupPreviewRenderTestCase(TestCase):
-    """End-to-end tests for the render_zabbix_hostgroup_assignment tag."""
+    """End-to-end tests for render_zabbix_hostgroup_assignment tag."""
 
     def setUp(self):
         self.zabbixserver = ZabbixServer.objects.create(
@@ -118,11 +133,11 @@ class HostgroupPreviewRenderTestCase(TestCase):
         )
 
     def test_devicerole_template_renders_cleanly(self):
-        """Roles/{{ object.role.name }} on a DeviceRole renders as Roles/<role>."""
+        """Roles/{{ object.role.name }} on DeviceRole → Roles/<role>."""
         role = DeviceRole.objects.create(
             name='Network Device', slug='network-device'
         )
-        create_test_device(name='netdev-1', role=role)
+        _make_device(name='netdev-1', role=role)
 
         hg = ZabbixHostgroup.objects.create(
             name='Roles', value='Roles/{{ object.role.name }}',
@@ -134,12 +149,11 @@ class HostgroupPreviewRenderTestCase(TestCase):
             assigned_object_type=ct, assigned_object_id=role.id,
         )
 
-        # No request context needed — the tag falls back to the representative.
         rendered = render_zabbix_hostgroup_assignment({}, assignment)
         self.assertEqual(rendered, 'Roles/Network Device')
 
     def test_empty_devicerole_returns_empty_string(self):
-        """When no representative exists, the tag returns '' (no error leak)."""
+        """No representative → '' (no error leak)."""
         role = DeviceRole.objects.create(
             name='Ghost Role', slug='ghost-role'
         )
@@ -155,12 +169,11 @@ class HostgroupPreviewRenderTestCase(TestCase):
 
         rendered = render_zabbix_hostgroup_assignment({}, assignment)
         self.assertEqual(rendered, '')
-        # Critically: no raw Python error string leaks into the UI.
         self.assertNotIn('Undefined variable', rendered)
         self.assertNotIn('has no attribute', rendered)
 
     def test_static_value_passes_through_unchanged(self):
-        """A static (non-Jinja2) value renders as itself with no lookup."""
+        """Static (non-Jinja2) value → unchanged, no lookup."""
         hg = ZabbixHostgroup.objects.create(
             name='Managed', value='Managed/nbxSync',
             zabbixserver=self.zabbixserver,
@@ -178,17 +191,11 @@ class HostgroupPreviewRenderTestCase(TestCase):
         self.assertEqual(rendered, 'Managed/nbxSync')
 
     def test_explicit_object_overrides_representative(self):
-        """When the caller passes object=, the representative is NOT consulted.
-
-        This protects the sync-engine path (which passes object=Device
-        explicitly) from being silently overridden by an unrelated
-        representative lookup.
-        """
+        """Explicit object= → representative NOT consulted."""
         role = DeviceRole.objects.create(
             name='Override Role', slug='override-role'
         )
-        # Representative would resolve to this device, but it must NOT be used.
-        create_test_device(name='rep-dev', role=role)
+        _make_device(name='rep-dev', role=role)
 
         hg = ZabbixHostgroup.objects.create(
             name='Roles', value='Roles/{{ object.role.name }}',
@@ -200,23 +207,21 @@ class HostgroupPreviewRenderTestCase(TestCase):
             assigned_object_type=ct, assigned_object_id=role.id,
         )
 
-        # Caller supplies an explicit Device as object=.
         other_role = DeviceRole.objects.create(
             name='Other Role', slug='other-role'
         )
-        explicit_device = create_test_device(
+        explicit_device = _make_device(
             name='explicit-dev', role=other_role
         )
 
         rendered = render_zabbix_hostgroup_assignment(
             {}, assignment, object=explicit_device
         )
-        # Uses the explicit device's role, NOT the representative's.
         self.assertEqual(rendered, 'Roles/Other Role')
 
 
 class TagPreviewRenderTestCase(TestCase):
-    """End-to-end tests for the render_zabbix_tag_assignment tag."""
+    """End-to-end tests for render_zabbix_tag_assignment tag."""
 
     def setUp(self):
         self.zabbixserver = ZabbixServer.objects.create(
@@ -224,11 +229,11 @@ class TagPreviewRenderTestCase(TestCase):
         )
 
     def test_devicerole_template_renders_cleanly(self):
-        """owner={{ object.role.name }} on a DeviceRole renders cleanly."""
+        """owner={{ object.role.name }} on DeviceRole → role name."""
         role = DeviceRole.objects.create(
             name='Switch Core', slug='switch-core'
         )
-        create_test_device(name='sw-1', role=role)
+        _make_device(name='sw-1', role=role)
 
         tag = ZabbixTag.objects.create(
             name='owner', tag='owner', value='{{ object.role.name }}',
@@ -243,7 +248,7 @@ class TagPreviewRenderTestCase(TestCase):
         self.assertEqual(rendered, 'Switch Core')
 
     def test_no_representative_returns_empty_string(self):
-        """No matching device → empty string, no error leak."""
+        """No matching device → '' (no error leak)."""
         role = DeviceRole.objects.create(
             name='Empty Tag Role', slug='empty-tag-role'
         )
