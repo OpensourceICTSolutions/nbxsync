@@ -4,7 +4,7 @@ from django.db import models
 
 from netbox.models import NetBoxModel
 
-from nbxsync.constants import DEVICE_OR_VM_ASSIGNMENT_MODELS
+from nbxsync.constants import ASSIGNMENT_MODELS
 
 __all__ = ('ZabbixConfigurationGroupAssignment',)
 
@@ -12,7 +12,7 @@ __all__ = ('ZabbixConfigurationGroupAssignment',)
 class ZabbixConfigurationGroupAssignment(NetBoxModel):
     zabbixconfigurationgroup = models.ForeignKey('nbxsync.ZabbixConfigurationGroup', on_delete=models.CASCADE, related_name='zabbixconfigurationgroupassignment')
 
-    assigned_object_type = models.ForeignKey(to=ContentType, limit_choices_to=DEVICE_OR_VM_ASSIGNMENT_MODELS, on_delete=models.CASCADE, related_name='+', blank=True, null=True)
+    assigned_object_type = models.ForeignKey(to=ContentType, limit_choices_to=ASSIGNMENT_MODELS, on_delete=models.CASCADE, related_name='+', blank=True, null=True)
     assigned_object_id = models.PositiveBigIntegerField(blank=True, null=True)
     assigned_object = GenericForeignKey(ct_field='assigned_object_type', fk_field='assigned_object_id')
 

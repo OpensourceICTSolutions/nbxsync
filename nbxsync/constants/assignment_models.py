@@ -5,6 +5,7 @@ ASSIGNMENT_MODELS = Q(
     | Q(app_label='dcim', model='virtualdevicecontext')
     | Q(app_label='dcim', model='site')
     | Q(app_label='dcim', model='sitegroup')
+    | Q(app_label='dcim', model='region')
     | Q(app_label='dcim', model='manufacturer')
     | Q(app_label='dcim', model='devicerole')
     | Q(app_label='dcim', model='devicetype')
