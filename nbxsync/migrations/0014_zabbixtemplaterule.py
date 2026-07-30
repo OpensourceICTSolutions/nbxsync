@@ -7,7 +7,7 @@ import utilities.json
 class Migration(migrations.Migration):
     dependencies = [
         ('extras', '0134_owner'),
-        ('nbxsync', '0012_zabbixserver_skip_version_check'),
+        ('nbxsync', '0013_alter_zabbixhostgroupassignment_assigned_object_type_and_more'),
     ]
 
     operations = [
