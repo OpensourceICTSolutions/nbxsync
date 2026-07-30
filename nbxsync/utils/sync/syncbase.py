@@ -79,16 +79,41 @@ class ZabbixSyncBase:
             self.obj.update_sync_info(success=True)
 
     def try_create(self):
+        params = self.get_create_params()
+        if not params:
+            return None
         try:
-            # print('Create params:')
-            # print(self.get_create_params())
-            result = self.api_object().create(**self.get_create_params())
-            # print('Zabbix result: ')
-            # print(result)
+            result = self.api_object().create(**params)
             return result.get(self.result_key(), [None])[0]
         except Exception as err:
+            # Race condition: another concurrent job may have created the
+            # object between our find_by_name() check and this create().
+            # Recover only when Zabbix rejected the parameters (-32602) and
+            # exactly one object with our name now exists, so a genuine
+            # validation failure is still reported instead of silently
+            # adopting an unrelated object.
+            if self._is_duplicate_error(err):
+                found_by_name = self.find_by_name()
+                if len(found_by_name) == 1:
+                    logger.debug(f'{self.__class__.__name__} already existed (race), reusing ID')
+                    return found_by_name[0].get(self.id_field.split('.')[-1])
             msg = f'{self.__class__.__name__} creation failed: {err}'
             raise RuntimeError(msg)
+
+    @staticmethod
+    def _is_duplicate_error(err) -> bool:
+        """Whether a Zabbix API error reports an already-existing object.
+
+        zabbix_utils raises APIRequestError with the JSON-RPC payload attached.
+        Duplicates come back as "Invalid params" (-32602), whose data carries
+        the specific reason, so both the code and the reason are checked.
+        """
+        code = getattr(err, 'code', None)
+        if code is not None and int(code) != -32602:
+            return False
+        detail = ' '.join(str(part) for part in (getattr(err, 'data', ''), getattr(err, 'message', ''), err) if part)
+        return 'already exists' in detail.lower()
+
 
     def find_by_name(self):
         name_key = 'name'
