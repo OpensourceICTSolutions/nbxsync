@@ -6,6 +6,7 @@ from .zabbixconfigurationgroupassignment import *
 from .zabbixserverassignment import *
 from .zabbixtemplate import *
 from .zabbixtemplateassignment import *
+from .zabbixtemplaterule import *
 from .zabbixmacro import *
 from .zabbixmacroassignment import *
 from .zabbixtag import *
