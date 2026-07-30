@@ -32,4 +32,5 @@ def render_zabbix_tag_assignment(context, assignment, **extra):
 def _is_device_like(obj) -> bool:
     from dcim.models import Device, VirtualDeviceContext
     from virtualization.models import VirtualMachine
+
     return isinstance(obj, Device | VirtualMachine | VirtualDeviceContext)

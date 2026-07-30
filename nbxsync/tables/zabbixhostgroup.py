@@ -42,9 +42,10 @@ class ZabbixHostgroupObjectViewTable(ZabbixInheritedAssignmentTable, NetBoxTable
 
     rendered_output = tables.TemplateColumn(
         template_code="""
-        {% load zabbix_hostgroups %}
+        {% load zabbix_hostgroups zabbix_preview %}
         {% render_zabbix_hostgroup_assignment record as rendered_output %}
-        {{ rendered_output|escape }}
+        {% zabbix_preview_representative record as preview_source %}
+        {% if preview_source %}<span title="Preview rendered with {{ preview_source|escape }}">{{ rendered_output|escape }}</span>{% else %}{{ rendered_output|escape }}{% endif %}
         """,
         verbose_name='Value',
     )
