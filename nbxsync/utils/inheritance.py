@@ -1,11 +1,12 @@
 from collections import OrderedDict
 
-from django.db.models import Model, QuerySet
-from django.db.models.manager import BaseManager
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import QuerySet
+from django.db.models.manager import BaseManager
+from virtualization.models import VirtualMachine
 
 from nbxsync.constants import PATH_LABELS
-from nbxsync.models import ZabbixHostgroupAssignment, ZabbixHostInterface, ZabbixHostInventory, ZabbixMacroAssignment, ZabbixTagAssignment, ZabbixTemplateAssignment, ZabbixConfigurationGroupAssignment
+from nbxsync.models import ZabbixConfigurationGroupAssignment, ZabbixHostgroupAssignment, ZabbixHostInterface, ZabbixHostInventory, ZabbixMacroAssignment, ZabbixTagAssignment, ZabbixTemplateAssignment
 from nbxsync.settings import get_plugin_settings
 from nbxsync.tables import ZabbixHostgroupAssignmentObjectViewTable, ZabbixMacroAssignmentObjectViewTable, ZabbixTagAssignmentObjectViewTable, ZabbixTemplateAssignmentObjectViewTable
 
@@ -116,6 +117,15 @@ def resolve_inherited_zabbix_assignments(assigned_object, zabbixserver=None):
 
     pluginsettings = get_plugin_settings()
     for path in pluginsettings.inheritance_chain:
+        # 'device'-prefixed paths describe the *associated physical device*
+        # (the VDC's parent, or — since NetBox 4.3 — a VM's hosting device).
+        # For a VirtualMachine that association is the hypervisor/sidecar, so
+        # walking these paths would leak host properties (manufacturer, role,
+        # hardware templates) onto the guest. VDCs keep the paths: a VDC is
+        # part of its parent device by definition.
+        if path and path[0] == 'device' and isinstance(assigned_object, VirtualMachine):
+            continue
+
         related_obj = resolve_path(assigned_object, path)
         # label = '.'.join(path)
 

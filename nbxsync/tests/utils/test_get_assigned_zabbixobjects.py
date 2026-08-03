@@ -49,3 +49,36 @@ class GetAssignedZabbixObjectsTestCase(TestCase):
         self.assertEqual(len(result['macros']), 1)
         self.assertEqual(len(result['tags']), 1)
         self.assertEqual(len(result['hostgroups']), 1)
+
+
+class VirtualMachineDeviceLeakTestCase(TestCase):
+    """A VM linked to its hosting device (NetBox 4.3+) must not inherit the
+    host's hardware-tier assignments (manufacturer etc. via 'device'-prefixed
+    chain paths). A guest is not the hypervisor's hardware.
+    """
+
+    def setUp(self):
+        from virtualization.models import VirtualMachine
+
+        self.server = ZabbixServer.objects.create(name='Leak Server', url='http://zabbix.local', token='abc123', validate_certs=True)
+        self.template = ZabbixTemplate.objects.create(name='Vendor OOB by SNMP', zabbixserver=self.server, templateid=10255)
+        self.dell = Manufacturer.objects.create(name='Dell', slug='dell-oss')
+        self.host = create_test_device(name='esx-host-01')
+        host_type = self.host.device_type
+        host_type.manufacturer = self.dell
+        host_type.save()
+        self.vm = VirtualMachine.objects.create(name='guest-vm-01', device=self.host)
+
+        self.assignment = ZabbixTemplateAssignment.objects.create(
+            zabbixtemplate=self.template,
+            assigned_object_type=ContentType.objects.get_for_model(Manufacturer),
+            assigned_object_id=self.dell.pk,
+        )
+
+    def test_device_inherits_manufacturer_template(self):
+        result = get_assigned_zabbixobjects(self.host)
+        self.assertIn(self.template.pk, [obj.zabbixtemplate_id for obj in result['templates']])
+
+    def test_vm_does_not_inherit_manufacturer_template_via_associated_device(self):
+        result = get_assigned_zabbixobjects(self.vm)
+        self.assertNotIn(self.template.pk, [obj.zabbixtemplate_id for obj in result['templates']])
