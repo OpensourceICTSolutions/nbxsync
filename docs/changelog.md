@@ -106,7 +106,8 @@ None
 
 ### New features
 
--
+- Allow configuring a custom hostname and displayname for Zabbix, thanks @bhinz ([#87])
+- Implemented 'Trigger dependency sync', thanks to @benjofalanga ([#100])
 
 ### Bug fixes
 
@@ -114,7 +115,14 @@ None
 - Fixed issue where local_address was cleared, even when the proxy is part of a ProxyGroup ([#91])
 - Removed duplicate line in ProxySync ([#91])
 - Fixed typo (`acept` vs `accept`) in ProxySync ([#91])
+- Two bugs in syncmaintenance: missing zabbixserver attribute + invalid "day" parameter for non-MONTHLY timeperiods  ([#107])
+- Fixed typo in SyncMaintenceJob
+- Fixed issue where only 1 ZabbixServer would be synced
+- Fixed the resolution of the pathlabel of a Zabbix Configuration Group
+- Fixed issues with HostEvent when multiple ZabbixServers are configured
+- Replaced 'gettext' with 'gettext_lazy'
 
+ 
 ### Breaking changes
 
 - Dropped support for NetBox < 4.2.6 in order to support NetBox 4.6.X ([#98])
@@ -145,7 +153,10 @@ None
 [#79]: https://github.com/OpensourceICTSolutions/nbxsync/issues/79
 [#81]: https://github.com/OpensourceICTSolutions/nbxsync/issues/81
 [#86]: https://github.com/OpensourceICTSolutions/nbxsync/issues/86
+[#87]: https://github.com/OpensourceICTSolutions/nbxsync/issues/87
 [#88]: https://github.com/OpensourceICTSolutions/nbxsync/issues/88
 [#90]: https://github.com/OpensourceICTSolutions/nbxsync/issues/90
 [#91]: https://github.com/OpensourceICTSolutions/nbxsync/issues/91
 [#98]: https://github.com/OpensourceICTSolutions/nbxsync/issues/98
+[#100]: https://github.com/OpensourceICTSolutions/nbxsync/issues/100
+[#107]: https://github.com/OpensourceICTSolutions/nbxsync/issues/107
