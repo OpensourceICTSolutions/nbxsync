@@ -12,6 +12,7 @@ from nbxsync.choices.zabbixstatus import ZabbixHostStatus
 from nbxsync.jobs.synchost import SyncHostJob
 from nbxsync.models import ZabbixHostgroup, ZabbixHostgroupAssignment, ZabbixHostInterface, ZabbixProxy, ZabbixProxyGroup, ZabbixServer, ZabbixServerAssignment
 from nbxsync.utils.sync import ProxyGroupSync
+from nbxsync.settings import get_plugin_settings
 
 
 class SyncHostJobTestCase(TestCase):
