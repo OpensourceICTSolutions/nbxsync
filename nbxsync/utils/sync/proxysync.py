@@ -61,7 +61,6 @@ class ProxySync(ZabbixSyncBase):
 
         if self.obj.custom_timeouts:
             create_params['timeout_zabbix_agent'] = self.obj.timeout_zabbix_agent
-            create_params['timeout_zabbix_agent'] = self.obj.timeout_zabbix_agent
             create_params['timeout_simple_check'] = self.obj.timeout_simple_check
             create_params['timeout_snmp_agent'] = self.obj.timeout_snmp_agent
             create_params['timeout_external_check'] = self.obj.timeout_external_check
@@ -86,7 +85,7 @@ class ProxySync(ZabbixSyncBase):
         tls_accept = [1]  # Default to 'No Encryption'
         if data.get('tls_accept', 1):
             flags = (1, 2, 4)
-            value = int(data.get('tls_acept', 1))
+            value = int(data.get('tls_accept', 1))
             tls_accept = [flag for flag in flags if value & flag]
 
         self.obj.proxyid = data.get('proxyid')

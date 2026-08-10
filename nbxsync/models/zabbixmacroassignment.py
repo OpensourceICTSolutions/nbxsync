@@ -9,12 +9,11 @@ from jinja2 import TemplateError, TemplateSyntaxError, UndefinedError
 from utilities.jinja2 import render_jinja2
 
 from netbox.models import NetBoxModel
-from nbxsync.constants import ASSIGNMENT_MODELS
+from nbxsync.constants.assignment_models import ASSIGNMENT_MODELS
+from nbxsync.constants.template_pattern import TEMPLATE_PATTERN
 from nbxsync.models import SyncInfoModel, ZabbixConfigurationGroup
 
 __all__ = ('ZabbixMacroAssignment',)
-
-TEMPLATE_PATTERN = re.compile(r'({{.*?}}|{%-?\s*.*?\s*-?%}|{#.*?#})')
 
 
 class ZabbixMacroAssignment(SyncInfoModel, NetBoxModel):

@@ -29,7 +29,7 @@ class SyncHostJob:
 
         for assignment in zabbixserver_assignments:
             if not assignment.sync_enabled or not assignment.zabbixserver.sync_enabled:
-                return
+                continue
 
             if zabbix_status == ZabbixHostStatus.DELETED:
                 self.delete_host(assignment)
@@ -45,16 +45,16 @@ class SyncHostJob:
         safe_delete(HostSync, assignment)
 
     def verify_hostinterfaces(self, assignment):
-        all_objects = get_assigned_zabbixobjects(self.instance)
+        all_objects = get_assigned_zabbixobjects(self.instance, zabbixserver=assignment.zabbixserver)
         run_zabbix_operation(HostSync, assignment, 'verify_hostinterfaces', extra_args={'all_objects': all_objects})
 
     def check_default_hostinterface(self, assignment):
-        all_objects = get_assigned_zabbixobjects(self.instance)
+        all_objects = get_assigned_zabbixobjects(self.instance, zabbixserver=assignment.zabbixserver)
         run_zabbix_operation(HostSync, assignment, 'check_default_hostinterface', extra_args={'all_objects': all_objects})
 
     def sync_host(self, assignment):
         try:
-            all_objects = get_assigned_zabbixobjects(self.instance)
+            all_objects = get_assigned_zabbixobjects(self.instance, zabbixserver=assignment.zabbixserver)
             # Add the assigned_objects attribute, so we dont have to do this expensive calculation again later on :)
             assignment.assigned_objects = all_objects
 

@@ -163,4 +163,4 @@ class ZabbixProxyTestCase(TestCase):
             proxy.full_clean()
 
         self.assertIn('local_address', cm.exception.message_dict)
-        self.assertIn('Local Address must be specified when part of a ProxyGroup and Operating Mode is set to Active', cm.exception.message_dict['local_address'][0])
+        self.assertIn('Local Address must be specified when part of a ProxyGroup', cm.exception.message_dict['local_address'][0])

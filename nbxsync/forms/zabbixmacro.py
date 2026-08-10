@@ -1,14 +1,14 @@
 import logging
 from django import forms
 from django.contrib.contenttypes.models import ContentType
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _
 
 from netbox.forms import NetBoxModelBulkEditForm, NetBoxModelFilterSetForm, NetBoxModelForm
 from utilities.forms.fields import DynamicModelChoiceField, TagFilterField
 from utilities.forms.rendering import FieldSet, TabbedGroups
 
 from nbxsync.choices import ZabbixMacroTypeChoices
-from nbxsync.constants import ASSIGNMENT_TYPE_TO_FIELD
+from nbxsync.constants.assignment_type_to_field import ASSIGNMENT_TYPE_TO_FIELD
 from nbxsync.models import ZabbixMacro, ZabbixServer, ZabbixTemplate
 
 __all__ = ('ZabbixMacroForm', 'ZabbixMacroFilterForm', 'ZabbixMacroBulkEditForm')

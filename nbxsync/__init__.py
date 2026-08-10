@@ -38,7 +38,7 @@ class nbxSync(PluginConfig):
     author = name
     author_email = email
     base_url = 'nbxsync'
-    min_version = '4.2.4'
+    min_version = '4.2.6'
     required_settings = []
     default_settings = {
         'sot': {
@@ -142,6 +142,8 @@ class nbxSync(PluginConfig):
         'attach_objtag': False,
         'objtag_type': 'nb_type',
         'objtag_id': 'nb_id',
+        'custom_field_hostname': '',
+        'custom_field_display_name': '',
     }
     queues = []
     validated_config = None

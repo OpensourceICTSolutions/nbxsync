@@ -1,11 +1,12 @@
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
 from django.db import models
 
 from netbox.models import NetBoxModel
 
-from nbxsync.constants import MAINTENANCE_ASSIGNMENT_OBJECTS
+from nbxsync.constants.assignment_models import MAINTENANCE_ASSIGNMENT_OBJECTS
 from nbxsync.models import ZabbixHostgroup
 
 __all__ = ('ZabbixMaintenanceObjectAssignment',)
@@ -33,8 +34,12 @@ class ZabbixMaintenanceObjectAssignment(NetBoxModel):
     def clean(self):
         super().clean()
 
-        if type(self.assigned_object_type) == ZabbixHostgroup and self.assigned_object.is_template():
-            raise ValidationError('No templated hostgroup is allowed!')
+        if self.assigned_object_type is None or self.assigned_object_id is None:
+            # Nothing to check yet; let the FK/id validators handle emptiness.
+            return
+
+        if isinstance(self.assigned_object, ZabbixHostgroup) and self.assigned_object.is_template():
+            raise ValidationError({'assigned_object_id': _('A templated Zabbix Hostgroup cannot be assigned to a maintenance window.')})
 
     def __str__(self):
         return f'{self.assigned_object} ({self.zabbixmaintenance})'

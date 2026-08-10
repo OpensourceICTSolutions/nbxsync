@@ -1,2 +1,25 @@
+{% load i18n %}
 {% load render_table from django_tables2 %}
+{% if fetch_errors %}
+    <div class="alert alert-warning d-flex align-items-center" role="alert">
+        <i class="mdi mdi-alert-outline me-2"></i>
+        <div>
+            {% blocktranslate count counter=fetch_errors|length %}
+        Could not retrieve data from {{ counter }} Zabbix server. The list below may be incomplete.
+      {% plural %}
+        Could not retrieve data from {{ counter }} Zabbix servers. The list below may be incomplete.
+      {% endblocktranslate %}
+            <ul class="mb-0 mt-1">
+                {% for server in fetch_errors %}
+                    <li>
+                        <a href="{{ server.get_absolute_url }}">{{ server.name }}</a>
+                        {% if server.last_sync_message %}
+                            <span class="text-muted small">— {{ server.last_sync_message }}</span>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+{% endif %}
 {% render_table table %}

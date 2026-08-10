@@ -5,7 +5,7 @@ from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _
 
 from netbox.models import NetBoxModel
 
@@ -62,8 +62,8 @@ class ZabbixProxy(SyncInfoModel, NetBoxModel):
         errors = {}
 
         # Validate local_address field
-        if not self.local_address and self.proxygroup is not None and self.operating_mode == ZabbixProxyTypeChoices.ACTIVE:
-            errors['local_address'] = _('Local Address must be specified when part of a ProxyGroup and Operating Mode is set to Active')
+        if not self.local_address and self.proxygroup is not None:
+            errors['local_address'] = _('Local Address must be specified when part of a ProxyGroup')
 
         # Validate if local_address is valid
         if self.local_address is not None and self.operating_mode == ZabbixProxyTypeChoices.ACTIVE:
@@ -87,16 +87,23 @@ class ZabbixProxy(SyncInfoModel, NetBoxModel):
         # Validate allowed_addresses
         if self.allowed_addresses:
             seen = set()
-            normalized = ''
+            invalid, duplicates, seen = [], [], set()
             for ip in self.allowed_addresses:
                 try:
                     normalized = str(ipaddress.ip_address(ip.strip()))
                 except ValueError:
-                    errors['allowed_addresses'] = f"'{ip}' is not a valid IP address."
-
+                    invalid.append(ip)
+                    continue
                 if normalized in seen:
-                    errors['allowed_addresses'] = f'Duplicate IP address found: {normalized}'
+                    duplicates.append(normalized)
                 seen.add(normalized)
+            if invalid or duplicates:
+                msg = []
+                if invalid:
+                    msg.append(f'Invalid: {", ".join(invalid)}')
+                if duplicates:
+                    msg.append(f'Duplicates: {", ".join(duplicates)}')
+                errors['allowed_addresses'] = '; '.join(msg)
 
         # Validate TLS PSK requirement
         if self.tls_connect == ZabbixTLSChoices.PSK or ZabbixTLSChoices.PSK in self.tls_accept:
@@ -151,8 +158,9 @@ class ZabbixProxy(SyncInfoModel, NetBoxModel):
             self.tls_connect = ZabbixTLSChoices.NO_ENCRYPTION
 
         if self.operating_mode == ZabbixProxyTypeChoices.PASSIVE:
-            self.local_address = ''
-            self.local_port = 10051
+            if not self.proxygroup:
+                self.local_address = ''
+                self.local_port = 10051
             self.allowed_addresses = []
             self.tls_accept = [ZabbixTLSChoices.NO_ENCRYPTION]
 

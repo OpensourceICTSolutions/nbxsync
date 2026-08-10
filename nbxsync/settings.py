@@ -166,6 +166,9 @@ class PluginSettingsModel(BaseModel):
     objtag_type: str = Field(default='nb_type')
     objtag_id: str = Field(default='nb_id')
 
+    custom_field_hostname: str = Field(default='')
+    custom_field_display_name: str = Field(default='')
+
 
 # Helper function
 def get_plugin_settings() -> PluginSettingsModel:

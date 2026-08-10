@@ -24,7 +24,7 @@ class SyncObjectsJob(JobRunner):
                 continue
 
             if obj.assigned_object in synced_objects:
-                return
+                continue
             else:
                 synced_objects.append(obj.assigned_object)
 

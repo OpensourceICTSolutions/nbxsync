@@ -1,11 +1,8 @@
-import re
-
 from django.db import models
 from netbox.models import NetBoxModel
+from nbxsync.constants.template_pattern import TEMPLATE_PATTERN
 
 __all__ = ('ZabbixTag',)
-
-TEMPLATE_PATTERN = re.compile(r'({{.*?}}|{%-?\s*.*?\s*-?%}|{#.*?#})')
 
 
 class ZabbixTag(NetBoxModel):

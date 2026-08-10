@@ -18,7 +18,6 @@ class ZabbixServer(SyncInfoModel, NetBoxModel):
     skip_version_check = models.BooleanField(default=False)
 
     class Meta:
-        ordering = ['name']
         verbose_name = 'Zabbix Server'
         verbose_name_plural = 'Zabbix Servers'
         ordering = ('-created',)

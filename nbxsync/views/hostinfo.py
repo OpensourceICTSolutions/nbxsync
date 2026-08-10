@@ -1,12 +1,51 @@
-from django.http import Http404
-from django.utils.translation import gettext as _
-from django.views.generic import TemplateView
-from django.contrib.contenttypes.models import ContentType
+import logging
 
-from nbxsync.utils import ZabbixConnection
+from django.contrib.contenttypes.models import ContentType
+from django.http import Http404
+from django.utils.translation import gettext_lazy as _
+from django.views.generic import TemplateView
+
+from nbxsync.constants.assignment_type_to_field import OBJECT_TYPE_MODEL_MAP
 from nbxsync.models import ZabbixServerAssignment
-from nbxsync.tables import ZabbixProblemTable, ZabbixEventTable
-from nbxsync.constants import OBJECT_TYPE_MODEL_MAP
+from nbxsync.tables import ZabbixEventTable, ZabbixProblemTable
+from nbxsync.utils import ZabbixConnection
+
+logger = logging.getLogger(__name__)
+
+
+def _resolve_model_or_404(objtype):
+    """Look up the NetBox model for an objtype URL segment, or raise 404."""
+    model = OBJECT_TYPE_MODEL_MAP.get(objtype)
+    if not model:
+        raise Http404(_('Unsupported object type: %(objtype)s') % {'objtype': objtype})
+    return model
+
+
+def _server_assignments_for(model, pk):
+    """Return all ZabbixServerAssignments pointing at the given (model, pk)."""
+    object_ct = ContentType.objects.get_for_model(model)
+    return ZabbixServerAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=pk).select_related('assigned_object_type', 'zabbixserver')
+
+
+def _event_row(assignment, event, *, end_time, duration):
+    """
+    Build one table row from a Zabbix event dict.
+
+    Both the recovered-event branch and the still-open-event branch use this
+    so they cannot drift in field shape over time.
+    """
+    return {
+        'zabbixserver': assignment.zabbixserver,
+        'acknowledged': event.get('acknowledged', '0'),
+        'duration': duration,
+        'event': event.get('name'),
+        'eventid': event.get('eventid'),
+        'triggerid': event.get('objectid'),
+        'severity': event.get('severity'),
+        'start_time': event.get('clock'),
+        'end_time': end_time,
+        'opdata': event.get('opdata'),
+    }
 
 
 class ZabbixHostProblemsView(TemplateView):
@@ -14,38 +53,28 @@ class ZabbixHostProblemsView(TemplateView):
 
     def get_context_data(self, objtype, pk, **kwargs):
         context = super().get_context_data(**kwargs)
-        model = OBJECT_TYPE_MODEL_MAP.get(objtype)
-        if not model:
-            raise Http404(_('Unsupported object type: %(objtype)s') % {'objtype': objtype})
-
-        object_ct = ContentType.objects.get_for_model(model)
-        zabbixserverassignments = ZabbixServerAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=pk).select_related('assigned_object_type')
+        model = _resolve_model_or_404(objtype)
 
         problem_list = []
-        for zabbixserverassignment in zabbixserverassignments:
-            if not zabbixserverassignment.hostid:
+        fetch_errors = []
+
+        for assignment in _server_assignments_for(model, pk):
+            if not assignment.hostid:
                 continue
-            # Get the problems for this host
+
             try:
-                with ZabbixConnection(zabbixserverassignment.zabbixserver) as api:
-                    problems = api.problem.get(hostids=zabbixserverassignment.hostid, sortfield='eventid', sortorder='DESC')
+                with ZabbixConnection(assignment.zabbixserver) as api:
+                    problems = api.problem.get(hostids=assignment.hostid, sortfield='eventid', sortorder='DESC')
                     for problem in problems:
                         problem_list.append(
-                            {
-                                'zabbixserver': zabbixserverassignment.zabbixserver,
-                                'eventid': problem.get('eventid'),
-                                'triggerid': problem.get('objectid'),
-                                'severity': problem.get('severity'),
-                                'clock': problem.get('clock'),
-                                'problem': problem.get('name'),
-                                'acknowledged': problem.get('acknowledged'),
-                                'opdata': problem.get('opdata'),
-                            }
+                            {'zabbixserver': assignment.zabbixserver, 'eventid': problem.get('eventid'), 'triggerid': problem.get('objectid'), 'severity': problem.get('severity'), 'clock': problem.get('clock'), 'problem': problem.get('name'), 'acknowledged': problem.get('acknowledged'), 'opdata': problem.get('opdata')}
                         )
             except Exception:
-                pass
+                logger.exception('Failed to fetch Zabbix problems for host %s on server %s', assignment.hostid, assignment.zabbixserver)
+                fetch_errors.append(assignment.zabbixserver)
 
         context['table'] = ZabbixProblemTable(problem_list)
+        context['fetch_errors'] = fetch_errors
         return context
 
 
@@ -54,55 +83,60 @@ class ZabbixHostEventsView(TemplateView):
 
     def get_context_data(self, objtype, pk, **kwargs):
         context = super().get_context_data(**kwargs)
-        model = OBJECT_TYPE_MODEL_MAP.get(objtype)
-        if not model:
-            raise Http404(_('Unsupported object type: %(objtype)s') % {'objtype': objtype})
+        model = _resolve_model_or_404(objtype)
 
-        object_ct = ContentType.objects.get_for_model(model)
-        zabbixserverassignments = ZabbixServerAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=pk).select_related('assigned_object_type')
-
+        # Accumulated across all Zabbix servers this device is assigned to;
+        # deliberately declared outside the per-server loop so servers
+        # after the first are not clobbered.
         event_list = []
-        for zabbixserverassignment in zabbixserverassignments:
-            if not zabbixserverassignment.hostid:
+        fetch_errors = []
+
+        for assignment in _server_assignments_for(model, pk):
+            if not assignment.hostid:
                 continue
-            # Get the events for this host
+
             try:
-                with ZabbixConnection(zabbixserverassignment.zabbixserver) as api:
-                    events = api.event.get(hostids=zabbixserverassignment.hostid, limit=15, sortfield=['clock', 'eventid'], sortorder='DESC')
+                with ZabbixConnection(assignment.zabbixserver) as api:
+                    events = api.event.get(hostids=assignment.hostid, limit=15, sortfield=['clock', 'eventid'], sortorder='DESC')
 
-                    # Index by id for O(1) lookup
+                    # Index by id for O(1) recovery lookup within this batch.
                     by_id = {e['eventid']: e for e in events}
-
-                    event_list = []
                     paired = set()
 
                     for event in events:
-                        recovery_id = event.get('r_eventid', 0)
+                        # Zabbix returns r_eventid as a string; '0' means
+                        # "no recovery yet". Coerce to int so the truthy
+                        # check actually works — '0' would otherwise be
+                        # truthy and slip through as if it were a recovery.
+                        try:
+                            recovery_id = int(event.get('r_eventid') or 0)
+                        except (TypeError, ValueError):
+                            recovery_id = 0
 
-                        if recovery_id and recovery_id != 0:
+                        if recovery_id:
+                            recovery_key = str(recovery_id)
+
                             # Avoid double-processing the same pair
-                            pair_key = tuple(sorted((event['eventid'], recovery_id)))
+                            pair_key = tuple(sorted((event['eventid'], recovery_key)))
                             if pair_key in paired:
                                 continue
 
-                            # Try to find the recovery in the current batch
-                            recovery_event = by_id.get(recovery_id)
-                            if not recovery_event:
-                                # Not in the 15? Fetch it directly.
+                            # Try to find the recovery in the current batch first.
+                            recovery_event = by_id.get(recovery_key)
+                            if recovery_event is None:
+                                # Not in the 15 most recent — fetch by id.
                                 try:
-                                    fetched = api.event.get(
-                                        eventids=[recovery_id],
-                                        output=['eventid', 'clock'],
-                                    )
-                                    recovery_event = fetched[0] if fetched else None
+                                    fetched = api.event.get(eventids=[recovery_key], output=['eventid', 'clock'])
                                 except Exception:
-                                    recovery_event = None
+                                    logger.exception('Failed to fetch recovery event %s from server %s', recovery_key, assignment.zabbixserver)
+                                    fetched = None
+                                recovery_event = fetched[0] if fetched else None
 
-                            if not recovery_event:
-                                # If we still can't find the recovery, skip this pair
+                            if recovery_event is None:
+                                # Skip pairs whose recovery we can't resolve.
                                 continue
 
-                            # Compute duration (guard against weird clocks)
+                            # Compute duration; skip if the clocks are bogus.
                             try:
                                 start = int(event['clock'])
                                 end = int(recovery_event['clock'])
@@ -110,38 +144,17 @@ class ZabbixHostEventsView(TemplateView):
                             except (KeyError, ValueError, TypeError):
                                 continue
 
-                            event_list.append(
-                                {
-                                    'zabbixserver': zabbixserverassignment.zabbixserver,
-                                    'acknowledged': event.get('acknowledged', '0'),
-                                    'duration': duration,
-                                    'event': event.get('name'),
-                                    'eventid': event.get('eventid'),
-                                    'triggerid': event.get('objectid'),
-                                    'severity': event.get('severity'),
-                                    'start_time': event['clock'],
-                                    'end_time': recovery_event['clock'],
-                                    'opdata': event['opdata'],
-                                }
-                            )
+                            event_list.append(_event_row(assignment, event, end_time=recovery_event.get('clock'), duration=duration))
                             paired.add(pair_key)
 
                         else:
-                            # Optional: include ongoing/non-recovered events with no duration
-                            event_list.append(
-                                {
-                                    'zabbixserver': zabbixserverassignment.zabbixserver,
-                                    'acknowledged': event.get('acknowledged', '0'),
-                                    'duration': None,  # still open
-                                    'event': event.get('name'),
-                                    'severity': event.get('severity'),
-                                    'start_time': event['clock'],
-                                    'end_time': recovery_event['clock'],
-                                    'opdata': event['opdata'],
-                                }
-                            )
+                            # Event is still open (no recovery yet), so there
+                            # is no end_time and no duration.
+                            event_list.append(_event_row(assignment, event, end_time=None, duration=None))
             except Exception:
-                pass
+                logger.exception('Failed to fetch Zabbix events for host %s on server %s', assignment.hostid, assignment.zabbixserver)
+                fetch_errors.append(assignment.zabbixserver)
 
         context['table'] = ZabbixEventTable(event_list)
+        context['fetch_errors'] = fetch_errors
         return context

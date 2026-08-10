@@ -91,12 +91,12 @@ class ZabbixHostInterfaceTestCase(TestCase):
         self.assertEqual(iface.get_type_display(), 'Agent')
         self.assertEqual(iface.get_tls_connect_display(), 'Certificate')
         self.assertEqual(iface.get_tls_accept_display(), ['No Encryption', 'Pre-Shared key'])
-        self.assertEqual(iface.get_ipmi_privlege_display(), 'Admin')
+        self.assertEqual(iface.get_ipmi_privilege_display(), 'Admin')
         self.assertEqual(iface.get_ipmi_authtype_display(), 'MD5')
         self.assertEqual(iface.get_snmp_version_display(), 'SNMPv3')
         self.assertEqual(iface.get_snmpv3_security_level_display(), 'authPriv')
         self.assertEqual(iface.get_snmpv3_authentication_protocol_display(), 'SHA1')
-        self.assertEqual(iface.get_snmpv3_snmpv3_privacy_protocol_display(), 'DES')
+        self.assertEqual(iface.get_snmpv3_privacy_protocol_display(), 'DES')
 
     def test_clean_fails_without_zabbixserver(self):
         iface = ZabbixHostInterface(type=ZabbixHostInterfaceTypeChoices.AGENT, useip=ZabbixInterfaceUseChoices.IP, ip=self.ip, port=10050, assigned_object_type=self.device_ct, assigned_object_id=self.device.id)

@@ -80,7 +80,7 @@ class ProxySyncIntegrationTests(TestCase):
         self.assertEqual(self.zabbix_proxy.proxyid, '200')
         self.assertEqual(self.zabbix_proxy.name, 'Synced Proxy')
         self.assertEqual(self.zabbix_proxy.tls_psk_identity, 'updated-id')
-        self.assertEqual(self.zabbix_proxy.tls_accept, [1])
+        self.assertEqual(self.zabbix_proxy.tls_accept, [2, 4])
         self.assertEqual(self.zabbix_proxy.allowed_addresses, ['192.168.1.5', '192.168.1.6'])
 
         self.zabbix_proxy.save.assert_called_once()

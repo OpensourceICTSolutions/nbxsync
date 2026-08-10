@@ -1,7 +1,7 @@
 import logging
 from django import forms
 from django.contrib.contenttypes.models import ContentType
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _
 
 from netbox.forms import NetBoxModelBulkEditForm, NetBoxModelFilterSetForm, NetBoxModelForm
 from utilities.forms.fields import DynamicModelChoiceField, TagFilterField
@@ -10,7 +10,7 @@ from dcim.models import Device, VirtualDeviceContext
 from virtualization.models import VirtualMachine
 
 from nbxsync.choices import ZabbixHostInventoryModeChoices
-from nbxsync.constants import ASSIGNMENT_TYPE_TO_FIELD_NBOBJS
+from nbxsync.constants.assignment_type_to_field import ASSIGNMENT_TYPE_TO_FIELD_NBOBJS
 from nbxsync.models import ZabbixHostInventory
 
 __all__ = ('ZabbixHostInventoryForm', 'ZabbixHostInventoryFilterForm', 'ZabbixHostInventoryBulkEditForm')
@@ -26,7 +26,7 @@ class ZabbixHostInventoryForm(NetBoxModelForm):
     chassis = forms.CharField(required=False, label=_('Chassis'))
     contact = forms.CharField(widget=forms.Textarea, required=False, label=_('Contact'))
     contract_number = forms.CharField(required=False, label=_('Contract number'))
-    date_hw_decomm = forms.CharField(required=False, label=_('Date HW decommussioned'))
+    date_hw_decomm = forms.CharField(required=False, label=_('Date HW decommissioned'))
     date_hw_expiry = forms.CharField(required=False, label=_('Date HW maintenance expires'))
     date_hw_install = forms.CharField(required=False, label=_('Date HW installed'))
     date_hw_purchase = forms.CharField(required=False, label=_('Date HW purchased'))
@@ -329,7 +329,7 @@ class ZabbixHostInventoryBulkEditForm(NetBoxModelBulkEditForm):
     chassis = forms.CharField(required=False, label=_('Chassis'))
     contact = forms.CharField(widget=forms.Textarea, required=False, label=_('Contact'))
     contract_number = forms.CharField(required=False, label=_('Contract number'))
-    date_hw_decomm = forms.CharField(required=False, label=_('Date HW decommussioned'))
+    date_hw_decomm = forms.CharField(required=False, label=_('Date HW decommissioned'))
     date_hw_expiry = forms.CharField(required=False, label=_('Date HW maintenance expires'))
     date_hw_install = forms.CharField(required=False, label=_('Date HW installed'))
     date_hw_purchase = forms.CharField(required=False, label=_('Date HW purchased'))

@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.contenttypes.models import ContentType
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _
 
 from netbox.forms import NetBoxModelBulkEditForm, NetBoxModelFilterSetForm, NetBoxModelForm
 from utilities.forms.fields import DynamicModelChoiceField, TagFilterField
@@ -8,7 +8,7 @@ from utilities.forms.rendering import FieldSet, TabbedGroups
 from dcim.models import Device, VirtualDeviceContext
 from virtualization.models import VirtualMachine
 
-from nbxsync.constants import ASSIGNMENT_TYPE_TO_FIELD_MAINTENANCE
+from nbxsync.constants.assignment_type_to_field import ASSIGNMENT_TYPE_TO_FIELD_MAINTENANCE
 from nbxsync.models import ZabbixHostgroup, ZabbixMaintenance, ZabbixMaintenanceObjectAssignment
 
 __all__ = ('ZabbixMaintenanceObjectAssignmentForm', 'ZabbixMaintenanceObjectAssignmentFilterForm', 'ZabbixMaintenanceObjectAssignmentBulkEditForm')

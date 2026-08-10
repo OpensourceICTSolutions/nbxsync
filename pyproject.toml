@@ -19,7 +19,7 @@ classifiers = [
 keywords = ["netbox", "netbox-plugin", "zabbix", "nbxsync"]
 dependencies = [
   "zabbix_utils",
-  "pydantic<2.11",
+  "pydantic>=2.7,<3",
 ]
 
 [project.optional-dependencies]

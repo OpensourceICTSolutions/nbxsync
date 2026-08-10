@@ -11,8 +11,7 @@ from nbxsync.choices import ZabbixProxyTypeChoices, ZabbixTLSChoices
 from nbxsync.choices.zabbixstatus import ZabbixHostStatus
 from nbxsync.jobs.synchost import SyncHostJob
 from nbxsync.models import ZabbixHostgroup, ZabbixHostgroupAssignment, ZabbixHostInterface, ZabbixProxy, ZabbixProxyGroup, ZabbixServer, ZabbixServerAssignment
-from nbxsync.settings import get_plugin_settings
-from nbxsync.utils.sync import HostInterfaceSync, HostSync, ProxyGroupSync
+from nbxsync.utils.sync import ProxyGroupSync
 
 
 class SyncHostJobTestCase(TestCase):
@@ -24,7 +23,7 @@ class SyncHostJobTestCase(TestCase):
 
         self.zabbixserver = ZabbixServer.objects.create(name='Zabbix1', url='http://zabbix.local', token='abc123')
 
-        self.proxygroup = ZabbixProxyGroup.objects.create(name='Test Proxy Group', zabbixserver=self.zabbixserver, proxy_groupid=99)
+        self.proxygroup = ZabbixProxyGroup.objects.create(failover_delay='1m', name='Test Proxy Group123', zabbixserver=self.zabbixserver, proxy_groupid=99)
         self.proxy = ZabbixProxy.objects.create(
             name='Active Proxy #1',
             zabbixserver=self.zabbixserver,
@@ -93,7 +92,7 @@ class SyncHostJobTestCase(TestCase):
             }
         ]
         mock_api.hostgroup.get.return_value = [{'groupid': '1'}]
-        mock_api.proxygroup.get.return_value = [{'proxy_groupid': 99}]
+        mock_api.proxygroup.get.return_value = [{'proxy_groupid': 99, 'failover_delay': '1m', 'min_online': 1}]
         mock_api.proxygroup.create.return_value = {'proxy_groupids': [99]}
 
         # Assign API to context manager return

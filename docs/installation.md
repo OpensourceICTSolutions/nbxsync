@@ -110,6 +110,8 @@ PLUGINS_CONFIG = {
         'attach_objtag': True,
         'objtag_type': 'nb_type',
         'objtag_id': 'nb_id',
+        'custom_field_hostname':'',
+        'custom_field_display_name':'',
     }
 }
 ```
