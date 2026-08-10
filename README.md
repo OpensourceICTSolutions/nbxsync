@@ -26,6 +26,8 @@ This plugin bridges the gap between network/source-of-truth documentation and in
 
 | Release | Minimum NetBox Version | Maximum NetBox Version |
 | ------- | ---------------------- | ---------------------- |
+| 1.0.5   | 4.2.6                  | 4.6.x                  |
+| 1.0.4   | 4.2.0                  | 4.5.x                  |
 | 1.0.3   | 4.2.0                  | 4.5.x                  |
 | 1.0.2   | 4.2.0                  | 4.5.x                  |
 | 1.0.1   | 4.2.0                  | 4.4.x                  |
