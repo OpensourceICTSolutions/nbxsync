@@ -119,6 +119,21 @@ class SyncHostJobTestCase(TestCase):
 
         mock_sync_dependencies.assert_called_once_with(self.device)
 
+    @patch('nbxsync.jobs.synchost.sync_device_trigger_dependencies')
+    def test_run_swallows_trigger_dependency_sync_exception(self, mock_sync_dependencies):
+        """A Zabbix API failure inside dep sync must not fail the surrounding host sync."""
+        get_plugin_settings().trigger_dependencies.enabled = True
+        mock_sync_dependencies.side_effect = Exception('Zabbix API timeout')
+
+        job = SyncHostJob(instance=self.device)
+
+        with self.assertLogs('nbxsync.jobs.synchost', level='ERROR') as log_ctx:
+            job.run()  # must not raise
+
+        mock_sync_dependencies.assert_called_once_with(self.device)
+        log_text = '\n'.join(log_ctx.output)
+        self.assertIn('Zabbix API timeout', log_text)
+
     def test_run_sync_host_deleted(self):
         self.device.status = 'decommissioning'
         self.device.save()

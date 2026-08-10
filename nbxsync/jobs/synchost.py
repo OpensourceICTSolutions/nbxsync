@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib.contenttypes.models import ContentType
 
 from nbxsync.choices.zabbixstatus import ZabbixHostStatus
@@ -8,6 +10,8 @@ from nbxsync.utils.sync import HostGroupSync, HostInterfaceSync, HostSync, Proxy
 from nbxsync.utils.sync.safe_delete import safe_delete
 from nbxsync.utils.sync.safe_sync import safe_sync
 from nbxsync.utils.trigger_dependency_sync import sync_device_trigger_dependencies
+
+logger = logging.getLogger(__name__)
 
 __all__ = ('SyncHostJob',)
 
@@ -38,8 +42,11 @@ class SyncHostJob:
                 self.sync_host(assignment)
                 self.verify_hostinterfaces(assignment)
 
-        if object_type == 'device' and zabbix_status != ZabbixHostStatus.DELETED and pluginsettings.trigger_dependencies.enabled:
-            sync_device_trigger_dependencies(self.instance)
+            if object_type == 'device' and zabbix_status != ZabbixHostStatus.DELETED and pluginsettings.trigger_dependencies.enabled:
+                try:
+                    sync_device_trigger_dependencies(self.instance)
+                except Exception:
+                    logger.exception('Trigger dependency sync failed for %s; continuing.', self.instance)
 
     def delete_host(self, assignment):
         safe_delete(HostSync, assignment)

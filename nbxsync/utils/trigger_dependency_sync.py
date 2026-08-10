@@ -65,9 +65,14 @@ def get_server_assignments(device):
     )
 
 
-def get_host_assignment(device):
-    assignments = [assignment for assignment in get_server_assignments(device) if assignment.hostid]
-    return assignments[0] if assignments else None
+def get_host_assignments(device):
+    """All Zabbix server assignments with a hostid, keyed by zabbixserver_id."""
+    assignments_by_server = {}
+    for assignment in get_server_assignments(device):
+        if not assignment.hostid:
+            continue
+        assignments_by_server[assignment.zabbixserver_id] = assignment
+    return assignments_by_server
 
 
 def get_connected_devices(device):
@@ -197,21 +202,27 @@ def _sync_child_dependencies(children, trigger_config=None):
     prepared_by_server = {}
 
     for child in children:
-        prepared = _prepare_child_dependency_sync(child, trigger_config=trigger_config)
-        if not prepared:
-            continue
-
-        server_id = prepared['child_assignment'].zabbixserver_id
-        prepared_by_server.setdefault(server_id, []).append(prepared)
+        for prepared in _prepare_child_dependency_sync(child, trigger_config=trigger_config):
+            server_id = prepared['child_assignment'].zabbixserver_id
+            prepared_by_server.setdefault(server_id, []).append(prepared)
 
     results = []
-    for prepared_children in prepared_by_server.values():
-        zabbixserver = prepared_children[0]['child_assignment'].zabbixserver
-        with ZabbixConnection(zabbixserver) as api:
-            for prepared in prepared_children:
-                result = _sync_prepared_child_dependency(prepared, api, trigger_config=trigger_config)
-                if result:
-                    results.append(result)
+    for prepared_group in prepared_by_server.values():
+        zabbixserver = prepared_group[0]['child_assignment'].zabbixserver
+        try:
+            with ZabbixConnection(zabbixserver) as api:
+                for prepared in prepared_group:
+                    try:
+                        result = _sync_prepared_child_dependency(prepared, api, trigger_config=trigger_config)
+                    except Exception:
+                        logger.exception('Trigger dependency sync failed for %s on %s; continuing with remaining children.', prepared['child'], zabbixserver)
+                        continue
+
+                    if result:
+                        results.append(result)
+        except Exception:
+            logger.exception('Trigger dependency sync could not open a connection to %s; skipping this server.', zabbixserver)
+            continue
 
     return results
 
@@ -221,32 +232,59 @@ def _prepare_child_dependency_sync(child, trigger_config=None):
     child_level_index, child_level = get_dependency_level(child, trigger_config=trigger_config)
     if child_level_index is None:
         logger.debug('Skipping dependency sync for unsupported child role on %s.', child)
-        return None
+        return []
 
     parent_devices = get_parent_devices(child, trigger_config=trigger_config)
     if not parent_devices:
         logger.warning('No higher-level connected parent found for %s; skipping dependency sync.', child)
-        return None
+        return []
 
-    child_assignment = get_host_assignment(child)
-    if not child_assignment:
+    child_assignments = get_host_assignments(child)
+    if not child_assignments:
         logger.warning('No Zabbix host assignment with hostid found for %s.', child)
-        return None
+        return []
 
-    return {
-        'child': child,
-        'child_level': child_level,
-        'parent_devices': parent_devices,
-        'child_assignment': child_assignment,
-    }
+    parent_assignments_by_device = []
+    for parent in parent_devices:
+        parent_assignments = get_host_assignments(parent)
+        if not parent_assignments:
+            logger.warning('No Zabbix host assignment with hostid found for parent %s.', parent)
+            continue
+        parent_assignments_by_device.append((parent, parent_assignments))
+
+    if not parent_assignments_by_device:
+        return []
+
+    prepared_items = []
+    for server_id, child_assignment in child_assignments.items():
+        parents_on_server = []
+        for parent, parent_assignments in parent_assignments_by_device:
+            parent_assignment = parent_assignments.get(server_id)
+            if parent_assignment is not None:
+                parents_on_server.append((parent, parent_assignment))
+
+        if not parents_on_server:
+            logger.warning('No connected parent of %s is assigned to Zabbix server %s; skipping.', child, child_assignment.zabbixserver)
+            continue
+
+        prepared_items.append(
+            {
+                'child': child,
+                'child_level': child_level,
+                'child_assignment': child_assignment,
+                'parents_on_server': parents_on_server,
+            }
+        )
+
+    return prepared_items
 
 
 def _sync_prepared_child_dependency(prepared, api, trigger_config=None):
     trigger_config = trigger_config or get_plugin_settings().trigger_dependencies
     child = prepared['child']
     child_level = prepared['child_level']
-    parent_devices = prepared['parent_devices']
     child_assignment = prepared['child_assignment']
+    parents_on_server = prepared['parents_on_server']
 
     child_trigger = get_host_trigger(api, child_assignment.hostid, child_level.trigger_description)
     if not child_trigger:
@@ -255,21 +293,9 @@ def _sync_prepared_child_dependency(prepared, api, trigger_config=None):
 
     parent_triggers = []
     parent_names = []
-    for parent in parent_devices:
+
+    for parent, parent_assignment in parents_on_server:
         _, parent_level = get_dependency_level(parent, trigger_config=trigger_config)
-        parent_assignment = get_host_assignment(parent)
-        if not parent_assignment:
-            logger.warning('No Zabbix host assignment with hostid found for parent %s.', parent)
-            continue
-
-        if child_assignment.zabbixserver_id != parent_assignment.zabbixserver_id:
-            logger.warning(
-                'Skipping dependency sync for %s: child and parent %s are assigned to different Zabbix servers.',
-                child,
-                parent,
-            )
-            continue
-
         parent_trigger = get_host_trigger(api, parent_assignment.hostid, parent_level.trigger_description)
         if not parent_trigger:
             logger.warning('No "%s" trigger found for %s.', parent_level.trigger_description, parent)
@@ -289,10 +315,11 @@ def _sync_prepared_child_dependency(prepared, api, trigger_config=None):
     current_ids = {dep.get('triggerid') for dep in child_trigger.get('dependencies', []) if dep.get('triggerid')}
     desired_ids = {dep.get('triggerid') for dep in dependency_payload}
 
+    server_label = str(child_assignment.zabbixserver)
     if current_ids == desired_ids:
-        logger.info('Dependency already correct: %s -> %s.', child, ', '.join(parent_names))
-        return {'child': str(child), 'parent': ', '.join(parent_names), 'changed': False}
+        logger.info('Dependency already correct on %s: %s -> %s.', server_label, child, ', '.join(parent_names))
+        return {'child': str(child), 'parent': ', '.join(parent_names), 'server': server_label, 'changed': False}
 
     api.trigger.update(triggerid=child_trigger['triggerid'], dependencies=dependency_payload)
-    logger.info('Updated dependency: %s -> %s.', child, ', '.join(parent_names))
-    return {'child': str(child), 'parent': ', '.join(parent_names), 'changed': True}
+    logger.info('Updated dependency on %s: %s -> %s.', server_label, child, ', '.join(parent_names))
+    return {'child': str(child), 'parent': ', '.join(parent_names), 'server': server_label, 'changed': True}
