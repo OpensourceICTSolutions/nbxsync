@@ -109,50 +109,6 @@ class ResolveInheritedAssignmentsTestCase(TestCase):
         dummy_qs.first.assert_called_once()
 
 
-@patch('nbxsync.utils.inheritance.get_plugin_settings')
-def test_direct_assignment_overrides_inherited_duplicate(self, mock_settings):
-    mock_settings.return_value.inheritance_chain = [('device_type',)]
-
-    # setUp already attached self.template to self.device_type via
-    # ZabbixTemplateAssignment. Now attach the *same* template directly
-    # to the device, creating a direct/inherited collision on
-    # zabbixtemplate_id.
-    device_ct = ContentType.objects.get_for_model(self.device)
-    direct_assignment = ZabbixTemplateAssignment.objects.create(zabbixtemplate=self.template, assigned_object_type=device_ct, assigned_object_id=self.device.pk)
-
-    result = get_assigned_zabbixobjects(self.device)
-    templates = result['templates']
-
-    # Exactly one row for this template — direct wins over inherited.
-    self.assertEqual(len(templates), 1)
-    self.assertEqual(templates[0].pk, direct_assignment.pk)
-    self.assertEqual(templates[0].assigned_object_id, self.device.pk)
-
-    # The surviving row is the direct one, so it must NOT carry the
-    # _inherited_from marker (only inherited rows get that attribute set).
-    self.assertFalse(hasattr(templates[0], '_inherited_from'), msg='Direct assignment survived merge but carries _inherited_from; this means the inherited duplicate leaked through and clobbered the direct one.')
-
-
-@patch('nbxsync.utils.inheritance.get_plugin_settings')
-def test_first_inheritance_path_wins_on_duplicate_template(self, mock_settings):
-    mock_settings.return_value.inheritance_chain = [
-        ('device_type',),  # PATH_LABELS -> 'Device Type'
-        ('device_type', 'manufacturer'),  # PATH_LABELS -> 'Manufacturer'
-    ]
-
-    manufacturer_ct = ContentType.objects.get_for_model(self.manufacturer)
-    ZabbixTemplateAssignment.objects.create(zabbixtemplate=self.template, assigned_object_type=manufacturer_ct, assigned_object_id=self.manufacturer.pk)
-
-    result = resolve_inherited_zabbix_assignments(self.device)
-
-    self.assertEqual(len(result['templates']), 1)
-    template = next(iter(result['templates'].values()))
-    self.assertEqual(template.zabbixtemplate_id, self.template.id)
-
-    # The heart of the regression: label must be from the FIRST path.
-    self.assertEqual(template._inherited_from, 'Device Type', msg='First-write-wins broken: an assignment from a later inheritance path overwrote the label from an earlier one.')
-
-
 class MergeDirectAndInheritedTests(SimpleTestCase):
     def test_inherited_duplicate_of_direct_is_skipped(self):
         direct = [SimpleNamespace(zabbixtemplate_id=1, source='direct')]

@@ -141,7 +141,6 @@ class TriggerDependencySyncTestCase(TestCase):
                 return child_2_assignment
             if device is gateway:
                 return parent_assignment
-            return None
 
         def trigger_for(_api, hostid, description):
             if description == 'AP status':
