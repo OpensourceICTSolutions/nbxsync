@@ -241,19 +241,6 @@ def _prepare_child_dependency_sync(child, trigger_config=None):
     }
 
 
-def _sync_child_dependency(child, trigger_config=None, api=None):
-    trigger_config = trigger_config or get_plugin_settings().trigger_dependencies
-    prepared = _prepare_child_dependency_sync(child, trigger_config=trigger_config)
-    if not prepared:
-        return None
-
-    if api is not None:
-        return _sync_prepared_child_dependency(prepared, api, trigger_config=trigger_config)
-
-    with ZabbixConnection(prepared['child_assignment'].zabbixserver) as connection:
-        return _sync_prepared_child_dependency(prepared, connection, trigger_config=trigger_config)
-
-
 def _sync_prepared_child_dependency(prepared, api, trigger_config=None):
     trigger_config = trigger_config or get_plugin_settings().trigger_dependencies
     child = prepared['child']
