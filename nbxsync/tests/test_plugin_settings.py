@@ -4,7 +4,14 @@ from django.test import TestCase
 from pydantic import ValidationError
 
 from nbxsync.choices.syncsot import SyncSOT
-from nbxsync.settings import PluginSettingsModel, SNMPConfig, BackgroundSyncConfig, get_plugin_settings
+from nbxsync.settings import (
+    PluginSettingsModel,
+    SNMPConfig,
+    BackgroundSyncConfig,
+    TriggerDependencyConfig,
+    TriggerDependencyLevelConfig,
+    get_plugin_settings,
+)
 
 
 class PluginSettingsModelTestCase(TestCase):
@@ -19,6 +26,10 @@ class PluginSettingsModelTestCase(TestCase):
         self.assertIsInstance(settings.backgroundsync.templates, BackgroundSyncConfig)
         self.assertIsInstance(settings.backgroundsync.proxies, BackgroundSyncConfig)
         self.assertIsInstance(settings.backgroundsync.maintenance, BackgroundSyncConfig)
+        self.assertIsInstance(settings.trigger_dependencies, TriggerDependencyConfig)
+        self.assertFalse(settings.trigger_dependencies.enabled)
+        self.assertEqual(settings.trigger_dependencies.levels[1].roles, ['switch', 'sw'])
+        self.assertEqual(settings.trigger_dependencies.levels[2].roles, ['gateway', 'gw', 'firewall', 'router'])
 
     def test_snmp_macro_validation_valid(self):
         config = SNMPConfig(snmp_community='{$VALID_COMM}', snmp_authpass='{$VALID_AUTH}', snmp_privpass='{$VALID_PRIV}')
@@ -83,3 +94,18 @@ class PluginSettingsModelTestCase(TestCase):
                 snmp_privpass='{$OK}',
             )
         self.assertIn("Value must start with '{$' and end with '}'", str(ctx.exception))
+
+    def test_trigger_dependency_level_description_validation(self):
+        with self.assertRaises(ValidationError) as ctx:
+            TriggerDependencyLevelConfig(name='access_point', roles=['ap'], trigger_description=' ')
+        self.assertIn('Value must be a non-empty string', str(ctx.exception))
+
+    def test_trigger_dependency_level_role_validation(self):
+        with self.assertRaises(ValidationError) as ctx:
+            TriggerDependencyLevelConfig(name='access_point', roles=[], trigger_description='AP status')
+        self.assertIn('Role tokens must be a non-empty list', str(ctx.exception))
+
+    def test_trigger_dependency_levels_validation(self):
+        with self.assertRaises(ValidationError) as ctx:
+            TriggerDependencyConfig(levels=[])
+        self.assertIn('Dependency levels must be a non-empty list', str(ctx.exception))

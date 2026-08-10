@@ -16,6 +16,8 @@ from nbxsync.utils.sync import ProxyGroupSync
 
 class SyncHostJobTestCase(TestCase):
     def setUp(self):
+        get_plugin_settings().trigger_dependencies.enabled = False
+
         self.device = create_test_device(name='SyncHostVM')
         self.device_ct = ContentType.objects.get_for_model(Device)
 
@@ -100,12 +102,26 @@ class SyncHostJobTestCase(TestCase):
         job = SyncHostJob(instance=self.device)
         job.run()
 
+    @patch('nbxsync.jobs.synchost.sync_device_trigger_dependencies')
+    def test_run_skips_trigger_dependency_sync_by_default(self, mock_sync_dependencies):
+        job = SyncHostJob(instance=self.device)
+        job.run()
+
+        mock_sync_dependencies.assert_not_called()
+
+    @patch('nbxsync.jobs.synchost.sync_device_trigger_dependencies')
+    def test_run_syncs_trigger_dependencies_when_enabled(self, mock_sync_dependencies):
+        get_plugin_settings().trigger_dependencies.enabled = True
+
+        job = SyncHostJob(instance=self.device)
+        job.run()
+
+        mock_sync_dependencies.assert_called_once_with(self.device)
+
     def test_run_sync_host_deleted(self):
         self.device.status = 'decommissioning'
         self.device.save()
         # Set mapping to deleted for test
-        from nbxsync.settings import get_plugin_settings
-
         pluginsettings = get_plugin_settings()
         pluginsettings.statusmapping.device['decommissioning'] = ZabbixHostStatus.DELETED
 

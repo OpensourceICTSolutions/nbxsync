@@ -111,6 +111,31 @@ class nbxSync(PluginConfig):
                 'interval': 15,  # 15 minutes
             },
         },
+        'trigger_dependencies': {
+            'enabled': False,
+            'levels': [
+                {
+                    'name': 'access_point',
+                    'roles': ['access point', 'access-point', 'ap'],
+                    'trigger_description': 'AP status',
+                },
+                {
+                    'name': 'switch',
+                    'roles': ['switch', 'sw'],
+                    'trigger_description': 'Switch status',
+                },
+                {
+                    'name': 'gateway',
+                    'roles': [
+                        'gateway',
+                        'gw',
+                        'firewall',
+                        'router',
+                    ],
+                    'trigger_description': 'Gateway status',
+                },
+            ],
+        },
         'no_alerting_tag': 'NO_ALERTING',
         'no_alerting_tag_value': '1',
         'maintenance_window_duration': 3600,
