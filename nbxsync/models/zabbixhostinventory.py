@@ -1,17 +1,21 @@
+import logging
+from jinja2 import TemplateError, TemplateSyntaxError, UndefinedError
+
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from jinja2 import TemplateError, TemplateSyntaxError, UndefinedError
 
 from netbox.models import NetBoxModel
 from utilities.jinja2 import render_jinja2
 
 from nbxsync.choices import ZabbixHostInventoryModeChoices
-from nbxsync.constants import DEVICE_OR_VM_ASSIGNMENT_MODELS
+from nbxsync.constants.assignment_models import DEVICE_OR_VM_ASSIGNMENT_MODELS
 
 __all__ = ('ZabbixHostInventory',)
+
+logger = logging.getLogger(__name__)
 
 
 class ZabbixHostInventory(NetBoxModel):
@@ -21,7 +25,7 @@ class ZabbixHostInventory(NetBoxModel):
     chassis = models.CharField(max_length=64, blank=True, verbose_name=_('Chassis'))
     contact = models.TextField(blank=True, verbose_name=_('Contact'))
     contract_number = models.CharField(max_length=64, blank=True, verbose_name=_('Contract number'))
-    date_hw_decomm = models.CharField(max_length=64, blank=True, verbose_name=_('Date HW decommussioned'))
+    date_hw_decomm = models.CharField(max_length=64, blank=True, verbose_name=_('Date HW decommissioned'))
     date_hw_expiry = models.CharField(max_length=64, blank=True, verbose_name=_('Date HW maintenance expires'))
     date_hw_install = models.CharField(max_length=64, blank=True, verbose_name=_('Date HW installed'))
     date_hw_purchase = models.CharField(max_length=64, blank=True, verbose_name=_('Date HW purchased'))
@@ -33,7 +37,7 @@ class ZabbixHostInventory(NetBoxModel):
     host_router = models.CharField(max_length=39, blank=True, verbose_name=_('Host router'))
     hw_arch = models.CharField(max_length=32, blank=True, verbose_name=_('HW architecture'))
     installer_name = models.CharField(max_length=64, blank=True, verbose_name=_('Installer name'))
-    location = models.TextField(blank=True, verbose_name=_('Location '))
+    location = models.TextField(blank=True, verbose_name=_('Location'))
     location_lat = models.CharField(max_length=30, blank=True, verbose_name=_('Location latitude'))
     location_lon = models.CharField(max_length=30, blank=True, verbose_name=_('Location longitude'))
     macaddress_a = models.CharField(max_length=64, blank=True, verbose_name=_('MAC address A'))
@@ -60,7 +64,7 @@ class ZabbixHostInventory(NetBoxModel):
     poc_2_notes = models.TextField(blank=True, verbose_name=_('Secondary POC notes'))
     poc_2_phone_a = models.CharField(max_length=64, blank=True, verbose_name=_('Secondary POC phone A'))
     poc_2_phone_b = models.CharField(max_length=64, blank=True, verbose_name=_('Secondary POC phone B'))
-    poc_2_screen = models.CharField(max_length=64, blank=True, verbose_name=_('Secondary POC  screen name'))
+    poc_2_screen = models.CharField(max_length=64, blank=True, verbose_name=_('Secondary POC screen name'))
     serialno_a = models.CharField(max_length=64, blank=True, verbose_name=_('Serial number A'))
     serialno_b = models.CharField(max_length=64, blank=True, verbose_name=_('Serial number B'))
     site_address_a = models.CharField(max_length=128, blank=True, verbose_name=_('Site address A'))
@@ -90,77 +94,6 @@ class ZabbixHostInventory(NetBoxModel):
     assigned_object_type = models.ForeignKey(to=ContentType, limit_choices_to=DEVICE_OR_VM_ASSIGNMENT_MODELS, on_delete=models.CASCADE, related_name='+', blank=True, null=True)
     assigned_object_id = models.PositiveBigIntegerField(blank=True, null=True)
     assigned_object = GenericForeignKey(ct_field='assigned_object_type', fk_field='assigned_object_id')
-
-    class Meta:
-        verbose_name = 'Zabbix Host Inventory'
-        verbose_name_plural = 'Zabbix Host Inventories'
-        ordering = ('-created',)
-
-        constraints = [
-            models.UniqueConstraint(
-                fields=['assigned_object_type', 'assigned_object_id'],
-                name='%(app_label)s_%(class)s_unique_assigned_object',
-                violation_error_message='Only one inventory entry is allowed per assigned object.',
-            )
-        ]
-
-    def get_context(self, **extra_context):
-        """
-        Provide the rendering context for Jinja2 templates.
-        Override or extend as needed.
-        """
-        context = {'object': self.assigned_object}
-        context.update(extra_context)
-        return context
-
-    def get_inventory_mode(self):
-        return ZabbixHostInventoryModeChoices(self.inventory_mode).label
-
-    def render_field(self, field_name, **context):
-        """
-        Render a single field using Jinja2.
-        Returns a tuple of (rendered_value, success_flag).
-        """
-        template_field = getattr(self, field_name, '')
-        try:
-            rendered = render_jinja2(template_field, self.get_context(**context))
-            rendered = rendered.replace('\r\n', '\n')
-
-            max_len = self._MAX_LENGTHS.get(field_name)
-            if max_len is not None and len(rendered) > max_len:
-                rendered = rendered[:max_len]
-
-            return rendered, True
-
-        except (TemplateSyntaxError, UndefinedError, TemplateError) as err:
-            pass
-        except Exception as err:
-            pass
-        return '', False
-
-    def render_all_fields(self, **context):
-        """
-        Render all string-based fields that might contain templates.
-        Returns a dict mapping field names to (rendered_value, success).
-        """
-        rendered = {}
-        for field in self._meta.fields:
-            if isinstance(field, (models.CharField, models.TextField)):
-                field_name = field.name
-                rendered[field_name] = self.render_field(field_name, **context)
-        return rendered
-
-    def clean(self):
-        super().clean()
-        if self.assigned_object_type is None or self.assigned_object_id is None:
-            raise ValidationError('An assigned object must be provided')
-
-    def save(self, *args, **kwargs):
-        self.clean()
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f'Host Inventory of {self.assigned_object.name}'
 
     _MAX_LENGTHS = {
         'alias': 128,
@@ -234,3 +167,87 @@ class ZabbixHostInventory(NetBoxModel):
         'url_c': 2048,
         'vendor': 64,
     }
+
+    class Meta:
+        verbose_name = 'Zabbix Host Inventory'
+        verbose_name_plural = 'Zabbix Host Inventories'
+        ordering = ('-created',)
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=['assigned_object_type', 'assigned_object_id'],
+                name='%(app_label)s_%(class)s_unique_assigned_object',
+                violation_error_message='Only one inventory entry is allowed per assigned object.',
+            )
+        ]
+
+    def get_context(self, **extra_context):
+        """
+        Provide the rendering context for Jinja2 templates.
+        Override or extend as needed.
+        """
+        context = {'object': self.assigned_object}
+        context.update(extra_context)
+        return context
+
+    def get_inventory_mode(self):
+        return ZabbixHostInventoryModeChoices(self.inventory_mode).label
+
+    def render_field(self, field_name, **context):
+        """
+        Render a single field using Jinja2.
+
+        Returns ``(rendered_value, success_flag)``. A template that has valid
+        syntax but references undefined variables (a very common case when a
+        user writes ``{{ object.custom_field_that_doesnt_exist }}``) is
+        considered a soft failure and returns ``('', False)`` — the caller
+        decides whether to show the empty value or fall through to a default.
+
+        Unexpected exceptions (attribute lookups blowing up, import errors,
+        programming mistakes in ``get_context``) are re-raised so they surface
+        in tests and logs instead of being papered over.
+        """
+        template_field = getattr(self, field_name, '') or ''
+        if not template_field:
+            return '', True
+
+        try:
+            rendered = render_jinja2(template_field, self.get_context(**context))
+        except (TemplateSyntaxError, UndefinedError, TemplateError) as err:
+            logger.warning('Jinja render failed for %s.%s (pk=%s): %s', self.__class__.__name__, field_name, self.pk, err)
+            return '', False
+        except Exception:
+            logger.exception('Unexpected error rendering %s.%s (pk=%s); returning empty value', self.__class__.__name__, field_name, self.pk)
+            return '', False
+
+        rendered = rendered.replace('\r\n', '\n')
+
+        max_len = self._MAX_LENGTHS.get(field_name)
+        if max_len is not None and len(rendered) > max_len:
+            rendered = rendered[:max_len]
+
+        return rendered, True
+
+    def render_all_fields(self, **context):
+        """
+        Render all string-based fields that might contain templates.
+        Returns a dict mapping field names to (rendered_value, success).
+        """
+        rendered = {}
+        for field in self._meta.fields:
+            if isinstance(field, (models.CharField, models.TextField)):
+                field_name = field.name
+                rendered[field_name] = self.render_field(field_name, **context)
+        return rendered
+
+    def clean(self):
+        super().clean()
+        if self.assigned_object_type is None or self.assigned_object_id is None:
+            raise ValidationError('An assigned object must be provided')
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'Host Inventory of {self.assigned_object.name}'

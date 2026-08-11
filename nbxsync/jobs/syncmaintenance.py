@@ -1,12 +1,13 @@
 from nbxsync.utils.sync import MaintenanceSync
 from nbxsync.utils.sync.safe_sync import safe_sync
 
-__all__ = ('SyncMaintenceJob',)
+__all__ = ('SyncMaintenanceJob',)
 
 
-class SyncMaintenceJob:
+class SyncMaintenanceJob:
     def __init__(self, **kwargs):
         self.instance = kwargs.get('instance')
+        self.zabbixserver = self.instance.zabbixserver
 
     def run(self):
         if not self.zabbixserver.sync_enabled:

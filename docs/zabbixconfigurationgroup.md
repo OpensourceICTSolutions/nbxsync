@@ -14,7 +14,7 @@ Think of it as a "profile": you attach Zabbix servers, templates, tags, host gro
 
 ```python
 class ZabbixConfigurationGroup(NetBoxModel):
-    name        = CharField(max_length=512)
+    name = CharField(max_length=512)
     description = CharField(max_length=1024, blank=True)
 ```
 
@@ -42,11 +42,11 @@ The important distinction: this is **not** about Zabbix config per se — it is 
 
 The existing nbxsync assignment models (`ZabbixServerAssignment`, `ZabbixTemplateAssignment`, `ZabbixTagAssignment`, `ZabbixHostgroupAssignment`, `ZabbixMacroAssignment`, `ZabbixHostInterface`) all have two distinct modes of operation:
 
-| Mode | `assigned_object` points to | `zabbixconfigurationgroup` field |
-|---|---|---|
-| **Direct assignment** | A Device / VM / VDC | `NULL` |
-| **Group-level definition** | A `ZabbixConfigurationGroup` | `NULL` |
-| **Group-cloned copy** | A Device / VM / VDC | FK to the originating group |
+| Mode                       | `assigned_object` points to  | `zabbixconfigurationgroup` field |
+| -------------------------- | ---------------------------- | -------------------------------- |
+| **Direct assignment**      | A Device / VM / VDC          | `NULL`                           |
+| **Group-level definition** | A `ZabbixConfigurationGroup` | `NULL`                           |
+| **Group-cloned copy**      | A Device / VM / VDC          | FK to the originating group      |
 
 The `zabbixconfigurationgroup` FK on each assignment model is the "provenance" marker: a non-null value means this record was **created by the group propagation system**, not by a human directly. This matters for the "don't overwrite manual assignments" logic (described below).
 

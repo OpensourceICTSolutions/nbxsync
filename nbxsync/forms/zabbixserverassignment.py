@@ -1,7 +1,7 @@
 import logging
 from django import forms
 from django.contrib.contenttypes.models import ContentType
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _
 
 
 from netbox.forms import NetBoxModelImportForm, NetBoxModelBulkEditForm, NetBoxModelFilterSetForm, NetBoxModelForm
@@ -10,7 +10,7 @@ from utilities.forms.rendering import FieldSet, TabbedGroups
 from dcim.models import Device, VirtualDeviceContext
 from virtualization.models import VirtualMachine
 
-from nbxsync.constants import ASSIGNMENT_TYPE_TO_FIELD, ASSIGNMENT_TYPE_TO_FIELD_NBOBJS
+from nbxsync.constants.assignment_type_to_field import ASSIGNMENT_TYPE_TO_FIELD, ASSIGNMENT_TYPE_TO_FIELD_NBOBJS
 from nbxsync.models import ZabbixProxy, ZabbixProxyGroup, ZabbixServer, ZabbixServerAssignment, ZabbixConfigurationGroup
 
 __all__ = ('ZabbixServerAssignmentForm', 'ZabbixServerAssignmentFilterForm', 'ZabbixServerAssignmentBulkImportForm', 'ZabbixServerAssignmentBulkEditForm')

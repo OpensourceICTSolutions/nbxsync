@@ -103,12 +103,13 @@ class MaintenanceSync(ZabbixSyncBase):
                     # Bitwise OR, not just sum().
                     timeperiod_result['month'] |= x
 
-            if not timeperiod.dayofweek:
-                timeperiod_result['day'] = timeperiod.day
-            else:
-                timeperiod_result['dayofweek'] = 0
-                for x in timeperiod.dayofweek:
-                    timeperiod_result['dayofweek'] |= x
+            if timeperiod.timeperiod_type == ZabbixTimePeriodTypeChoices.MONTHLY:
+                if not timeperiod.dayofweek:
+                    timeperiod_result['day'] = timeperiod.day
+                else:
+                    timeperiod_result['dayofweek'] = 0
+                    for x in timeperiod.dayofweek:
+                        timeperiod_result['dayofweek'] |= x
 
             result.append(timeperiod_result)
         return result

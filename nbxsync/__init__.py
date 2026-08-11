@@ -38,7 +38,7 @@ class nbxSync(PluginConfig):
     author = name
     author_email = email
     base_url = 'nbxsync'
-    min_version = '4.2.4'
+    min_version = '4.2.6'
     required_settings = []
     default_settings = {
         'sot': {
@@ -111,12 +111,39 @@ class nbxSync(PluginConfig):
                 'interval': 15,  # 15 minutes
             },
         },
+        'trigger_dependencies': {
+            'enabled': False,
+            'levels': [
+                {
+                    'name': 'access_point',
+                    'roles': ['access point', 'access-point', 'ap'],
+                    'trigger_description': 'AP status',
+                },
+                {
+                    'name': 'switch',
+                    'roles': ['switch', 'sw'],
+                    'trigger_description': 'Switch status',
+                },
+                {
+                    'name': 'gateway',
+                    'roles': [
+                        'gateway',
+                        'gw',
+                        'firewall',
+                        'router',
+                    ],
+                    'trigger_description': 'Gateway status',
+                },
+            ],
+        },
         'no_alerting_tag': 'NO_ALERTING',
         'no_alerting_tag_value': '1',
         'maintenance_window_duration': 3600,
         'attach_objtag': False,
         'objtag_type': 'nb_type',
         'objtag_id': 'nb_id',
+        'custom_field_hostname': '',
+        'custom_field_display_name': '',
     }
     queues = []
     validated_config = None

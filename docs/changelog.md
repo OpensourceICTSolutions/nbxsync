@@ -84,6 +84,48 @@ None
 
 None
 
+## [1.0.4] - Minor update
+
+- Updated the documentation
+
+### New features
+
+- Updated the Zabbix Template Assignment and Zabbix Tag Assignment forms so no duplicate templates/tags can't be assigned ([#78])
+- Zabbix Macro's now support Jinja2 templated values ([#83])
+
+### Bug fixes
+
+- Fixed issue with internationalization of field set names on forms ([#39])
+- Fixed typo in last_sync_message ([#77])
+- Fixed issue with API Schema not being able to generated ([#79])
+- Manual device sync fails for templated Zabbix hostgroups when the rendered local hostgroup does not already exist ([#81])
+- Ensure that the worker doesn't crash on certain race conditions with regards to the hostinterfacesync job ([#86])
+- Fix issue with DeleteHost so it now actually removed the device/object from Zabbix when its deleted from NetBox ([#88])
+
+## [1.0.5] - Minor update
+
+### New features
+
+- Allow configuring a custom hostname and displayname for Zabbix, thanks @bhinz ([#87])
+- Implemented 'Trigger dependency sync', thanks to @benjofalanga ([#100])
+
+### Bug fixes
+
+- Fixed issue where syncing to multiple Zabbix Servers failed ([#90])
+- Fixed issue where local_address was cleared, even when the proxy is part of a ProxyGroup ([#91])
+- Removed duplicate line in ProxySync ([#91])
+- Fixed typo (`acept` vs `accept`) in ProxySync ([#91])
+- Two bugs in syncmaintenance: missing zabbixserver attribute + invalid "day" parameter for non-MONTHLY timeperiods  ([#107])
+- Fixed typo in SyncMaintenceJob
+- Fixed issue where only 1 ZabbixServer would be synced
+- Fixed the resolution of the pathlabel of a Zabbix Configuration Group
+- Fixed issues with HostEvent when multiple ZabbixServers are configured
+- Replaced 'gettext' with 'gettext_lazy'
+
+ 
+### Breaking changes
+
+- Dropped support for NetBox < 4.2.6 in order to support NetBox 4.6.X ([#98])
 
 [#5]: https://github.com/OpensourceICTSolutions/nbxsync/issues/5
 [#20]: https://github.com/OpensourceICTSolutions/nbxsync/issues/20
@@ -106,3 +148,15 @@ None
 [#68]: https://github.com/OpensourceICTSolutions/nbxsync/issues/68
 [#71]: https://github.com/OpensourceICTSolutions/nbxsync/issues/71
 [#74]: https://github.com/OpensourceICTSolutions/nbxsync/issues/74
+[#77]: https://github.com/OpensourceICTSolutions/nbxsync/issues/77
+[#78]: https://github.com/OpensourceICTSolutions/nbxsync/issues/78
+[#79]: https://github.com/OpensourceICTSolutions/nbxsync/issues/79
+[#81]: https://github.com/OpensourceICTSolutions/nbxsync/issues/81
+[#86]: https://github.com/OpensourceICTSolutions/nbxsync/issues/86
+[#87]: https://github.com/OpensourceICTSolutions/nbxsync/issues/87
+[#88]: https://github.com/OpensourceICTSolutions/nbxsync/issues/88
+[#90]: https://github.com/OpensourceICTSolutions/nbxsync/issues/90
+[#91]: https://github.com/OpensourceICTSolutions/nbxsync/issues/91
+[#98]: https://github.com/OpensourceICTSolutions/nbxsync/issues/98
+[#100]: https://github.com/OpensourceICTSolutions/nbxsync/issues/100
+[#107]: https://github.com/OpensourceICTSolutions/nbxsync/issues/107

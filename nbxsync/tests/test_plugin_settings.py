@@ -1,10 +1,18 @@
 from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
+
 from pydantic import ValidationError
 
 from nbxsync.choices.syncsot import SyncSOT
-from nbxsync.settings import PluginSettingsModel, SNMPConfig, BackgroundSyncConfig, get_plugin_settings
+from nbxsync.settings import (
+    BackgroundSyncConfig,
+    PluginSettingsModel,
+    SNMPConfig,
+    TriggerDependencyConfig,
+    TriggerDependencyLevelConfig,
+    get_plugin_settings,
+)
 
 
 class PluginSettingsModelTestCase(TestCase):
@@ -19,6 +27,10 @@ class PluginSettingsModelTestCase(TestCase):
         self.assertIsInstance(settings.backgroundsync.templates, BackgroundSyncConfig)
         self.assertIsInstance(settings.backgroundsync.proxies, BackgroundSyncConfig)
         self.assertIsInstance(settings.backgroundsync.maintenance, BackgroundSyncConfig)
+        self.assertIsInstance(settings.trigger_dependencies, TriggerDependencyConfig)
+        self.assertFalse(settings.trigger_dependencies.enabled)
+        self.assertEqual(settings.trigger_dependencies.levels[1].roles, ['switch', 'sw'])
+        self.assertEqual(settings.trigger_dependencies.levels[2].roles, ['gateway', 'gw', 'firewall', 'router'])
 
     def test_snmp_macro_validation_valid(self):
         config = SNMPConfig(snmp_community='{$VALID_COMM}', snmp_authpass='{$VALID_AUTH}', snmp_privpass='{$VALID_PRIV}')
@@ -83,3 +95,57 @@ class PluginSettingsModelTestCase(TestCase):
                 snmp_privpass='{$OK}',
             )
         self.assertIn("Value must start with '{$' and end with '}'", str(ctx.exception))
+
+    def test_trigger_dependency_level_description_validation(self):
+        with self.assertRaises(ValidationError) as ctx:
+            TriggerDependencyLevelConfig(name='access_point', roles=['ap'], trigger_description=' ')
+        self.assertIn('Value must be a non-empty string', str(ctx.exception))
+
+    def test_trigger_dependency_level_role_validation(self):
+        with self.assertRaises(ValidationError) as ctx:
+            TriggerDependencyLevelConfig(name='access_point', roles=[], trigger_description='AP status')
+        self.assertIn('Role tokens must be a non-empty list', str(ctx.exception))
+
+    def test_trigger_dependency_levels_validation(self):
+        with self.assertRaises(ValidationError) as ctx:
+            TriggerDependencyConfig(levels=[])
+        self.assertIn('Dependency levels must be a non-empty list', str(ctx.exception))
+
+    def test_trigger_dependency_level_rejects_blank_role(self):
+        with self.assertRaises(ValidationError) as ctx:
+            TriggerDependencyLevelConfig(name='switch', roles=['switch', ' '], trigger_description='Switch status')
+
+        self.assertIn('Role tokens must be non-empty strings', str(ctx.exception))
+
+    def test_trigger_dependency_rejects_duplicate_trigger_descriptions(self):
+        with self.assertRaises(ValidationError) as ctx:
+            TriggerDependencyConfig(
+                levels=[
+                    TriggerDependencyLevelConfig(name='switch', roles=['switch'], trigger_description='Device status'),
+                    TriggerDependencyLevelConfig(name='gateway', roles=['gateway'], trigger_description='Device status'),
+                ]
+            )
+
+        self.assertIn("Trigger description 'Device status' is used by both", str(ctx.exception))
+
+    def test_trigger_dependency_rejects_overlapping_roles(self):
+        with self.assertRaises(ValidationError) as ctx:
+            TriggerDependencyConfig(
+                levels=[
+                    TriggerDependencyLevelConfig(name='switch', roles=['switch'], trigger_description='Switch status'),
+                    TriggerDependencyLevelConfig(name='gateway', roles=['gateway', 'SWITCH'], trigger_description='Gateway status'),
+                ]
+            )
+
+        self.assertIn("Role token 'switch' overlaps between dependency levels", str(ctx.exception))
+
+    def test_trigger_dependency_rejects_normalized_role_overlap(self):
+        with self.assertRaises(ValidationError) as ctx:
+            TriggerDependencyConfig(
+                levels=[
+                    TriggerDependencyLevelConfig(name='switch', roles=['core-switch'], trigger_description='Switch status'),
+                    TriggerDependencyLevelConfig(name='gateway', roles=['core switch'], trigger_description='Gateway status'),
+                ]
+            )
+
+        self.assertIn("Role token 'core switch' overlaps between dependency levels", str(ctx.exception))

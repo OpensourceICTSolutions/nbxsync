@@ -1,13 +1,11 @@
-import re
-
 from django.db.models import Q
 from django_filters import BooleanFilter, CharFilter, NumberFilter
 
 from netbox.filtersets import NetBoxModelFilterSet
 
 from nbxsync.models import ZabbixHostgroup
+from nbxsync.constants.template_pattern import TEMPLATE_PATTERN
 
-TEMPLATE_PATTERN = re.compile(r'({{.*?}}|{%-?\s*.*?\s*-?%}|{#.*?#})')
 
 __all__ = ('ZabbixHostgroupFilterSet',)
 

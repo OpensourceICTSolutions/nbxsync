@@ -11,17 +11,20 @@ from nbxsync.choices import ZabbixProxyTypeChoices, ZabbixTLSChoices
 from nbxsync.choices.zabbixstatus import ZabbixHostStatus
 from nbxsync.jobs.synchost import SyncHostJob
 from nbxsync.models import ZabbixHostgroup, ZabbixHostgroupAssignment, ZabbixHostInterface, ZabbixProxy, ZabbixProxyGroup, ZabbixServer, ZabbixServerAssignment
-from nbxsync.utils.sync import HostSync, ProxyGroupSync, HostInterfaceSync
+from nbxsync.utils.sync import ProxyGroupSync
+from nbxsync.settings import get_plugin_settings
 
 
 class SyncHostJobTestCase(TestCase):
     def setUp(self):
+        get_plugin_settings().trigger_dependencies.enabled = False
+
         self.device = create_test_device(name='SyncHostVM')
         self.device_ct = ContentType.objects.get_for_model(Device)
 
         self.zabbixserver = ZabbixServer.objects.create(name='Zabbix1', url='http://zabbix.local', token='abc123')
 
-        self.proxygroup = ZabbixProxyGroup.objects.create(name='Test Proxy Group', zabbixserver=self.zabbixserver, proxy_groupid=99)
+        self.proxygroup = ZabbixProxyGroup.objects.create(failover_delay='1m', name='Test Proxy Group123', zabbixserver=self.zabbixserver, proxy_groupid=99)
         self.proxy = ZabbixProxy.objects.create(
             name='Active Proxy #1',
             zabbixserver=self.zabbixserver,
@@ -90,7 +93,7 @@ class SyncHostJobTestCase(TestCase):
             }
         ]
         mock_api.hostgroup.get.return_value = [{'groupid': '1'}]
-        mock_api.proxygroup.get.return_value = [{'proxy_groupid': 99}]
+        mock_api.proxygroup.get.return_value = [{'proxy_groupid': 99, 'failover_delay': '1m', 'min_online': 1}]
         mock_api.proxygroup.create.return_value = {'proxy_groupids': [99]}
 
         # Assign API to context manager return
@@ -100,12 +103,41 @@ class SyncHostJobTestCase(TestCase):
         job = SyncHostJob(instance=self.device)
         job.run()
 
+    @patch('nbxsync.jobs.synchost.sync_device_trigger_dependencies')
+    def test_run_skips_trigger_dependency_sync_by_default(self, mock_sync_dependencies):
+        job = SyncHostJob(instance=self.device)
+        job.run()
+
+        mock_sync_dependencies.assert_not_called()
+
+    @patch('nbxsync.jobs.synchost.sync_device_trigger_dependencies')
+    def test_run_syncs_trigger_dependencies_when_enabled(self, mock_sync_dependencies):
+        get_plugin_settings().trigger_dependencies.enabled = True
+
+        job = SyncHostJob(instance=self.device)
+        job.run()
+
+        mock_sync_dependencies.assert_called_once_with(self.device)
+
+    @patch('nbxsync.jobs.synchost.sync_device_trigger_dependencies')
+    def test_run_swallows_trigger_dependency_sync_exception(self, mock_sync_dependencies):
+        """A Zabbix API failure inside dep sync must not fail the surrounding host sync."""
+        get_plugin_settings().trigger_dependencies.enabled = True
+        mock_sync_dependencies.side_effect = Exception('Zabbix API timeout')
+
+        job = SyncHostJob(instance=self.device)
+
+        with self.assertLogs('nbxsync.jobs.synchost', level='ERROR') as log_ctx:
+            job.run()  # must not raise
+
+        mock_sync_dependencies.assert_called_once_with(self.device)
+        log_text = '\n'.join(log_ctx.output)
+        self.assertIn('Zabbix API timeout', log_text)
+
     def test_run_sync_host_deleted(self):
         self.device.status = 'decommissioning'
         self.device.save()
         # Set mapping to deleted for test
-        from nbxsync.settings import get_plugin_settings
-
         pluginsettings = get_plugin_settings()
         pluginsettings.statusmapping.device['decommissioning'] = ZabbixHostStatus.DELETED
 

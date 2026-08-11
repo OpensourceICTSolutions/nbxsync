@@ -7,7 +7,7 @@ from django.apps import apps
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 
-from nbxsync.constants import OBJECT_TYPE_MODEL_MAP
+from nbxsync.constants.assignment_type_to_field import OBJECT_TYPE_MODEL_MAP
 
 
 class ZabbixSyncViewSet(ViewSet):

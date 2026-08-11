@@ -1,14 +1,16 @@
 from unittest.mock import Mock, patch
+from types import SimpleNamespace
+from collections import defaultdict
 
 from django.db.models.query import QuerySet
 from django.contrib.contenttypes.models import ContentType
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 
 from dcim.models import DeviceType, Manufacturer
 from utilities.testing import create_test_device
 
 from nbxsync.models import ZabbixHostgroup, ZabbixHostgroupAssignment, ZabbixMacro, ZabbixMacroAssignment, ZabbixServer, ZabbixTag, ZabbixTagAssignment, ZabbixTemplate, ZabbixTemplateAssignment, ZabbixConfigurationGroup, ZabbixConfigurationGroupAssignment
-from nbxsync.utils.inheritance import resolve_inherited_zabbix_assignments
+from nbxsync.utils.inheritance import get_assigned_zabbixobjects, resolve_inherited_zabbix_assignments, _merge_direct_and_inherited, _INHERITANCE_MODELS
 
 
 class ResolveInheritedAssignmentsTestCase(TestCase):
@@ -105,3 +107,98 @@ class ResolveInheritedAssignmentsTestCase(TestCase):
 
         # Verify .first() was actually called (hitting the missed line)
         dummy_qs.first.assert_called_once()
+
+
+class MergeDirectAndInheritedTests(SimpleTestCase):
+    def test_inherited_duplicate_of_direct_is_skipped(self):
+        direct = [SimpleNamespace(zabbixtemplate_id=1, source='direct')]
+        inherited = {
+            1: SimpleNamespace(zabbixtemplate_id=1, source='inherited-dup'),
+            2: SimpleNamespace(zabbixtemplate_id=2, source='inherited-new'),
+        }
+
+        result = _merge_direct_and_inherited(direct, inherited, 'zabbixtemplate_id')
+
+        # The direct entry is preserved; the inherited row with id=1 is
+        # skipped by the `continue`; the inherited row with id=2 is appended.
+        self.assertEqual([obj.source for obj in result], ['direct', 'inherited-new'])
+
+    def test_no_direct_means_all_inherited_flow_through(self):
+        # Guards against a future refactor that accidentally short-circuits
+        # the whole loop when direct_ids is empty.
+        direct = []
+        inherited = {1: SimpleNamespace(zabbixtemplate_id=1)}
+
+        result = _merge_direct_and_inherited(direct, inherited, 'zabbixtemplate_id')
+
+        self.assertEqual(len(result), 1)
+
+
+class ResolveInheritedFirstWriteWinsTests(SimpleTestCase):
+    """
+    Regression: the `continue` inside `resolve_inherited_zabbix_assignments`
+    must reject an assignment whose dedup id was already seen from an
+    earlier path. Without it, a later path silently overwrites the
+    `_inherited_from` label of the earlier one.
+    """
+
+    @patch('nbxsync.utils.inheritance.get_plugin_settings')
+    @patch('nbxsync.utils.inheritance._index_assignments')
+    @patch('nbxsync.utils.inheritance._resolve_parents')
+    def test_second_path_with_duplicate_id_is_skipped(self, mock_resolve_parents, mock_index_assignments, mock_settings):
+        # Two resolved paths, both pointing at the same (ct_id, pk) bucket
+        # keyed by (99, 1) in the index. Labels differ so we can tell which
+        # one won.
+        mock_settings.return_value.inheritance_chain = [
+            ('device_type',),  # PATH_LABELS -> 'Device Type'
+            ('device_type', 'manufacturer'),  # PATH_LABELS -> 'Manufacturer'
+        ]
+
+        parent_a = SimpleNamespace(pk=1)
+        parent_b = SimpleNamespace(pk=2)
+        mock_resolve_parents.return_value = (
+            [
+                (('device_type',), parent_a, 99),
+                (('device_type', 'manufacturer'), parent_b, 99),
+            ],
+            {99: {1, 2}},
+        )
+
+        # For the FIRST assignment model (templates), return an entry at
+        # BOTH parent keys with the SAME dedup id. This is the collision
+        # that the `continue` protects against. For the remaining four
+        # models, return empty dicts.
+        dedup_attr = _INHERITANCE_MODELS[0][2]  # 'zabbixtemplate_id'
+        shared_dedup_value = 4242
+
+        assignment_from_path_a = SimpleNamespace(**{dedup_attr: shared_dedup_value})
+        assignment_from_path_b = SimpleNamespace(**{dedup_attr: shared_dedup_value})
+
+        templates_index = defaultdict(
+            list,
+            {
+                (99, 1): [assignment_from_path_a],  # first path resolves here
+                (99, 2): [assignment_from_path_b],  # second path resolves here
+            },
+        )
+        empty_indexes = [defaultdict(list) for _ in _INHERITANCE_MODELS[1:]]
+        mock_index_assignments.return_value = [templates_index, *empty_indexes]
+
+        result = resolve_inherited_zabbix_assignments(SimpleNamespace())
+
+        # Exactly one entry — the second was rejected by the `continue`.
+        self.assertEqual(len(result['templates']), 1)
+
+        # The surviving entry is the one from path A, so its
+        # _inherited_from label is 'Device Type', NOT 'Manufacturer'.
+        # If the `continue` were removed, the loop would fall through,
+        # set assignment_from_path_b._inherited_from = 'Manufacturer',
+        # and overwrite results[0][shared_dedup_value] with it.
+        surviving = next(iter(result['templates'].values()))
+        self.assertIs(surviving, assignment_from_path_a)
+        self.assertEqual(surviving._inherited_from, 'Device Type')
+
+        # And the path-B assignment must NOT have been mutated — the
+        # `continue` fires *before* the `assignment._inherited_from = label`
+        # line, so it never gets the attribute.
+        self.assertFalse(hasattr(assignment_from_path_b, '_inherited_from'))

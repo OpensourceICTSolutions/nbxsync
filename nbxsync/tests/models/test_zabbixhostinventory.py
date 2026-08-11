@@ -82,12 +82,20 @@ class ZabbixHostInventoryTestCase(TestCase):
         self.assertEqual(len(rendered_value), 128)
         self.assertEqual(rendered_value, 'A' * 128)
 
+    @patch('nbxsync.models.zabbixhostinventory.logger')
     @patch('nbxsync.models.zabbixhostinventory.render_jinja2', side_effect=Exception('Unexpected!'))
-    def test_render_field_handles_unexpected_exception(self, mock_render):
+    def test_render_field_swallows_unexpected_exception_and_logs(self, mock_render, mock_logger):
+        """
+        By design, render_field never propagates non-template exceptions,
+        a broken template on one device must not 500 the whole page. But
+        the traceback MUST be logged so ops can debug.
+        """
         data = self.valid_data.copy()
         data['alias'] = '{{ any }}'
         inventory = ZabbixHostInventory.objects.create(**data)
 
         rendered_value, success = inventory.render_field('alias')
+
         self.assertFalse(success)
         self.assertEqual(rendered_value, '')
+        mock_logger.exception.assert_called_once()

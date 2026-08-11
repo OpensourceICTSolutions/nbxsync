@@ -74,11 +74,38 @@ The plugin is configuration to do exactly what you want, by means of the plugin 
             'interval': 15, # 15 minutes
         },
     },
+    'trigger_dependencies': {
+        'enabled': False,
+        'levels': [
+            {
+                'name': 'access_point',
+                'roles': ['access point', 'access-point', 'ap'],
+                'trigger_description': 'AP status',
+            },
+            {
+                'name': 'switch',
+                'roles': ['switch', 'sw'],
+                'trigger_description': 'Switch status',
+            },
+            {
+                'name': 'gateway',
+                'roles': [
+                    'gateway',
+                    'gw',
+                    'firewall',
+                    'router',
+                ],
+                'trigger_description': 'Gateway status',
+            },
+        ],
+    },
     'no_alerting_tag': 'NO_ALERTING',
     'no_alerting_tag_value': '1',
     'attach_objtag': True,
     'objtag_type': 'nb_type',
-    'objtag_id': 'nb_id'
+    'objtag_id': 'nb_id',
+    'custom_field_hostname':'',
+    'custom_field_display_name':''
 }
 ```
 
@@ -165,6 +192,38 @@ This runs as the `Zabbix Sync Maintenance job` system job. Only maintenance
 windows that have at least one period and one object assignment are included.
 See [Zabbix Maintenance](zabbixmaintenance.md) for details.
 
+### trigger_dependencies
+
+When enabled, nbxSync updates Zabbix trigger dependencies after a successful device host sync. The feature uses NetBox cabling and ordered dependency levels to build dependency chains such as:
+
+```text
+access point trigger -> switch trigger -> gateway/firewall trigger
+```
+
+This feature is disabled by default. Enable it only when the configured role tokens match your NetBox device role names or slugs and the configured trigger descriptions match your Zabbix trigger names.
+
+Both pieces are required:
+
+- Role matching decides which dependency level a NetBox device belongs to. Role names and slugs are compared case-insensitively.
+- Interface cabling decides which directly connected devices are considered.
+- The order of `levels` decides dependency direction. Lower levels depend on directly connected higher levels.
+
+For example, an access point role named `Wireless AP` will not match the defaults unless you add `wireless ap` or the role slug to the access point level's `roles`. A device with a matching role but no connected higher-level neighbor is skipped because nbxSync cannot determine its upstream dependency.
+
+| Key        | Default | Description |
+|------------|---------|-------------|
+| `enabled`  | `False` | Enable trigger dependency updates after host sync |
+| `levels`   | AP, switch, gateway/firewall | Ordered from lowest child to highest parent |
+| `name`     | Level-specific | Human-readable level name used for configuration clarity |
+| `roles`    | Level-specific role tokens | NetBox device role names/slugs that belong to this level |
+| `trigger_description` | Level-specific trigger name | Zabbix trigger description on hosts in this level |
+
+The default levels are ordered as access point, switch, gateway/firewall. With those defaults, a connected access point depends on its connected switch, and a connected switch depends on its connected gateway or firewall. Cable direction does not matter; nbxSync looks at directly connected devices and uses the level order to decide which device is the child and which device is the parent.
+
+To support more device types or vendor-specific role names, add their NetBox role names or slugs to the appropriate level. To support a different hierarchy, add or reorder levels from lowest child to highest parent.
+
+Existing Zabbix dependencies whose descriptions do not match the managed parent trigger descriptions are preserved. Dependencies matching the managed parent trigger descriptions are replaced with the current cabling-derived parent triggers.
+
 ### no_alerting_tag
 
 This defines the tag to be set when a host has the 'enabled_no_alerting' status. Use just a string value with no ${ } around the tag. Defaults to 'NO_ALERTING'.
@@ -207,6 +266,9 @@ These tags allow you to navigate from a Zabbix host back to the corresponding  N
 | `attach_objtag` | `True`    | Enable or disable auto-tagging      |
 | `objtag_type`   | `nb_type` | Tag name for the NetBox object type |
 | `objtag_id`     | `nb_id`   | Tag name for the NetBox object ID   |
+
+### custom_field_hostname and custom_field_display_name
+You can use these fields to map the connection between NetBox and the Zabbix hostname and display name. The device name is used as the default.
 
 ## Enabling and Disabling Synchronization
 

@@ -5,7 +5,7 @@ from django.db import models
 
 from netbox.models import NetBoxModel
 
-from nbxsync.constants import ASSIGNMENT_MODELS
+from nbxsync.constants.assignment_models import ASSIGNMENT_MODELS
 from nbxsync.models import SyncInfoModel
 
 __all__ = ('ZabbixServerAssignment',)
