@@ -49,11 +49,12 @@ jobs:
 
     steps:
       - name: Check out NetBox
-        uses: actions/checkout@v5
-        with:
-          repository: "netbox-community/netbox"
-          ref: "main"
-          path: "netbox"
+              uses: actions/checkout@v5
+              with:
+                repository: "netbox-community/netbox"
+                ref: "v4.6.7"
+                path: "netbox"
+
 
       - name: Check out repo
         uses: actions/checkout@v5
