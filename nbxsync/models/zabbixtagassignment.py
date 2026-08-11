@@ -79,11 +79,22 @@ class ZabbixTagAssignment(NetBoxModel):
     def get_context(self, **extra_context):
         context = {
             'object': self.assigned_object,
+            'device': self.assigned_object,
             'tag': self.zabbixtag.tag,
             'value': self.zabbixtag.value,
             'name': self.zabbixtag.name,
             'description': self.zabbixtag.description,
         }
+        if hasattr(self.assigned_object, 'site'):
+            context['site'] = self.assigned_object.site
+        if hasattr(self.assigned_object, 'tenant'):
+            context['tenant'] = self.assigned_object.tenant
+        if hasattr(self.assigned_object, 'role'):
+            context['role'] = self.assigned_object.role
+        if hasattr(self.assigned_object, 'device_type'):
+            context['device_type'] = self.assigned_object.device_type
+            if hasattr(self.assigned_object.device_type, 'manufacturer'):
+                context['manufacturer'] = self.assigned_object.device_type.manufacturer
         context.update(extra_context)
         return context
 
