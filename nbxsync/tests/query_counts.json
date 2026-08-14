@@ -14,5 +14,7 @@
   "zabbixtag:list_objects_with_permission": 19,
   "zabbixtagassignment:list_objects_with_permission": 20,
   "zabbixtemplate:list_objects_with_permission": 19,
-  "zabbixtemplateassignment:list_objects_with_permission": 20
+  "zabbixtemplateassignment:list_objects_with_permission": 20,
+  "zabbixtemplaterule:api_list_objects": 15,
+  "zabbixtemplaterule:list_objects_with_permission": 21
 }

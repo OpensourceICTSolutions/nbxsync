@@ -109,5 +109,17 @@ items = (
             ),
         ),
     ),
+    PluginMenuItem(
+        link='plugins:nbxsync:zabbixtemplaterule_list',
+        link_text='Template Rules',
+        permissions=['nbxsync.view_zabbixtemplaterule'],
+        buttons=(
+            PluginMenuButton(
+                link='plugins:nbxsync:zabbixtemplaterule_add',
+                title='Add',
+                icon_class='mdi mdi-plus-thick',
+            ),
+        ),
+    ),
 )
 menu = PluginMenu(label='Zabbix', groups=(('zabbix', items),), icon_class='mdi mdi-monitor-multiple')

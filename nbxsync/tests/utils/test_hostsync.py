@@ -354,6 +354,27 @@ class HostSyncTestCase(TestCase):
         result = self.sync.get_template_attributes()
         self.assertIn({'templateid': 101}, result['templates'])
 
+    def test_get_template_attributes_reads_plain_list(self):
+        """all_objects collections are always plain lists (no _get_all_objects dict/list shim)."""
+
+        class DummyZabbixTemplate:
+            def __init__(self, templateid):
+                self.templateid = templateid
+                self.interface_requirements = [HostInterfaceRequirementChoices.NONE]
+
+        class DummyAssignedTemplate:
+            def __init__(self, templateid):
+                self.zabbixtemplate = DummyZabbixTemplate(templateid)
+
+        assigned = [DummyAssignedTemplate(201), DummyAssignedTemplate(202), DummyAssignedTemplate(203)]
+        self.assertIsInstance(assigned, list)
+        self.sync.context['all_objects']['templates'] = assigned
+
+        result = self.sync.get_template_attributes()
+        self.assertEqual(len(result['templates']), 3)
+        for templateid in (201, 202, 203):
+            self.assertIn({'templateid': templateid}, result['templates'])
+
     def test_get_template_attributes_with_any_but_no_interfaces(self):
         class DummyZabbixTemplate:
             def __init__(self):
@@ -467,7 +488,7 @@ class HostSyncTestCase(TestCase):
             def __init__(self):
                 self.inventory_mode = 1
 
-            def render_all_fields(self):
+            def render_all_fields(self, object=None):
                 return {
                     'serialnumber': ('ABC123', True),
                     'location': ('', True),  # Empty, should be skipped

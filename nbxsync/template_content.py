@@ -1,9 +1,5 @@
-from django.contrib.contenttypes.models import ContentType
-
 from netbox.plugins import PluginTemplateExtension
 
-
-from nbxsync.models import ZabbixHostInterface, ZabbixServerAssignment, ZabbixTemplateAssignment
 from nbxsync.choices import HostInterfaceRequirementChoices, ZabbixInterfaceTypeChoices
 from nbxsync.utils import get_assigned_zabbixobjects, get_maintenance_can_sync
 
@@ -53,14 +49,14 @@ class ZabbixDeviceButtonsExtension(PluginTemplateExtension):
         if not obj:
             return ''
 
-        ct = ContentType.objects.get_for_model(obj)
-        has_server_assignment = ZabbixServerAssignment.objects.filter(assigned_object_type=ct, assigned_object_id=obj.pk).exists()
+        assigned = get_assigned_zabbixobjects(obj)
+        has_server_assignment = bool(assigned.get('server_assignments'))
 
-        hostgroups = get_assigned_zabbixobjects(obj).get('hostgroups') or []
-        has_hostgroup_assignment = bool(hostgroups)
+        has_hostgroup_assignment = bool(assigned.get('hostgroups'))
 
-        assigned_hostinterface_types = set(ZabbixHostInterface.objects.filter(assigned_object_type=ct, interface_type=ZabbixInterfaceTypeChoices.DEFAULT, assigned_object_id=obj.pk).values_list('type', flat=True).distinct())
-        assigned_zabbixtemplates = list(ZabbixTemplateAssignment.objects.filter(assigned_object_type=ct, assigned_object_id=obj.pk))
+        hostinterfaces = assigned.get('hostinterfaces') or []
+        assigned_hostinterface_types = set(hi.type for hi in hostinterfaces if int(getattr(hi, 'interface_type', 0)) == ZabbixInterfaceTypeChoices.DEFAULT)
+        assigned_zabbixtemplates = assigned.get('templates') or []
 
         has_hostinterface_assignment = True
 

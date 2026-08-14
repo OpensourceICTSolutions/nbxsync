@@ -52,7 +52,7 @@ class SNMPConfig(BaseModel):
 
 class BackgroundSyncConfig(BaseModel):
     enabled: bool = Field(default=True)
-    interval: int = Field(default=60)
+    interval: int = Field(default=360)
 
 
 class BackgroundSync(BaseModel):
@@ -134,6 +134,9 @@ class PluginSettingsModel(BaseModel):
     backgroundsync: BackgroundSync = Field(default_factory=BackgroundSync)
     trigger_dependencies: TriggerDependencyConfig = Field(default_factory=TriggerDependencyConfig)
     inheritance_chain: List[Tuple[str, ...]] = Field(
+        # Leaf-first. Existing role/platform paths stay ahead of Site hierarchy so
+        # adding Site/SiteGroup/Region inheritance does not override Role/Platform
+        # assignments on upgrade. Cluster site uses CachedScopeMixin._site (NetBox ≥4.2).
         default_factory=lambda: [
             ('device',),
             ('role',),
@@ -180,6 +183,24 @@ class PluginSettingsModel(BaseModel):
                 'type',
             ),
             ('type',),
+            # Hierarchy targets for zero-touch (appended after device/role/platform)
+            (
+                'device',
+                'site',
+            ),  # VirtualDeviceContext → device → site
+            ('site',),
+            (
+                'site',
+                'group',
+            ),
+            (
+                'site',
+                'region',
+            ),
+            (
+                'cluster',
+                '_site',
+            ),  # NetBox ≥4.2 Cluster scope cache (not .site)
         ]
     )
     no_alerting_tag: str = Field(default='NO_ALERTING')
@@ -191,6 +212,25 @@ class PluginSettingsModel(BaseModel):
 
     custom_field_hostname: str = Field(default='')
     custom_field_display_name: str = Field(default='')
+
+    # Tag name that, when assigned (inherited or direct) to a Device/VM,
+    # excludes the host from Zabbix sync entirely. Uses the same inheritance
+    # chain as templates, hostgroups, and other tag assignments.
+    exclude_tag: str = Field(default='')
+
+    # Deleting a host in Zabbix destroys its history, so inheritance-driven
+    # deletions from lost server assignments are opt-in. While disabled,
+    # nbxsync logs the hosts it would have deleted when their assignment
+    # disappeared and leaves them untouched, which lets operators review the
+    # impact of e.g. a moved Site before any data is lost. Explicit operator
+    # decisions (exclude tags, status mapped to deleted, NetBox deletion)
+    # always delete.
+    allow_inherited_deletion: bool = Field(default=False)
+
+    # Bind to a pre-existing Zabbix host that carries matching nb_type/nb_id
+    # tags instead of failing. Off by default: adopting a host that nbxsync did
+    # not create means NetBox immediately starts overwriting its configuration.
+    adopt_existing_hosts: bool = Field(default=False)
 
 
 # Helper function

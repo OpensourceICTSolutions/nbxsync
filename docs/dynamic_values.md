@@ -12,15 +12,9 @@ For example, if a Hostgroup is given the value:
 {{ object.site.name }}
 ```
 
-and is applied to a `Device`, it will render as the device's `Site Name`. Here, object refers to the entity to which the assignment is made. This distinction is important: if a `Hostgroup` is assigned to a `DeviceType`, then the `DeviceType` becomes the object—even if the `Hostgroup` is later inherited by a `Device`.
+and is applied to a `Device`, it will render as the device's Site name.
 
-Therefore, using the following template:
-
-```jinja2
-{{ object.site.name }}
-```
-
-on a `DeviceType` does not make sense, because a `DeviceType` does not have a `Site` attribute.
+During host synchronisation, tag, macro and host-inventory templates are rendered against the Device, VDC or VirtualMachine being synced — even when the assignment is inherited. Hostgroup templates still render with `object` as the assignment target, so hostgroup Jinja that needs host fields should be assigned where those fields exist.
 
 ## Context
 
@@ -38,11 +32,11 @@ Tags are rendered within a context that includes the following information:
 
 | Key         | Value                 | Explanation                                                                                  |
 |-------------|-----------------------|----------------------------------------------------------------------------------------------|
-| object      | assigned_object       | Refers to the assigned object; this could be a DeviceType, Device, VirtualMachine, etc.      |
-| tag         | zabbixtag.tag         | Contains the Zabbix Tag value that this assignment refers to                                 |
-| value       | zabbixtag.value       | The value of the Zabbix Tag (typically the Jinja2 template)                                  |
-| name        | zabbixtag.name        | The name of the Zabbix Tag                                                                   |
-| description | zabbixtag.description | The description of the Zabbix Tag                                                            |
+| object      | assigned_object       | The assignment target. During host sync this is the Device/VM/VDC being synced |
+| tag         | zabbixtag.tag         | Contains the Zabbix Tag value that this assignment refers to |
+| value       | zabbixtag.value       | The value of the Zabbix Tag (typically the Jinja2 template) |
+| name        | zabbixtag.name        | The name of the Zabbix Tag |
+| description | zabbixtag.description | The description of the Zabbix Tag |
 
 ### Hostgroup
 
@@ -50,9 +44,9 @@ Just like tags, hostgroups are rendered in a context:
 
 | Key         | Value                 | Explanation                                                                                  |
 |-------------|-----------------------|----------------------------------------------------------------------------------------------|
-| object      | assigned_object       | Refers to the assigned object; this could be a DeviceType, Device, VirtualMachine, etc.      |
-| value       | zabbixhostgroup.value | The value of the Zabbix Hostgroup (typically the Jinja2 template)                            |
-| name        | zabbixhostgroup.name  | The name of the Zabbix Hostgroup                                                             |
+| object      | assigned_object       | The assignment target (not overridden to the synced host during host sync) |
+| value       | zabbixhostgroup.value | The value of the Zabbix Hostgroup (typically the Jinja2 template) |
+| name        | zabbixhostgroup.name  | The name of the Zabbix Hostgroup |
 
 ### Host Inventory
 
@@ -60,10 +54,9 @@ Each field on a `ZabbixHostInventory` record is rendered individually. The conte
 
 | Key      | Value            | Explanation                                                  |
 |----------|------------------|--------------------------------------------------------------|
-| `object` | assigned_object  | The Device, VDC, or VirtualMachine this inventory belongs to |
+| `object` | assigned_object  | The assignment target. During host sync this is the Device/VM/VDC being synced |
 
-Because `ZabbixHostInventory` is assigned directly to a Device, VDC, or VM (never to a DeviceType or other inheritance-chain object), `object` always
-refers to the host itself. This means device attributes like `object.site.name`, `object.rack.name`, or `object.primary_ip` are always available and always resolve to the correct host.
+Inventory can be assigned on hierarchy objects and inherited; during host sync `object` is the host, so fields such as `object.site.name` or `object.primary_ip` resolve correctly.
 
 Note that each field has a maximum character length enforced at render time, values that exceed the limit are silently truncated. The `inventory_mode` field controls how Zabbix treats the inventory:
 - `Manual` (the default) means Zabbix only updates inventory via the API, which is how nbxSync writes it. 
