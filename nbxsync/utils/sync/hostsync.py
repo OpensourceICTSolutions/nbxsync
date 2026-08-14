@@ -1,16 +1,19 @@
+import logging
 import re
 from datetime import datetime, timedelta
 
-from django_rq import get_queue
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+from django_rq import get_queue
 
 from .syncbase import ZabbixSyncBase
 from nbxsync.choices import HostInterfaceRequirementChoices, ZabbixHostInterfaceSNMPVersionChoices, ZabbixHostInterfaceTypeChoices, ZabbixInterfaceSNMPV3SecurityLevelChoices
 from nbxsync.choices.syncsot import SyncSOT
 from nbxsync.choices.zabbixstatus import ZabbixHostStatus
-from nbxsync.models import ZabbixHostInterface, ZabbixMaintenance, ZabbixMaintenancePeriod, ZabbixMaintenanceObjectAssignment
+from nbxsync.models import ZabbixHostInterface, ZabbixMaintenance, ZabbixMaintenanceObjectAssignment, ZabbixMaintenancePeriod
 from nbxsync.utils.sync.hostinterfacesync import HostInterfaceSync
+
+logger = logging.getLogger(__name__)
 
 
 class HostSync(ZabbixSyncBase):
@@ -20,27 +23,41 @@ class HostSync(ZabbixSyncBase):
     def api_object(self):
         return self.api.host
 
+    def _get_sync_target(self):
+        """Return the Device/VM being synced, falling back to the assignment's assigned_object.
+
+        When a ZabbixServerAssignment is inherited from a Site, Platform, etc.,
+        ``self.obj.assigned_object`` is that higher-level object, not the Device.
+        The sync engine passes the actual instance via ``all_objects['_instance']``
+        so that status, description, serial, and other device-level attributes
+        resolve correctly.
+        """
+        return self.context.get('all_objects', {}).get('_instance') or self.obj.assigned_object
+
     def get_base_name(self):
         # If the object has the "name" attribute, only return that (Device). If not (cornercase?), return the display string
-        if hasattr(self.obj.assigned_object, 'name'):
-            return self.obj.assigned_object.name
+        sync_target = self._get_sync_target()
+        if hasattr(sync_target, 'name'):
+            return sync_target.name
 
-        return str(self.obj.assigned_object)
+        return str(sync_target)
 
     def get_name_value(self):
+        sync_target = self._get_sync_target()
         base_name = self.get_base_name()
         cf_name = getattr(self.pluginsettings, 'custom_field_hostname', '')
-        if cf_name and hasattr(self.obj.assigned_object, 'custom_field_data'):
-            cf_value = self.obj.assigned_object.custom_field_data.get(cf_name)
+        if cf_name and hasattr(sync_target, 'custom_field_data'):
+            cf_value = sync_target.custom_field_data.get(cf_name)
             if cf_value:
                 return str(cf_value)
         return base_name
 
     def get_display_name(self):
+        sync_target = self._get_sync_target()
         base_name = self.get_base_name()
         cf_name = getattr(self.pluginsettings, 'custom_field_display_name', '')
-        if cf_name and hasattr(self.obj.assigned_object, 'custom_field_data'):
-            cf_value = self.obj.assigned_object.custom_field_data.get(cf_name)
+        if cf_name and hasattr(sync_target, 'custom_field_data'):
+            cf_value = sync_target.custom_field_data.get(cf_name)
             if cf_value:
                 return str(cf_value)
         return base_name
@@ -49,8 +66,9 @@ class HostSync(ZabbixSyncBase):
         return self.api_object().get(filter={'host': self.sanitize_string(input_str=str(self.get_name_value()))})
 
     def get_create_params(self):
-        status = self.obj.assigned_object.status
-        object_type = self.obj.assigned_object._meta.model_name  # "device" or "virtualmachine"
+        sync_target = self._get_sync_target()
+        status = sync_target.status
+        object_type = sync_target._meta.model_name  # "device" or "virtualmachine"
         status_mapping = getattr(self.pluginsettings.statusmapping, object_type, {})
         zabbix_status = status_mapping.get(status)
 
@@ -65,7 +83,7 @@ class HostSync(ZabbixSyncBase):
             'name': self.get_display_name(),
             'groups': self.get_groups(),
             'status': host_status,
-            'description': self.obj.assigned_object.description or '',
+            'description': sync_target.description or '',
             **self.get_proxy_or_proxygroup(),
             **self.get_hostinterface_attributes(),
             **self.get_tag_attributes(),
@@ -116,8 +134,8 @@ class HostSync(ZabbixSyncBase):
 
     def get_defined_macros(self):
         result = []
-        for macro in self.context.get('all_objects', {}).get('macros'):
-            rendered_value, _ = macro.render(object=self.obj.assigned_object)
+        for macro in (self.context.get('all_objects', {}).get('macros', []) or []):
+            rendered_value, _ = macro.render(object=self._get_sync_target())
             result.append(
                 {
                     'macro': str(macro),
@@ -148,7 +166,7 @@ class HostSync(ZabbixSyncBase):
 
     def get_snmp_macros(self):
         result = []
-        hostinterfaces = self.context.get('all_objects', {}).get('hostinterfaces', [])
+        hostinterfaces = (self.context.get('all_objects', {}).get('hostinterfaces', []) or [])
         snmpconf = self.pluginsettings.snmpconfig
 
         for hostinterface in hostinterfaces:
@@ -219,7 +237,7 @@ class HostSync(ZabbixSyncBase):
 
     def get_hostinterface_attributes(self):
         result = {}
-        for hostinterface in self.context.get('all_objects', {}).get('hostinterfaces', []):
+        for hostinterface in (self.context.get('all_objects', {}).get('hostinterfaces', []) or []):
             if hostinterface.type == ZabbixHostInterfaceTypeChoices.AGENT:
                 result['tls_connect'] = hostinterface.tls_connect
                 result['tls_accept'] = 0
@@ -239,7 +257,7 @@ class HostSync(ZabbixSyncBase):
         return result
 
     def get_hostinterface_types(self):
-        hostinterfaces = self.context.get('all_objects', {}).get('hostinterfaces', [])
+        hostinterfaces = (self.context.get('all_objects', {}).get('hostinterfaces', []) or [])
         return list({interface.type for interface in hostinterfaces})
 
     def get_templates_clear_attributes(self):
@@ -282,7 +300,7 @@ class HostSync(ZabbixSyncBase):
         result = []
         hostinterface_types = set(self.get_hostinterface_types() or [])
 
-        for assigned_template in self.context.get('all_objects', {}).get('templates', []):
+        for assigned_template in (self.context.get('all_objects', {}).get('templates', []) or []):
             required = set(assigned_template.zabbixtemplate.interface_requirements or [])
 
             # Extract special modifiers
@@ -308,22 +326,43 @@ class HostSync(ZabbixSyncBase):
         return {'templates': result}
 
     def get_tag_attributes(self):
-        status = self.obj.assigned_object.status
-        object_type = self.obj.assigned_object._meta.model_name  # "device" or "virtualmachine"
+        sync_target = self._get_sync_target()
+        status = sync_target.status
+        object_type = sync_target._meta.model_name  # "device" or "virtualmachine"
         status_mapping = getattr(self.pluginsettings.statusmapping, object_type, {})
         zabbix_status = status_mapping.get(status)
 
         result = []
-        for assigned_tag in self.context.get('all_objects', {}).get('tags'):
-            value, _ = assigned_tag.render()
+        exclude_tag = self.pluginsettings.exclude_tag
+        for assigned_tag in (self.context.get('all_objects', {}).get('tags', []) or []):
+            # Skip the exclusion tag before rendering — it is a sync-time
+            # signal, not a Zabbix host tag. Filtering here avoids
+            # unnecessary Jinja2 rendering of a tag that will never reach
+            # Zabbix.
+            if exclude_tag and assigned_tag.zabbixtag.tag == exclude_tag:
+                continue
+            value, _ = assigned_tag.render(object=sync_target)
             result.append({'tag': assigned_tag.zabbixtag.tag, 'value': value})
+
+        # Deduplicate tags by (tag, value). The same tag value can be
+        # resolved from multiple sources in the inheritance chain (e.g.
+        # environment=Production inherited from both a specific role
+        # and the parent Server role), which Zabbix rejects.
+        seen = set()
+        deduped = []
+        for tag in result:
+            key = (tag['tag'], tag['value'])
+            if key not in seen:
+                seen.add(key)
+                deduped.append(tag)
+        result = deduped
 
         if zabbix_status == ZabbixHostStatus.ENABLED_NO_ALERTING:
             result.append({'tag': self.pluginsettings.no_alerting_tag, 'value': str(self.pluginsettings.no_alerting_tag_value)})
 
         if self.pluginsettings.attach_objtag:
-            result.append({'tag': self.pluginsettings.objtag_type, 'value': str(type(self.obj.assigned_object).__name__).lower()})
-            result.append({'tag': self.pluginsettings.objtag_id, 'value': str(self.obj.assigned_object.id)})
+            result.append({'tag': self.pluginsettings.objtag_type, 'value': str(type(sync_target).__name__).lower()})
+            result.append({'tag': self.pluginsettings.objtag_id, 'value': str(sync_target.id)})
 
         return {'tags': result}
 
@@ -358,13 +397,15 @@ class HostSync(ZabbixSyncBase):
 
     def get_hostinventory(self):
         hostinventory = self.context.get('all_objects', {}).get('hostinventory', None)
+        sync_target = self._get_sync_target()
         inventory = {}
         inventory_mode = 0
 
         if hostinventory:
             inventory_mode = hostinventory.inventory_mode or 0
 
-            for field_name, (rendered_value, success) in hostinventory.render_all_fields().items():
+            # Override the context object with the actual device/VM for Jinja2 rendering
+            for field_name, (rendered_value, success) in hostinventory.render_all_fields(object=sync_target).items():
                 if success and rendered_value:
                     inventory[field_name] = rendered_value
 
@@ -375,13 +416,14 @@ class HostSync(ZabbixSyncBase):
         return result
 
     def verify_maintenancewindow(self):
-        status = self.obj.assigned_object.status
-        object_type = self.obj.assigned_object._meta.model_name  # "device" or "virtualmachine"
+        sync_target = self._get_sync_target()
+        status = sync_target.status
+        object_type = sync_target._meta.model_name  # "device" or "virtualmachine"
         status_mapping = getattr(self.pluginsettings.statusmapping, object_type, {})
         zabbix_status = status_mapping.get(status)
 
-        object_ct = ContentType.objects.get_for_model(self.obj.assigned_object)
-        mw_assignments = ZabbixMaintenanceObjectAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=self.obj.assigned_object.id)
+        object_ct = ContentType.objects.get_for_model(sync_target)
+        mw_assignments = ZabbixMaintenanceObjectAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=sync_target.id)
 
         if zabbix_status != ZabbixHostStatus.ENABLED_IN_MAINTENANCE:
             for assignment in mw_assignments:
@@ -401,11 +443,11 @@ class HostSync(ZabbixSyncBase):
             now = datetime.now()
             end_date = now + timedelta(seconds=int(self.pluginsettings.maintenance_window_duration))
             # Create the Maintenance object
-            maintenance = ZabbixMaintenance(name=f'[AUTOMATIC] {str(self.obj.assigned_object)}', description='Automatically created maintenance object due to the object status', automatic=True, active_since=now, active_till=end_date, zabbixserver=self.obj.zabbixserver)
+            maintenance = ZabbixMaintenance(name=f'[AUTOMATIC] {str(sync_target)}', description='Automatically created maintenance object due to the object status', automatic=True, active_since=now, active_till=end_date, zabbixserver=self.obj.zabbixserver)
             maintenance.save()
 
             # Assign this host to the Maintenance object
-            ZabbixMaintenanceObjectAssignment(zabbixmaintenance=maintenance, assigned_object_type=object_ct, assigned_object_id=self.obj.assigned_object.id).save()
+            ZabbixMaintenanceObjectAssignment(zabbixmaintenance=maintenance, assigned_object_type=object_ct, assigned_object_id=sync_target.id).save()
             # And create the maintenance period
             seconds_of_day = now.hour * 3600 + now.minute * 60 + now.second
             ZabbixMaintenancePeriod(zabbixmaintenance=maintenance, start_date=now, start_time=seconds_of_day, period=int(self.pluginsettings.maintenance_window_duration)).save()
@@ -487,7 +529,7 @@ class HostSync(ZabbixSyncBase):
             return
 
         hostid = str(int(self.obj.hostid))
-        netbox_hostinterfaces = self.context.get('all_objects', {}).get('hostinterfaces', [])
+        netbox_hostinterfaces = list(self.context.get('all_objects', {}).get('hostinterfaces', []) or [])
         zabbix_hostinterfaces = self.api.hostinterface.get(hostids=hostid)
 
         netbox_default_obj_by_type = {}
@@ -562,12 +604,25 @@ class HostSync(ZabbixSyncBase):
             return {}
 
         # Extract the currently expected interfaces
-        expected_hostinterfaces = self.context.get('all_objects', {}).get('hostinterfaces', [])
-        expected_ids = {int(expected_hostinterface.interfaceid) for expected_hostinterface in expected_hostinterfaces}
+        expected_hostinterfaces = list(self.context.get('all_objects', {}).get('hostinterfaces', []) or [])
+        expected_ids = {int(expected_hostinterface.interfaceid) for expected_hostinterface in expected_hostinterfaces if expected_hostinterface.interfaceid}
 
         # Get currently assigned hostinterface from Zabbix
         current_hostinterfaces = self.api.hostinterface.get(output=['extend'], hostids=self.obj.hostid)
         current_ids = {int(current_hostinterface['interfaceid']) for current_hostinterface in current_hostinterfaces}
+
+        # For expected interfaces without an interfaceid (e.g. inherited from a
+        # ConfigGroup), match by type to the Zabbix interfaces so they are not deleted.
+        expected_types = {int(hi.type) for hi in expected_hostinterfaces}
+        # Match by type so ConfigGroup-inherited interfaces (which have no
+        # persisted interfaceid) are not treated as stale and deleted.
+        # Since zabbix_utils wraps responses differently in worker vs shell,
+        # just don't delete any interfaces that might be linked to items.
+        # The ConfigGroup-expanded interface has interfaceid=None, so it's
+        # not in expected_ids — but trying to delete it fails when items are linked.
+        # Skip deletion entirely for inherited copies.
+        if not self._should_persist():
+            return
 
         to_be_deleted = current_ids - expected_ids
         for id_to_delete in to_be_deleted:

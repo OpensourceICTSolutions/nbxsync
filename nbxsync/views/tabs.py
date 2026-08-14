@@ -1,13 +1,14 @@
 from django.contrib.contenttypes.models import ContentType
+from nbxsync.utils import get_assigned_zabbixobjects
 
 from netbox.views.generic import ObjectChildrenView, ObjectView
 from utilities.views import register_model_view, ViewTab
-from dcim.models import Device, VirtualDeviceContext, DeviceRole, DeviceType, Manufacturer, Platform
+from dcim.models import Device, VirtualDeviceContext, DeviceRole, DeviceType, Manufacturer, Platform, Site, SiteGroup, Region
 from virtualization.models import Cluster, ClusterType, VirtualMachine
 
 from nbxsync.filtersets import ZabbixTemplateFilterSet, ZabbixMacroFilterSet
 from nbxsync.mixins import ZabbixTabMixin
-from nbxsync.models import ZabbixServer, ZabbixMacro, ZabbixHostInterface, ZabbixTemplate, ZabbixServerAssignment, ZabbixMaintenanceObjectAssignment, ZabbixHostInventory, ZabbixConfigurationGroupAssignment
+from nbxsync.models import ZabbixServer, ZabbixMacro, ZabbixTemplate, ZabbixServerAssignment, ZabbixMaintenanceObjectAssignment, ZabbixConfigurationGroupAssignment
 from nbxsync.tables import ZabbixTemplateTable, ZabbixMacroTable, ZabbixHostInterfaceObjectViewTable, ZabbixServerAssignmentObjectViewTable, ZabbixMaintenanceObjectAssignmentDetailViewTable
 
 
@@ -76,6 +77,21 @@ class ZabbixPlatformTabView(ZabbixTabMixin, ObjectView):
     queryset = Platform.objects.all()
 
 
+@register_model_view(Site, name='zabbix', path='zabbix')
+class ZabbixSiteTabView(ZabbixTabMixin, ObjectView):
+    queryset = Site.objects.all()
+
+
+@register_model_view(SiteGroup, name='zabbix', path='zabbix')
+class ZabbixSiteGroupTabView(ZabbixTabMixin, ObjectView):
+    queryset = SiteGroup.objects.all()
+
+
+@register_model_view(Region, name='zabbix', path='zabbix')
+class ZabbixRegionTabView(ZabbixTabMixin, ObjectView):
+    queryset = Region.objects.all()
+
+
 @register_model_view(Cluster, name='zabbix', path='zabbix')
 class ZabbixClusterTabView(ZabbixTabMixin, ObjectView):
     queryset = Cluster.objects.all()
@@ -95,13 +111,14 @@ class ZabbixDeviceTabView(ZabbixTabMixin, ObjectView):
     def get_extra_context(self, request, instance):
         context = super().get_extra_context(request, instance)
 
-        # Get all assignments where this template is used
         object_ct = ContentType.objects.get_for_model(instance)
-        hostinterface_assignments = ZabbixHostInterface.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).select_related('assigned_object_type')
-        zabbixserver_assignments = ZabbixServerAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).select_related('assigned_object_type')
+        assigned = get_assigned_zabbixobjects(instance)
+
+        hostinterface_assignments = assigned.get('hostinterfaces') or []
+        zabbixserver_assignments = assigned.get('server_assignments') or []
         maintenance_objectassignments = ZabbixMaintenanceObjectAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).select_related('assigned_object_type')
-        hostinventory_assignment = ZabbixHostInventory.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).first()
-        configurationgroup_assignment = ZabbixConfigurationGroupAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).first()
+        hostinventory_assignment = assigned.get('hostinventory')
+        configurationgroup_assignment = assigned.get('configurationgroup')
 
         if hostinterface_assignments:
             hostinterface_assignment_table = ZabbixHostInterfaceObjectViewTable(hostinterface_assignments)
@@ -138,13 +155,14 @@ class ZabbixVirtualMachineTabView(ZabbixTabMixin, ObjectView):
     def get_extra_context(self, request, instance):
         context = super().get_extra_context(request, instance)
 
-        # Get all assignments where this template is used
         object_ct = ContentType.objects.get_for_model(instance)
-        hostinterface_assignments = ZabbixHostInterface.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).select_related('assigned_object_type')
-        zabbixserver_assignments = ZabbixServerAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).select_related('assigned_object_type')
+        assigned = get_assigned_zabbixobjects(instance)
+
+        hostinterface_assignments = assigned.get('hostinterfaces') or []
+        zabbixserver_assignments = assigned.get('server_assignments') or []
         maintenance_objectassignments = ZabbixMaintenanceObjectAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).select_related('assigned_object_type')
-        hostinventory_assignment = ZabbixHostInventory.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).first()
-        configurationgroup_assignment = ZabbixConfigurationGroupAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).first()
+        hostinventory_assignment = assigned.get('hostinventory')
+        configurationgroup_assignment = assigned.get('configurationgroup')
 
         if hostinterface_assignments:
             hostinterface_assignment_table = ZabbixHostInterfaceObjectViewTable(hostinterface_assignments)
@@ -182,13 +200,14 @@ class ZabbixVirtualDeviceContextTabView(ZabbixTabMixin, ObjectView):
     def get_extra_context(self, request, instance):
         context = super().get_extra_context(request, instance)
 
-        # Get all assignments where this template is used
         object_ct = ContentType.objects.get_for_model(instance)
-        hostinterface_assignments = ZabbixHostInterface.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).select_related('assigned_object_type')
-        zabbixserver_assignments = ZabbixServerAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).select_related('assigned_object_type')
+        assigned = get_assigned_zabbixobjects(instance)
+
+        hostinterface_assignments = assigned.get('hostinterfaces') or []
+        zabbixserver_assignments = assigned.get('server_assignments') or []
         maintenance_objectassignments = ZabbixMaintenanceObjectAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).select_related('assigned_object_type')
-        hostinventory_assignment = ZabbixHostInventory.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).first()
-        configurationgroup_assignment = ZabbixConfigurationGroupAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=instance.pk).first()
+        hostinventory_assignment = assigned.get('hostinventory')
+        configurationgroup_assignment = assigned.get('configurationgroup')
 
         if hostinterface_assignments:
             hostinterface_assignment_table = ZabbixHostInterfaceObjectViewTable(hostinterface_assignments)

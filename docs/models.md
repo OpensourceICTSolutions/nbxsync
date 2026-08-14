@@ -44,7 +44,7 @@ Assigns a template to a NetBox object (device, VM, etc.).
 | Field                  | Type         | Description                           |
 |------------------------|--------------|---------------------------------------|
 | `zabbixtemplate`       | ForeignKey   | Linked Zabbix template                |
-| `assigned_object`      | Generic FK   | Device, VM, Interface, etc.           |
+| `assigned_object`      | Generic FK   | Device, VM, Site, Tag, etc. (see Assignment Scope) |
 
 Templates can be inherited based on device/site hierarchy.
 
@@ -62,7 +62,7 @@ Defines a user macro at the Zabbix Server or Zabbix Template level. These macros
 
 ### `ZabbixMacroAssignment`
 
-Assigns a user macro to a specific NetBox object within the inheritance chain (Device, VDC, VM, Manufacturer, DeviceRole, DeviceType, Platform, Cluster, or ClusterType).
+Assigns a user macro to a specific NetBox object within the inheritance chain (Device, VDC, VM, Site, SiteGroup, Region, Manufacturer, DeviceRole, DeviceType, Platform, Cluster, ClusterType, or Tag).
 Macros assigned here override template-level macros of the same name on the resulting Zabbix host.
 
 | Field             | Description                                                                |
@@ -86,7 +86,7 @@ Includes rich SNMP and TLS configuration fields.
 | `port`           | Connection port                            |
 | `tls_*`          | TLS credentials if applicable              |
 | `snmp_*`         | SNMPv3 credentials                         |
-| `assigned_object`| Mapped to NetBox interface or device       |
+| `assigned_object`| Device, VDC, VirtualMachine, ZabbixConfigurationGroup, or Tag |
 
 ## Sync & Assignment Models
 
@@ -169,13 +169,13 @@ For Zabbix Tags, only statically defined objects are supported - as there is no 
 
 ### `ZabbixConfigurationGroup`
 
-Models a group of configuration settings (such as `ZabbixServer`, `ZabbixHostInterface` et cetera) that are *replicated* to all assigned Devices, Virtual Device Contexts or VirtualMachines.
+Models a group of configuration settings (such as `ZabbixServer`, `ZabbixHostInterface` et cetera) that are *replicated* to all assigned objects.
 
 Please note that on the `ZabbixHostInterface`, no IP address needs to be entered: upon replicating this to the assigned object, the *primary IP Address* will be used on the `ZabbixHostInterface`
 
 ### `ZabbixConfigurationGroupAssignment`
 
-Links a Device/Virtual Device Context/VirtualMachine to a `ZabbixConfigurationGroup` and as such determines the applied configuration on the linked object. Device/Virtual Device Context/VirtualMachines can only be assigned to a single `ZabbixConfigurationGroup`
+Links a NetBox object to a `ZabbixConfigurationGroup`. Besides Devices, Virtual Device Contexts and VirtualMachines, the group can be assigned on Site, SiteGroup, Region, Manufacturer, Role, DeviceType, Platform, Cluster, ClusterType or Tag so members inherit the group through the inheritance chain. The same object can only be assigned once to the same Configuration Group.
 
 ---
 
@@ -184,27 +184,39 @@ Links a Device/Virtual Device Context/VirtualMachine to a `ZabbixConfigurationGr
 Templates, macros, and hostgroups can be inherited across these chains, by default:
 
 ```plaintext
-Manufacturer → Device Type    → Platform  → Role  → Device
-Manufacturer → Device Type    → Platform  → Role  → Virtual Device Context
-Cluster      → VirtualMachine
+Device / Virtual Device Context
+ ├─ Role (and Role parent)
+ ├─ DeviceType → Manufacturer
+ ├─ Platform → Manufacturer
+ ├─ Site → SiteGroup / Region
+ └─ NetBox Tags on the object
+
+VirtualMachine
+ ├─ Role
+ ├─ Platform → Manufacturer
+ ├─ Cluster → ClusterType
+ ├─ Site / cluster._site → SiteGroup / Region
+ └─ NetBox Tags on the object
 ```
 
-However, this is [configurable](configuration.md).
+Paths that start with `device` apply to Devices and Virtual Device Contexts. For VirtualMachines they are skipped: on NetBox 4.3+, `VirtualMachine.device` points at the hosting device, and walking that path would leak host hardware assignments onto guests.
+
+Tag-targeted assignments are collected from the object's NetBox tags before the `inheritance_chain` paths (first seen wins). See [Inheritance Chain](configuration.md#inheritance-chain).
 
 ## Assignment Scope
 
 Not all assignment types can be attached to the same set of NetBox objects.
 The table below shows what each model accepts as `assigned_object`.
 
-| Model                                | Can be assigned to                                                                                              |
-|--------------------------------------|-----------------------------------------------------------------------------------------------------------------|
-| `ZabbixMacro`                        | ZabbixServer, ZabbixTemplate                                                                                    |
-| `ZabbixServerAssignment`             | Device, VDC, VM, Manufacturer, DeviceRole, DeviceType, Platform, Cluster, ClusterType                           |
-| `ZabbixTemplateAssignment`           | Device, VDC, VM, Manufacturer, DeviceRole, DeviceType, Platform, Cluster, ClusterType                           |
-| `ZabbixMacroAssignment`              | Device, VDC, VM, Manufacturer, DeviceRole, DeviceType, Platform, Cluster, ClusterType                           |
-| `ZabbixTagAssignment`                | Device, VDC, VM, Manufacturer, DeviceRole, DeviceType, Platform, Cluster, ClusterType, ZabbixConfigurationGroup |
-| `ZabbixHostgroupAssignment`          | Device, VDC, VM, Manufacturer, DeviceRole, DeviceType, Platform, Cluster, ClusterType, ZabbixConfigurationGroup |
-| `ZabbixHostInterface`                | Device, VDC, VM, ZabbixConfigurationGroup                                                                       |
-| `ZabbixHostInventory`                | Device, VDC, VM (one record per object)                                                                         |
-| `ZabbixMaintenanceObjectAssignment`  | Device, VDC, VM, ZabbixHostgroup                                                                                |
-| `ZabbixConfigurationGroupAssignment` | Device, VDC, VM (one group per object)                                                                          |
+| Model                                | Can be assigned to |
+|--------------------------------------|--------------------|
+| `ZabbixMacro`                        | ZabbixServer, ZabbixTemplate |
+| `ZabbixServerAssignment`             | Device, VDC, VM, Site, SiteGroup, Region, Manufacturer, DeviceRole, DeviceType, Platform, Cluster, ClusterType, Tag |
+| `ZabbixTemplateAssignment`           | Device, VDC, VM, Site, SiteGroup, Region, Manufacturer, DeviceRole, DeviceType, Platform, Cluster, ClusterType, Tag |
+| `ZabbixMacroAssignment`              | Device, VDC, VM, Site, SiteGroup, Region, Manufacturer, DeviceRole, DeviceType, Platform, Cluster, ClusterType, Tag |
+| `ZabbixTagAssignment`                | Device, VDC, VM, Site, SiteGroup, Region, Manufacturer, DeviceRole, DeviceType, Platform, Cluster, ClusterType, Tag, ZabbixConfigurationGroup |
+| `ZabbixHostgroupAssignment`          | Device, VDC, VM, Site, SiteGroup, Region, Manufacturer, DeviceRole, DeviceType, Platform, Cluster, ClusterType, Tag, ZabbixConfigurationGroup |
+| `ZabbixHostInterface`                | Device, VDC, VM, ZabbixConfigurationGroup, Tag |
+| `ZabbixHostInventory`                | Device, VDC, VM, Site, SiteGroup, Region, Manufacturer, DeviceRole, DeviceType, Platform, Cluster, ClusterType, Tag, ZabbixConfigurationGroup |
+| `ZabbixMaintenanceObjectAssignment`  | Device, VDC, VM, ZabbixHostgroup |
+| `ZabbixConfigurationGroupAssignment` | Device, VDC, VM, Site, SiteGroup, Region, Manufacturer, DeviceRole, DeviceType, Platform, Cluster, ClusterType, Tag |

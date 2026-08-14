@@ -22,9 +22,9 @@ nbxSync integrates with the [Netbox Permission system](https://netbox.readthedoc
 
 ## Zabbix Hostgroup Assignment
 
-**What it is:** The through-model that binds a NetBox object (Device/VDC/VM) to one or more Zabbix host groups.
+**What it is:** The through-model that binds a NetBox object to one or more Zabbix host groups.
 
-**How it’s used:** Decide host placement in Zabbix UI and ACLs; supports both manual and policy-driven assignments.
+**How it’s used:** Decide host placement in Zabbix UI and ACLs. Assignments can be placed on Devices/VDCs/VMs directly, or on Site/SiteGroup/Region/Tag (and other inheritance targets) so members inherit them.
 
 **Typical permissions:**
 
@@ -94,9 +94,9 @@ nbxSync integrates with the [Netbox Permission system](https://netbox.readthedoc
 
 ## Zabbix Macro Assignment
 
-**What it is:** Attaches a macro to a specific Device/VDC/VM with precedence over template-level macros.
+**What it is:** Attaches a macro to a NetBox object in the inheritance set with precedence over template-level macros.
 
-**How it’s used:** Host-specific overrides—e.g., a unique SNMP community or threshold.
+**How it’s used:** Host-specific or policy-level overrides — e.g. a unique SNMP community on a Device, or a shared value on a Site/Role/Tag.
 
 **Typical permissions:**
 
@@ -274,9 +274,9 @@ nbxSync integrates with the [Netbox Permission system](https://netbox.readthedoc
 
 ## Zabbix Tag Assignment
 
-**What it is:** Applies tags to a Device/VDC/VM (or template) so they appear on the Zabbix host/events.
+**What it is:** Applies Zabbix tags to a NetBox object in the inheritance set so they appear on the Zabbix host/events.
 
-**How it’s used:** Drive alert routing, dashboards, and maintenance selection.
+**How it’s used:** Drive alert routing, dashboards, and maintenance selection. Can be assigned on Devices/VDCs/VMs or inherited from Site/SiteGroup/Region/Tag and similar targets.
 
 **Typical permissions:**
 
@@ -310,9 +310,9 @@ nbxSync integrates with the [Netbox Permission system](https://netbox.readthedoc
 
 ## Zabbix Template Assignment
 
-**What it is:** Binds a template to a Device/VDC/VM.
+**What it is:** Binds a template to a NetBox object in the inheritance set.
 
-**How it’s used:** Attach monitoring logic to assets; supports layering and overrides.
+**How it’s used:** Attach monitoring logic to assets; supports direct assignment and inheritance from Site/SiteGroup/Region/Tag and similar targets.
 
 **Typical permissions:**
 
@@ -346,9 +346,9 @@ nbxSync integrates with the [Netbox Permission system](https://netbox.readthedoc
 
 ## Zabbix Configuration Group Assignment
 
-**What it is:** The through-model that binds a NetBox object (Device/VDC/VM) to a single Zabbix Configuration Group
+**What it is:** The through-model that binds a NetBox object to a Zabbix Configuration Group
 
-**How it’s used:** Used to assign a single Zabbix Configuration Group to a Device/VDC/VM to replicate the templated configuration
+**How it’s used:** Assign a Configuration Group to a Device/VDC/VM directly, or to a Site/SiteGroup/Region/Tag (and other inheritance targets) so members inherit the group's configuration
 
 **Typical permissions:**
 

@@ -14,6 +14,12 @@ class HostInterfaceSync(ZabbixSyncBase):
     def get_name_value(self):
         return self.obj.assigned_object.name
 
+    def find_by_name(self):
+        hostid = self.context.get('hostid', None)
+        if not hostid:
+            return []
+        return self.api_object().get(hostids=[hostid], filter={'type': str(self.obj.type)})
+
     def get_create_params(self):
         hostid = self.context.get('hostid', None)
         zbxserverassignment = None
@@ -31,6 +37,13 @@ class HostInterfaceSync(ZabbixSyncBase):
         ipaddr = ''
         if self.obj.ip_id:
             ipaddr = IPAddress.objects.get(id=self.obj.ip_id).address.ip
+        elif self.context.get('_instance'):
+            # If the interface is inherited (e.g. from SiteGroup or Role)
+            # and has no IP assigned, fall back to the device's primary IP
+            instance = self.context.get('_instance')
+            primary_ip = getattr(instance, 'primary_ip4', None) or getattr(instance, 'primary_ip6', None)
+            if primary_ip:
+                ipaddr = primary_ip.address.ip
 
         dns_name, _ = self.obj.render_dns()
         result = {
