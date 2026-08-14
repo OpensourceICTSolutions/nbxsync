@@ -88,8 +88,20 @@ class ZabbixHostgroupAssignmentTestCase(TestCase):
         assignment = ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.group, assigned_object_type=self.device_ct, assigned_object_id=self.device.id)
         context = assignment.get_context()
         self.assertIn('object', context)
+        self.assertIn('device', context)
         self.assertIn('value', context)
         self.assertIn('name', context)
+        self.assertEqual(context['device'], self.device)
+
+    def test_render_can_use_related_device_context(self):
+        self.group.value = '{{ site.name }}/{{ device.name }}'
+        self.group.save()
+
+        assignment = ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=self.group, assigned_object_type=self.device_ct, assigned_object_id=self.device.id)
+        rendered, success = assignment.render()
+
+        self.assertTrue(success)
+        self.assertEqual(rendered, f'{self.device.site.name}/{self.device.name}')
 
     def test_render_unexpected_exception(self):
         self.group.value = '{{ object.name }}'

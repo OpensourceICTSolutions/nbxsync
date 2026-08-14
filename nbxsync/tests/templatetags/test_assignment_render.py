@@ -15,7 +15,7 @@ from utilities.testing import create_test_device
 from nbxsync.models import ZabbixHostgroup, ZabbixHostgroupAssignment, ZabbixServer, ZabbixTag, ZabbixTagAssignment
 from nbxsync.templatetags.zabbix_hostgroups import render_zabbix_hostgroup_assignment
 from nbxsync.templatetags.zabbix_tags import render_zabbix_tag_assignment
-from nbxsync.jinja_context import wrap_assignment_object
+from nbxsync.jinja_context import related_template_context, wrap_assignment_object
 
 
 def _make_device(name, role=None, site=None):
@@ -194,3 +194,83 @@ class TagAssignmentRenderTestCase(TestCase):
         )
 
         self.assertEqual(render_zabbix_tag_assignment({}, assignment), '{{ object.role.name }}')
+
+
+class RelatedTemplateContextTestCase(TestCase):
+    """#102 shorthand aliases follow the render object, not the assignment row."""
+
+    def setUp(self):
+        self.zabbixserver = ZabbixServer.objects.create(name='Related Ctx Server')
+        self.device = _make_device(name='related-dev')
+
+    def test_device_context_exposes_aliases(self):
+        context = related_template_context(self.device)
+        self.assertIs(context['device'], self.device)
+        self.assertEqual(context['site'], self.device.site)
+        self.assertEqual(context['role'], self.device.role)
+        self.assertEqual(context['device_type'], self.device.device_type)
+        self.assertEqual(context['manufacturer'], self.device.device_type.manufacturer)
+
+    def test_site_wrap_exposes_site_but_not_device(self):
+        site = Site.objects.create(name='Alias Site', slug='alias-site')
+        context = related_template_context(wrap_assignment_object(site))
+        self.assertIs(context['site'], site)
+        self.assertNotIn('device', context)
+
+    def test_hostgroup_render_uses_site_and_device_aliases(self):
+        hg = ZabbixHostgroup.objects.create(
+            name='Sites',
+            value='{{ site.name }}/{{ device.name }}',
+            zabbixserver=self.zabbixserver,
+        )
+        ct = ContentType.objects.get_for_model(Device)
+        assignment = ZabbixHostgroupAssignment.objects.create(
+            zabbixhostgroup=hg,
+            assigned_object_type=ct,
+            assigned_object_id=self.device.id,
+        )
+        output, ok = assignment.render()
+        self.assertTrue(ok)
+        self.assertEqual(output, f'{self.device.site.name}/{self.device.name}')
+
+    def test_inherited_assignment_aliases_follow_sync_host_not_role(self):
+        """A Role-level template rendered with object=device must use the device."""
+        assigned_role = DeviceRole.objects.create(name='Assigned Role', slug='assigned-role-alias')
+        host_role = DeviceRole.objects.create(name='Host Role', slug='host-role-alias')
+        host = _make_device(name='alias-host', role=host_role)
+        hg = ZabbixHostgroup.objects.create(
+            name='Roles',
+            value='{{ role.name }}/{{ device.name }}',
+            zabbixserver=self.zabbixserver,
+        )
+        ct = ContentType.objects.get_for_model(DeviceRole)
+        assignment = ZabbixHostgroupAssignment.objects.create(
+            zabbixhostgroup=hg,
+            assigned_object_type=ct,
+            assigned_object_id=assigned_role.id,
+        )
+
+        # Role preview has `role` but not `device` — do not pretend the Role is a Device.
+        preview, preview_ok = assignment.render()
+        self.assertFalse(preview_ok)
+
+        synced, synced_ok = assignment.render(object=host)
+        self.assertTrue(synced_ok)
+        self.assertEqual(synced, f'{host_role.name}/{host.name}')
+
+    def test_tag_render_related_fields(self):
+        tag = ZabbixTag.objects.create(
+            name='hw',
+            tag='hw',
+            value='{{ site.name }} - {{ device_type.model }} - {{ manufacturer.name }}',
+        )
+        ct = ContentType.objects.get_for_model(Device)
+        assignment = ZabbixTagAssignment.objects.create(
+            zabbixtag=tag,
+            assigned_object_type=ct,
+            assigned_object_id=self.device.id,
+        )
+        self.assertEqual(
+            render_zabbix_tag_assignment({}, assignment),
+            f'{self.device.site.name} - {self.device.device_type.model} - {self.device.device_type.manufacturer.name}',
+        )

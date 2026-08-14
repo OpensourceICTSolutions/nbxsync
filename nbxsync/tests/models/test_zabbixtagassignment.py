@@ -88,6 +88,33 @@ class ZabbixTagAssignmentTestCase(TestCase):
         self.assertEqual(context['name'], self.tag.name)
         self.assertEqual(context['description'], self.tag.description)
         self.assertEqual(context['extra'], 'extra_val')
+        self.assertIs(context['device'], self.device)
+        self.assertEqual(context['site'], self.device.site)
+        self.assertEqual(context['device_type'], self.device.device_type)
+        self.assertEqual(context['manufacturer'], self.manufacturer)
+
+    def test_get_context_includes_related_device_objects(self):
+        self.device.device_type = self.device_type
+        self.device.save()
+
+        assignment = ZabbixTagAssignment.objects.create(zabbixtag=self.tag, assigned_object_type=self.device_ct, assigned_object_id=self.device.id)
+        context = assignment.get_context()
+
+        self.assertEqual(context['site'], self.device.site)
+        self.assertEqual(context['device_type'], self.device_type)
+        self.assertEqual(context['manufacturer'], self.manufacturer)
+
+    def test_render_can_use_related_device_context(self):
+        self.device.device_type = self.device_type
+        self.device.save()
+        self.tag.value = '{{ site.name }} - {{ device_type.model }} - {{ manufacturer.name }}'
+        self.tag.save()
+
+        assignment = ZabbixTagAssignment.objects.create(zabbixtag=self.tag, assigned_object_type=self.device_ct, assigned_object_id=self.device.id)
+        rendered, success = assignment.render()
+
+        self.assertTrue(success)
+        self.assertEqual(rendered, f'{self.device.site.name} - {self.device_type.model} - {self.manufacturer.name}')
 
     def test_str_method_with_name(self):
         assignment = ZabbixTagAssignment.objects.create(zabbixtag=self.tag, assigned_object_type=self.device_ct, assigned_object_id=self.device.id)

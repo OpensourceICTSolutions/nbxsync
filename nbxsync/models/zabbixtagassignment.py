@@ -12,7 +12,7 @@ from utilities.jinja2 import render_jinja2
 from nbxsync.constants.assignment_models import ASSIGNMENT_MODELS, CONFIGGROUP_OBJECTS
 from nbxsync.constants import TEMPLATE_PATTERN
 from nbxsync.models import ZabbixConfigurationGroup
-from nbxsync.jinja_context import wrap_assignment_object
+from nbxsync.jinja_context import related_template_context, wrap_assignment_object
 
 __all__ = ('ZabbixTagAssignment',)
 
@@ -86,6 +86,8 @@ class ZabbixTagAssignment(NetBoxModel):
             'description': self.zabbixtag.description,
         }
         context.update(extra_context)
+        # Aliases follow the final render object (host during sync).
+        context.update(related_template_context(context.get('object')))
         return context
 
     def __str__(self):

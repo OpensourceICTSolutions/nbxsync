@@ -26,7 +26,14 @@ Rendering a value is always performed within a context, which provides access to
 {{ object.site.name }} (via {{ tag }})
 ```
 
-would be perfectly valid.
+would be perfectly valid, as would the shorthand aliases (same source as `object`):
+
+```jinja2
+{{ site.name }} / {{ device.name }}
+{{ device_type.model }} — {{ manufacturer.name }}
+```
+
+Those aliases are filled from the render `object` after any `object=` override, so during host sync they follow the Device/VM, not the Role/Site assignment row. They are omitted when the attribute does not exist (`device` is only set for Device/VM/VDC).
 
 ### Tag
 
@@ -34,11 +41,17 @@ Tags are rendered within a context that includes the following information:
 
 | Key         | Value                 | Explanation                                                                                  |
 |-------------|-----------------------|----------------------------------------------------------------------------------------------|
-| object      | assigned_object       | The assignment target. During host sync this is the Device/VM/VDC being synced |
-| tag         | zabbixtag.tag         | Contains the Zabbix Tag value that this assignment refers to |
-| value       | zabbixtag.value       | The value of the Zabbix Tag (typically the Jinja2 template) |
-| name        | zabbixtag.name        | The name of the Zabbix Tag |
-| description | zabbixtag.description | The description of the Zabbix Tag |
+| object       | assigned_object       | The assignment target. During host sync this is the Device/VM/VDC being synced |
+| device       | render object         | Set only when `object` is a Device, VM or VDC |
+| site         | `object.site`         | Present when the render object has a site |
+| tenant       | `object.tenant`       | Present when the render object has a tenant |
+| role         | `object.role`         | Present when the render object has a role |
+| device_type  | `object.device_type`  | Present when the render object has a device type |
+| manufacturer | `device_type.manufacturer` | Present when `device_type` has a manufacturer |
+| tag          | zabbixtag.tag         | Contains the Zabbix Tag value that this assignment refers to |
+| value        | zabbixtag.value       | The value of the Zabbix Tag (typically the Jinja2 template) |
+| name         | zabbixtag.name        | The name of the Zabbix Tag |
+| description  | zabbixtag.description | The description of the Zabbix Tag |
 
 ### Hostgroup
 
@@ -46,9 +59,15 @@ Just like tags, hostgroups are rendered in a context:
 
 | Key         | Value                 | Explanation                                                                                  |
 |-------------|-----------------------|----------------------------------------------------------------------------------------------|
-| object      | assigned_object       | The assignment target (not overridden to the synced host during host sync) |
-| value       | zabbixhostgroup.value | The value of the Zabbix Hostgroup (typically the Jinja2 template) |
-| name        | zabbixhostgroup.name  | The name of the Zabbix Hostgroup |
+| object       | assigned_object       | The assignment target. During host sync this is the Device/VM/VDC being synced |
+| device       | render object         | Set only when `object` is a Device, VM or VDC |
+| site         | `object.site`         | Present when the render object has a site |
+| tenant       | `object.tenant`       | Present when the render object has a tenant |
+| role         | `object.role`         | Present when the render object has a role |
+| device_type  | `object.device_type`  | Present when the render object has a device type |
+| manufacturer | `device_type.manufacturer` | Present when `device_type` has a manufacturer |
+| value        | zabbixhostgroup.value | The value of the Zabbix Hostgroup (typically the Jinja2 template) |
+| name         | zabbixhostgroup.name  | The name of the Zabbix Hostgroup |
 
 ### Host Inventory
 
