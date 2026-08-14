@@ -354,6 +354,27 @@ class HostSyncTestCase(TestCase):
         result = self.sync.get_template_attributes()
         self.assertIn({'templateid': 101}, result['templates'])
 
+    def test_get_template_attributes_reads_plain_list(self):
+        """all_objects collections are always plain lists (no _get_all_objects dict/list shim)."""
+
+        class DummyZabbixTemplate:
+            def __init__(self, templateid):
+                self.templateid = templateid
+                self.interface_requirements = [HostInterfaceRequirementChoices.NONE]
+
+        class DummyAssignedTemplate:
+            def __init__(self, templateid):
+                self.zabbixtemplate = DummyZabbixTemplate(templateid)
+
+        assigned = [DummyAssignedTemplate(201), DummyAssignedTemplate(202), DummyAssignedTemplate(203)]
+        self.assertIsInstance(assigned, list)
+        self.sync.context['all_objects']['templates'] = assigned
+
+        result = self.sync.get_template_attributes()
+        self.assertEqual(len(result['templates']), 3)
+        for templateid in (201, 202, 203):
+            self.assertIn({'templateid': templateid}, result['templates'])
+
     def test_get_template_attributes_with_any_but_no_interfaces(self):
         class DummyZabbixTemplate:
             def __init__(self):
@@ -413,7 +434,7 @@ class HostSyncTestCase(TestCase):
             def __init__(self):
                 self.zabbixtag = DummyZabbixTag('env')
 
-            def render(self):
+            def render(self, **kwargs):
                 return ('production', True)
 
         dummy_tag = DummyAssignedTag()
@@ -467,7 +488,7 @@ class HostSyncTestCase(TestCase):
             def __init__(self):
                 self.inventory_mode = 1
 
-            def render_all_fields(self):
+            def render_all_fields(self, object=None):
                 return {
                     'serialnumber': ('ABC123', True),
                     'location': ('', True),  # Empty, should be skipped
@@ -504,6 +525,31 @@ class HostSyncTestCase(TestCase):
         self.assertEqual(result, {})
         self.assertFalse(called['hostinterface_get'])
 
+    def test_verify_hostinterfaces_uses_binding_when_assignment_hostid_cleared(self):
+        from nbxsync.models import ZabbixHostBinding
+
+        ZabbixHostBinding.objects.create(
+            zabbixserver=self.zabbixserver,
+            assigned_object_type=self.device_ct,
+            assigned_object_id=self.device.id,
+            hostid=12345,
+        )
+        self.obj.hostid = None
+        called = {'hostinterface_get': False}
+
+        def fake_get(*args, **kwargs):
+            called['hostinterface_get'] = True
+            self.assertEqual(str(kwargs.get('hostids')), '12345')
+            return []
+
+        self.sync.api.hostinterface.get = fake_get
+        self.sync.context['all_objects']['_instance'] = self.device
+
+        self.sync.verify_hostinterfaces()
+
+        self.assertTrue(called['hostinterface_get'])
+        self.assertEqual(int(self.obj.hostid), 12345)
+
     def test_verify_hostinterfaces_deletes_unexpected_interfaces(self):
         self.obj.hostid = '12345'
 
@@ -528,6 +574,40 @@ class HostSyncTestCase(TestCase):
 
         # Only the unexpected one should be deleted
         self.assertEqual(deleted_ids, [2002])
+
+    def test_verify_hostinterfaces_requests_output_extend(self):
+        """Transient IFs match by identity; output must be the string 'extend'."""
+        self.obj.hostid = '12345'
+        self.interface_snmp.interfaceid = None
+        self.interface_snmp.interface_type = ZabbixInterfaceTypeChoices.DEFAULT
+        self.interface_snmp.useip = 1
+        self.interface_snmp.port = 161
+        self.interface_snmp.dns = ''
+        self.sync.context['all_objects']['hostinterfaces'] = [self.interface_snmp]
+
+        get_kwargs = []
+
+        def fake_get(**kwargs):
+            get_kwargs.append(kwargs)
+            return [
+                {
+                    'interfaceid': '900',
+                    'type': str(int(ZabbixHostInterfaceTypeChoices.SNMP)),
+                    'main': str(int(ZabbixInterfaceTypeChoices.DEFAULT)),
+                    'useip': '1',
+                    'port': '161',
+                    'dns': '',
+                },
+            ]
+
+        deleted = []
+        self.sync.api.hostinterface.get = fake_get
+        self.sync.api.hostinterface.delete = lambda interfaceid: deleted.append(interfaceid)
+
+        self.sync.verify_hostinterfaces()
+
+        self.assertEqual(get_kwargs[0].get('output'), 'extend')
+        self.assertEqual(deleted, [])
 
     def test_delete_raises_runtimeerror_on_api_failure(self):
         self.obj.hostid = '12345'
@@ -554,3 +634,114 @@ class HostSyncTestCase(TestCase):
         self.assertEqual(len(messages), 1)
         self.assertFalse(messages[0][0])  # success = False
         self.assertIn('Simulated API failure', messages[0][1])
+
+    def test_verify_hostinterfaces_skips_inherited_when_deletion_disabled(self):
+        self.obj.hostid = '12345'
+        self.obj._is_inherited_copy = True
+        self.sync.pluginsettings.allow_inherited_deletion = False
+        self.sync.context['all_objects']['hostinterfaces'] = [self.interface_agent]
+        self.interface_agent.interfaceid = 1001
+
+        deleted = []
+        self.sync.api.hostinterface.get = lambda **kwargs: [
+            {'interfaceid': 1001, 'type': 1, 'useip': 1, 'port': '10050'},
+            {'interfaceid': 2002, 'type': 2, 'useip': 1, 'port': '161'},
+        ]
+        self.sync.api.hostinterface.delete = lambda interfaceid: deleted.append(interfaceid)
+
+        self.sync.verify_hostinterfaces()
+        self.assertEqual(deleted, [])
+
+    def test_verify_hostinterfaces_deletes_stale_for_inherited_when_enabled(self):
+        self.obj.hostid = '12345'
+        self.obj._is_inherited_copy = True
+        self.sync.pluginsettings.allow_inherited_deletion = True
+        self.interface_agent.interfaceid = 1001
+        self.sync.context['all_objects']['hostinterfaces'] = [self.interface_agent]
+
+        deleted = []
+        self.sync.api.hostinterface.get = lambda **kwargs: [
+            {'interfaceid': 1001, 'type': 1, 'useip': 1, 'port': '10050'},
+            {'interfaceid': 2002, 'type': 2, 'useip': 1, 'port': '161'},
+        ]
+        self.sync.api.hostinterface.delete = lambda interfaceid: deleted.append(interfaceid)
+
+        self.sync.verify_hostinterfaces()
+        self.assertEqual(deleted, [2002])
+
+    def test_get_groups_raises_when_render_fails(self):
+        class BrokenGroup:
+            zabbixhostgroup = type('HG', (), {'groupid': None})()
+
+            def render(self, object=None):
+                raise RuntimeError('jinja boom')
+
+        self.obj.assigned_objects['hostgroups'] = [BrokenGroup()]
+
+        with self.assertRaises(RuntimeError) as context:
+            self.sync.get_groups()
+
+        self.assertIn('jinja boom', str(context.exception))
+
+    def test_check_default_does_not_insert_inherited_clone(self):
+        from nbxsync.models import ZabbixHostInterface as HI
+
+        self.obj.hostid = '12345'
+        clone = HI(
+            zabbixserver=self.zabbixserver,
+            type=ZabbixHostInterfaceTypeChoices.AGENT,
+            interface_type=ZabbixInterfaceTypeChoices.DEFAULT,
+            useip=ZabbixInterfaceUseChoices.IP,
+            port=10050,
+            ip=self.ip,
+            assigned_object_type=self.device_ct,
+            assigned_object_id=self.device.id,
+        )
+        clone.pk = None
+        clone._is_inherited_copy = True
+        self.sync.context['all_objects']['hostinterfaces'] = [clone]
+
+        self.sync.api.hostinterface.get = lambda **kwargs: [{'interfaceid': '999', 'type': int(ZabbixHostInterfaceTypeChoices.AGENT), 'main': 1}]
+        self.sync.api.hostinterface.create = lambda **params: {'interfaceids': ['555']}
+        self.sync.api.host.update = lambda **kwargs: {}
+
+        before = HI.objects.count()
+        self.sync.check_default_hostinterface()
+        self.assertEqual(HI.objects.count(), before)
+        self.assertEqual(clone.interfaceid, 555)
+
+    def test_check_default_reuses_existing_remote_interface(self):
+        clone = ZabbixHostInterface(
+            zabbixserver=self.zabbixserver,
+            type=ZabbixHostInterfaceTypeChoices.AGENT,
+            interface_type=ZabbixInterfaceTypeChoices.DEFAULT,
+            useip=ZabbixInterfaceUseChoices.IP,
+            port=10050,
+            ip=self.ip,
+            assigned_object_type=self.device_ct,
+            assigned_object_id=self.device.id,
+        )
+        clone.pk = None
+        clone._is_inherited_copy = True
+        self.sync.context['all_objects']['hostinterfaces'] = [clone]
+
+        self.sync.api.hostinterface.get = lambda **kwargs: [
+            {
+                'interfaceid': '999',
+                'type': int(ZabbixHostInterfaceTypeChoices.AGENT),
+                'main': 1,
+                'useip': int(ZabbixInterfaceUseChoices.IP),
+                'ip': str(self.ip.address).split('/')[0],
+                'port': '10050',
+            }
+        ]
+        creates = []
+        updates = []
+        self.sync.api.hostinterface.create = lambda **params: creates.append(params)
+        self.sync.api.host.update = lambda **kwargs: updates.append(kwargs)
+
+        self.sync.check_default_hostinterface()
+
+        self.assertEqual(creates, [])
+        self.assertEqual(clone.interfaceid, 999)
+        self.assertEqual(updates[0]['interfaces'][0]['interfaceid'], 999)

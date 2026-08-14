@@ -9,7 +9,7 @@ Also, replace `netbox_secrets` with `nbxsync` obviously.
 ## Normal install
 ### Prerequisites
 
-- NetBox >= 4.x
+- NetBox >= 4.2.6
 - Python >= 3.8
 - Zabbix server >= 7.0
 
@@ -85,11 +85,16 @@ PLUGINS_CONFIG = {
             ['cluster'],
             ['cluster', 'type'],
             ['type'],
+            ['device', 'site'],
+            ['site'],
+            ['site', 'group'],
+            ['site', 'region'],
+            ['cluster', '_site'],
         ],
         'backgroundsync': {
             'objects': {
                 'enabled': True,
-                'interval': 60,  # 1 hour
+                'interval': 360,  # 6 hours
             },
             'templates': {
                 'enabled': True,
@@ -112,9 +117,14 @@ PLUGINS_CONFIG = {
         'objtag_id': 'nb_id',
         'custom_field_hostname': '',
         'custom_field_display_name': '',
+        'exclude_tag': '',
+        'allow_inherited_deletion': False,
+        'adopt_existing_hosts': False,
     }
 }
 ```
+
+See [Configuration](configuration.md) for the meaning of each setting.
 
 #### Run migrations
 

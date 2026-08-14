@@ -5,6 +5,7 @@ from nbxsync.api.views import (
     ZabbixServerAssignmentViewSet,
     ZabbixTemplateViewSet,
     ZabbixTemplateAssignmentViewSet,
+    ZabbixTemplateRuleViewSet,
     ZabbixMacroViewSet,
     ZabbixMacroAssignmentViewSet,
     ZabbixMacroAssignmentViewSet,
@@ -32,6 +33,7 @@ router.register('zabbixserver', ZabbixServerViewSet)
 router.register('zabbixserverassignment', ZabbixServerAssignmentViewSet)
 router.register('zabbixtemplate', ZabbixTemplateViewSet)
 router.register('zabbixtemplateassignment', ZabbixTemplateAssignmentViewSet)
+router.register('zabbixtemplaterule', ZabbixTemplateRuleViewSet)
 router.register('zabbixmacro', ZabbixMacroViewSet)
 router.register('zabbixmacroassignment', ZabbixMacroAssignmentViewSet)
 router.register('zabbixtag', ZabbixTagViewSet)

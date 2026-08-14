@@ -6,8 +6,9 @@ from django.utils.translation import gettext_lazy as _
 from netbox.forms import NetBoxModelBulkEditForm, NetBoxModelFilterSetForm, NetBoxModelForm
 from utilities.forms.fields import DynamicModelChoiceField, TagFilterField
 from utilities.forms.rendering import FieldSet, TabbedGroups
-from dcim.models import Device, VirtualDeviceContext
-from virtualization.models import VirtualMachine
+from dcim.models import Device, VirtualDeviceContext, DeviceRole, DeviceType, Manufacturer, Platform, Site, SiteGroup, Region
+from virtualization.models import VirtualMachine, Cluster, ClusterType
+from nbxsync.models import ZabbixConfigurationGroup
 
 from nbxsync.choices import ZabbixHostInventoryModeChoices
 from nbxsync.constants.assignment_type_to_field import ASSIGNMENT_TYPE_TO_FIELD_NBOBJS
@@ -75,6 +76,16 @@ class ZabbixHostInventoryForm(NetBoxModelForm):
     device = DynamicModelChoiceField(queryset=Device.objects.all(), required=False, selector=True, label=_('Device'))
     virtualdevicecontext = DynamicModelChoiceField(queryset=VirtualDeviceContext.objects.all(), required=False, selector=True, label=_('Virtual Device Context'))
     virtualmachine = DynamicModelChoiceField(queryset=VirtualMachine.objects.all(), required=False, selector=True, label=_('Virtual Machine'))
+    site = DynamicModelChoiceField(queryset=Site.objects.all(), required=False, selector=True, label=_('Site'))
+    sitegroup = DynamicModelChoiceField(queryset=SiteGroup.objects.all(), required=False, selector=True, label=_('Site Group'))
+    region = DynamicModelChoiceField(queryset=Region.objects.all(), required=False, label=_('Region'))
+    platform = DynamicModelChoiceField(queryset=Platform.objects.all(), required=False, selector=True, label=_('Platform'))
+    role = DynamicModelChoiceField(queryset=DeviceRole.objects.all(), required=False, selector=True, label=_('Device Role'))
+    devicetype = DynamicModelChoiceField(queryset=DeviceType.objects.all(), required=False, selector=True, label=_('Device Type'))
+    manufacturer = DynamicModelChoiceField(queryset=Manufacturer.objects.all(), required=False, selector=True, label=_('Manufacturer'))
+    cluster = DynamicModelChoiceField(queryset=Cluster.objects.all(), required=False, selector=True, label=_('Cluster'))
+    clustertype = DynamicModelChoiceField(queryset=ClusterType.objects.all(), required=False, selector=True, label=_('Cluster Type'))
+    zabbixconfigurationgroup = DynamicModelChoiceField(queryset=ZabbixConfigurationGroup.objects.all(), required=False, selector=True, label=_('Zabbix Configuration Group'))
 
     fieldsets = (
         FieldSet(
@@ -178,8 +189,18 @@ class ZabbixHostInventoryForm(NetBoxModelForm):
         FieldSet(
             TabbedGroups(
                 FieldSet('device', name=_('Device')),
-                FieldSet('virtualdevicecotext', name=_('Virtual Device Context')),
+                FieldSet('virtualdevicecontext', name=_('Virtual Device Context')),
                 FieldSet('virtualmachine', name=_('Virtual Machine')),
+                FieldSet('site', name=_('Site')),
+                FieldSet('sitegroup', name=_('Site Group')),
+                FieldSet('region', name=_('Region')),
+                FieldSet('platform', name=_('Platform')),
+                FieldSet('role', name=_('Device Role')),
+                FieldSet('devicetype', name=_('Device Type')),
+                FieldSet('manufacturer', name=_('Manufacturer')),
+                FieldSet('cluster', name=_('Cluster')),
+                FieldSet('clustertype', name=_('Cluster Type')),
+                FieldSet('zabbixconfigurationgroup', name=_('Config Group')),
             ),
             name=_('Assignment'),
         ),
@@ -260,7 +281,18 @@ class ZabbixHostInventoryForm(NetBoxModelForm):
             'name',
             'notes',
             'device',
+            'virtualdevicecontext',
             'virtualmachine',
+            'site',
+            'sitegroup',
+            'region',
+            'platform',
+            'role',
+            'devicetype',
+            'manufacturer',
+            'cluster',
+            'clustertype',
+            'zabbixconfigurationgroup',
         )
 
     @property

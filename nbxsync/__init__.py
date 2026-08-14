@@ -92,11 +92,17 @@ class nbxSync(PluginConfig):
             ['cluster'],
             ['cluster', 'type'],
             ['type'],
+            # Hierarchy (appended so Site does not override Role/Platform on upgrade)
+            ['device', 'site'],
+            ['site'],
+            ['site', 'group'],
+            ['site', 'region'],
+            ['cluster', '_site'],  # NetBox ≥4.2 Cluster CachedScopeMixin
         ],
         'backgroundsync': {
             'objects': {
                 'enabled': True,
-                'interval': 60,  # 1 hour
+                'interval': 360,  # 6 hours
             },
             'templates': {
                 'enabled': True,
@@ -139,9 +145,16 @@ class nbxSync(PluginConfig):
         'no_alerting_tag': 'NO_ALERTING',
         'no_alerting_tag_value': '1',
         'maintenance_window_duration': 3600,
-        'attach_objtag': False,
+        # Must stay True so nb_type/nb_id tags are pushed — bindings, adoption,
+        # and host identity recovery depend on them.
+        'attach_objtag': True,
         'objtag_type': 'nb_type',
         'objtag_id': 'nb_id',
+        'exclude_tag': '',
+        # Opt-in: inheritance-driven Zabbix host deletion destroys history.
+        'allow_inherited_deletion': False,
+        # Opt-in: adopting an unbound host lets NetBox overwrite its config.
+        'adopt_existing_hosts': False,
         'custom_field_hostname': '',
         'custom_field_display_name': '',
     }

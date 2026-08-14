@@ -12,6 +12,7 @@ from utilities.jinja2 import render_jinja2
 from nbxsync.constants.assignment_models import ASSIGNMENT_MODELS, CONFIGGROUP_OBJECTS
 from nbxsync.constants import TEMPLATE_PATTERN
 from nbxsync.models import SyncInfoModel, ZabbixConfigurationGroup
+from nbxsync.jinja_context import related_template_context, wrap_assignment_object
 
 
 __all__ = ('ZabbixHostgroupAssignment',)
@@ -48,12 +49,17 @@ class ZabbixHostgroupAssignment(SyncInfoModel, NetBoxModel):
         super().save(*args, **kwargs)
 
     def get_context(self, **extra_context):
+        # Default object is the assignment target in device-shaped form so
+        # templates like Roles/{{ object.role.name }} resolve on a DeviceRole.
+        # Sync passes object=<Device/VM> via extra_context and wins on update.
         context = {
-            'object': self.assigned_object,
+            'object': wrap_assignment_object(self.assigned_object),
             'value': self.zabbixhostgroup.value,
             'name': self.zabbixhostgroup.name,
         }
         context.update(extra_context)
+        # Aliases follow the final render object (host during sync).
+        context.update(related_template_context(context.get('object')))
         return context
 
     def render(self, **context):

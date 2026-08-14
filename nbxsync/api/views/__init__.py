@@ -4,6 +4,7 @@ from .zabbixserver import *
 from .zabbixserverassignment import *
 from .zabbixtemplate import *
 from .zabbixtemplateassignment import *
+from .zabbixtemplaterule import *
 from .zabbixtag import *
 from .zabbixtagassignment import *
 from .zabbixhostinterface import *

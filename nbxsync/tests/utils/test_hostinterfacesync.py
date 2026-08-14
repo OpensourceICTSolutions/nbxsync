@@ -35,6 +35,24 @@ class HostInterfaceSyncTests(TestCase):
 
         cls.assignment = ZabbixServerAssignment.objects.create(zabbixserver=cls.zabbixserver, hostid='10101', assigned_object_type=cls.device_ct, assigned_object_id=cls.device.id)
 
+    def test_get_create_params_uses_binding_when_assignment_hostid_cleared(self):
+        from nbxsync.models import ZabbixHostBinding
+
+        self.assignment.hostid = None
+        self.assignment.save()
+        ZabbixHostBinding.objects.create(
+            zabbixserver=self.zabbixserver,
+            assigned_object_type=self.device_ct,
+            assigned_object_id=self.device.id,
+            hostid=4242,
+        )
+
+        sync = HostInterfaceSync(api=None, netbox_obj=self.hostinterface)
+        sync.context = {'_instance': self.device}
+
+        params = sync.get_create_params()
+        self.assertEqual(params['hostid'], 4242)
+
     def test_get_create_params_basic(self):
         sync = HostInterfaceSync(api=None, netbox_obj=self.hostinterface)
         sync.context = {}

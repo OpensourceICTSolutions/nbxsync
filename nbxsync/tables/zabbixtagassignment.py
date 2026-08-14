@@ -1,7 +1,7 @@
-import django_tables2 as tables
 from django.utils.translation import gettext_lazy as _
-from django_tables2.utils import A
 
+import django_tables2 as tables
+from django_tables2.utils import A
 from netbox.tables import NetBoxTable
 
 from nbxsync.models import ZabbixTagAssignment
@@ -24,7 +24,7 @@ class ZabbixTagAssignmentTable(ZabbixInheritedAssignmentTable, NetBoxTable):
         {% render_zabbix_tag_assignment record as rendered_output %}
         {{ rendered_output|escape }}
         """,
-        verbose_name='Value',
+        verbose_name=_('Value'),
     )
 
     class Meta(NetBoxTable.Meta):
@@ -56,7 +56,7 @@ class ZabbixTagAssignmentObjectViewTable(ZabbixInheritedAssignmentTable, NetBoxT
         {% render_zabbix_tag_assignment record as rendered_output %}
         {{ rendered_output|escape }}
         """,
-        verbose_name='Value',
+        verbose_name=_('Value'),
     )
 
     class Meta(NetBoxTable.Meta):

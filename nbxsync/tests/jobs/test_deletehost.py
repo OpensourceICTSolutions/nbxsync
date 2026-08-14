@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
@@ -40,7 +40,11 @@ class DeleteHostJobTestCase(TestCase):
         job = DeleteHostJob(instance=self.device)
         job.run()
 
-        mock_safe_delete.assert_called_once_with(HostSync, self.zabbixserverassignment)
+        mock_safe_delete.assert_called_once_with(
+            HostSync,
+            self.zabbixserverassignment,
+            extra_args={'all_objects': {'_instance': self.device}},
+        )
 
     @patch('nbxsync.jobs.deletehost.safe_delete')
     def test_run_skips_when_assignment_sync_disabled(self, mock_safe_delete):
@@ -51,6 +55,26 @@ class DeleteHostJobTestCase(TestCase):
         job.run()
 
         mock_safe_delete.assert_not_called()
+
+    @patch('nbxsync.jobs.deletehost.safe_delete')
+    def test_run_continues_after_disabled_assignment(self, mock_safe_delete):
+        self.zabbixserverassignment.sync_enabled = False
+        self.zabbixserverassignment.save()
+        server2 = ZabbixServer.objects.create(name='Zabbix2', url='http://z2.local', token='token2')
+        enabled_assignment = ZabbixServerAssignment.objects.create(
+            zabbixserver=server2,
+            assigned_object_type=self.device_ct,
+            assigned_object_id=self.device.pk,
+            hostid='67890',
+        )
+
+        DeleteHostJob(instance=self.device).run()
+
+        mock_safe_delete.assert_called_once_with(
+            HostSync,
+            enabled_assignment,
+            extra_args={'all_objects': {'_instance': self.device}},
+        )
 
     @patch('nbxsync.jobs.deletehost.safe_delete')
     def test_run_skips_when_zabbixserver_sync_disabled(self, mock_safe_delete):

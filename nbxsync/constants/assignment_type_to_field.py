@@ -1,4 +1,4 @@
-from dcim.models import Device, VirtualDeviceContext, DeviceRole, DeviceType, Manufacturer, Platform
+from dcim.models import Device, VirtualDeviceContext, DeviceRole, DeviceType, Manufacturer, Platform, Site, SiteGroup, Region
 from virtualization.models import Cluster, ClusterType, VirtualMachine
 
 from nbxsync.models import ZabbixHostgroup, ZabbixServer, ZabbixTag, ZabbixTemplate, ZabbixConfigurationGroup
@@ -14,6 +14,9 @@ ASSIGNMENT_TYPE_TO_FIELD_NBOBJS = {
     Cluster: 'cluster',
     ClusterType: 'clustertype',
     VirtualDeviceContext: 'virtualdevicecontext',
+    Site: 'site',
+    SiteGroup: 'sitegroup',
+    Region: 'region',
     ZabbixConfigurationGroup: 'zabbixconfigurationgroup',
 }
 
@@ -28,6 +31,9 @@ ASSIGNMENT_TYPE_TO_FIELD_MAINTENANCE = {
     Device: 'device',
     VirtualMachine: 'virtualmachine',
     VirtualDeviceContext: 'virtualdevicecontext',
+    Site: 'site',
+    SiteGroup: 'sitegroup',
+    Region: 'region',
     ZabbixHostgroup: 'zabbixhostgroup',
 }
 

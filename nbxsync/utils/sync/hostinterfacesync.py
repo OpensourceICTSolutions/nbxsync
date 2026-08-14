@@ -1,5 +1,6 @@
 from ipam.models import IPAddress
-from nbxsync.models import ZabbixServerAssignment
+
+from nbxsync.utils.host_binding import get_managed_host_id
 
 from .syncbase import ZabbixSyncBase
 
@@ -14,23 +15,35 @@ class HostInterfaceSync(ZabbixSyncBase):
     def get_name_value(self):
         return self.obj.assigned_object.name
 
-    def get_create_params(self):
+    def _resolve_hostid(self):
+        """Hostid from sync context, else the durable binding / leftover direct assignment."""
         hostid = self.context.get('hostid', None)
-        zbxserverassignment = None
+        if hostid:
+            return hostid
+        instance = self.context.get('_instance') or getattr(self.obj, 'assigned_object', None)
+        return get_managed_host_id(instance, getattr(self.obj, 'zabbixserver', None))
 
+    def find_by_name(self):
+        hostid = self._resolve_hostid()
         if not hostid:
-            # No HostID, get it from the assignment
-            zbxserverassignment = ZabbixServerAssignment.objects.filter(assigned_object_type=self.obj.assigned_object_type, assigned_object_id=self.obj.assigned_object.id).first()
-            # If the assignment isnt found... Return
-            if not zbxserverassignment:
-                return {}
+            return []
+        return self.api_object().get(hostids=[hostid], filter={'type': str(self.obj.type)})
 
-            # Update the hostid field :)
-            hostid = zbxserverassignment.hostid
+    def get_create_params(self):
+        hostid = self._resolve_hostid()
+        if not hostid:
+            return {}
 
         ipaddr = ''
         if self.obj.ip_id:
             ipaddr = IPAddress.objects.get(id=self.obj.ip_id).address.ip
+        elif self.context.get('_instance'):
+            # If the interface is inherited (e.g. from SiteGroup or Role)
+            # and has no IP assigned, fall back to the device's primary IP
+            instance = self.context.get('_instance')
+            primary_ip = getattr(instance, 'primary_ip4', None) or getattr(instance, 'primary_ip6', None)
+            if primary_ip:
+                ipaddr = primary_ip.address.ip
 
         dns_name, _ = self.obj.render_dns()
         result = {
