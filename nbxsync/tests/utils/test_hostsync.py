@@ -731,8 +731,7 @@ class HostSyncTestCase(TestCase):
                 'type': int(ZabbixHostInterfaceTypeChoices.AGENT),
                 'main': 1,
                 'useip': int(ZabbixInterfaceUseChoices.IP),
-                'ip': str(self.ip.address.ip),
-                'dns': '',
+                'ip': str(self.ip.address).split('/')[0],
                 'port': '10050',
             }
         ]
