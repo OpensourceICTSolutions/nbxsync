@@ -111,8 +111,6 @@ class RecursiveInheritanceTestCase(TestCase):
         self.assertIn(self.server.pk, result['server_assignments'])
 
 
-
-
 class ResolveInheritedAssignmentsBatchedTestCase(TestCase):
     """Contract tests for the batched query refactor of resolve_inherited_zabbix_assignments."""
 
@@ -154,8 +152,7 @@ class ResolveInheritedAssignmentsBatchedTestCase(TestCase):
 
         # The deeper hierarchy has 3 more ancestors but must not multiply queries.
         self.assertLess(len(ctx_5.captured_queries), 60, f'Query count exploded at depth 5: {len(ctx_5.captured_queries)}')
-        self.assertLessEqual(len(ctx_5.captured_queries), len(ctx_2.captured_queries) + 20,
-                             f'Query count grew disproportionately with depth: {len(ctx_2.captured_queries)} -> {len(ctx_5.captured_queries)}')
+        self.assertLessEqual(len(ctx_5.captured_queries), len(ctx_2.captured_queries) + 20, f'Query count grew disproportionately with depth: {len(ctx_2.captured_queries)} -> {len(ctx_5.captured_queries)}')
 
     def test_leaf_assignment_wins_over_root(self):
         """A template assigned to both the root and the leaf SiteGroup resolves to the leaf one (first-seen-wins, leaf-before-ancestor)."""

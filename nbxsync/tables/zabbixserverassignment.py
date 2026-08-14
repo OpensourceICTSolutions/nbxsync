@@ -21,7 +21,7 @@ class InheritedSyncStatusColumn(tables.Column):
         # misleading red X for "Never synced".
         if getattr(record, '_inherited_from', None):
             return format_html(
-                '<i class="mdi mdi-sync text-muted" title="Inherited assignment ({}). ' 'Sync this host using the Zabbix sync action."></i>',
+                '<i class="mdi mdi-sync text-muted" title="Inherited assignment ({}). Sync this host using the Zabbix sync action."></i>',
                 record._inherited_from,
             )
 

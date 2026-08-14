@@ -89,3 +89,99 @@ class HostGroupSyncIntegrationTests(TestCase):
         self.assertEqual(created_hg.value, rendered_name)
         self.assertEqual(created_hg.groupid, 321)
         self.assertEqual(created_hg.description, 'Automatically generated from template')
+
+
+class HostGroupSyncNestedTests(TestCase):
+    """Nested hostgroup names ('A/B/C') must materialize parents before the leaf.
+
+    Zabbix only inherits user-group permissions/tag filters into a subgroup
+    when its parent already exists; subgroup-only creation leaves phantom
+    parents that can never hold permissions.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.zabbixserver = ZabbixServer.objects.create(name='Zabbix Nested', url='http://zabbix-nested.local', token='abc123', validate_certs=True)
+        cls.device_ct = ContentType.objects.get_for_model(Device)
+        cls.device = create_test_device(name='Nested Hostgroup TestDev')
+
+    def _nested_assignment(self, name):
+        hostgroup = ZabbixHostgroup.objects.create(name=name, zabbixserver=self.zabbixserver, value=name)
+        return ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=hostgroup, assigned_object_type=self.device_ct, assigned_object_id=self.device.id)
+
+    def test_try_create_nested_creates_parents_before_leaf(self):
+        from unittest.mock import call
+
+        api = MagicMock()
+        api.hostgroup.get.return_value = []
+        api.hostgroup.create.side_effect = [{'groupids': [10]}, {'groupids': [11]}, {'groupids': [12]}]
+
+        sync = HostGroupSync(api=api, netbox_obj=self._nested_assignment('Parent/Child/Leaf'))
+        self.assertEqual(sync.try_create(), 12)
+
+        self.assertEqual(
+            api.hostgroup.create.call_args_list,
+            [
+                call({'name': 'Parent'}),
+                call({'name': 'Parent/Child'}),
+                call(name='Parent/Child/Leaf'),
+            ],
+        )
+
+    def test_try_create_nested_idempotent_when_parents_exist(self):
+        api = MagicMock()
+        api.hostgroup.get.return_value = [{'groupid': '10', 'name': 'Parent'}]
+        api.hostgroup.create.return_value = {'groupids': [12]}
+
+        assignment = self._nested_assignment('Parent/Child')
+        sync = HostGroupSync(api=api, netbox_obj=assignment)
+        sync.try_create()
+
+        # Parents found -> only the leaf is created
+        self.assertEqual(api.hostgroup.create.call_count, 1)
+        api.hostgroup.create.assert_called_once_with(name='Parent/Child')
+
+    def test_try_create_flat_name_skips_parent_logic(self):
+        api = MagicMock()
+        api.hostgroup.create.return_value = {'groupids': [5]}
+
+        assignment = self._nested_assignment('FlatGroup')
+        sync = HostGroupSync(api=api, netbox_obj=assignment)
+        sync.try_create()
+
+        api.hostgroup.get.assert_not_called()
+        api.hostgroup.create.assert_called_once_with(name='FlatGroup')
+
+    def test_try_create_malformed_name_leaves_rejection_to_zabbix(self):
+        """Empty segments / stray slashes are not our problem to fix silently:
+        we skip parent logic and let the Zabbix API reject the leaf create."""
+        api = MagicMock()
+        api.hostgroup.create.side_effect = RuntimeError('invalid group name')
+
+        assignment = self._nested_assignment('A//B')
+        sync = HostGroupSync(api=api, netbox_obj=assignment)
+
+        with self.assertRaises(RuntimeError):
+            sync.try_create()
+        # No parents were probed/created for the malformed name
+        api.hostgroup.get.assert_not_called()
+        self.assertEqual(api.hostgroup.create.call_count, 1)
+
+
+class HostGroupSyncRenameTests(TestCase):
+    """Renames must flow through hostgroup.update with the stored groupid."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.device_ct = ContentType.objects.get_for_model(Device)
+        cls.device = create_test_device(name='Rename TestDev')
+        cls.zabbixserver = ZabbixServer.objects.create(name='Zabbix Rename', url='http://zabbix-rename.local', token='abc123', validate_certs=True)
+        cls.hostgroup = ZabbixHostgroup.objects.create(name='Static Group', groupid=123, zabbixserver=cls.zabbixserver, value='Static Group')
+        cls.assignment = ZabbixHostgroupAssignment.objects.create(zabbixhostgroup=cls.hostgroup, assigned_object_type=cls.device_ct, assigned_object_id=cls.device.id)
+
+    def test_static_rename_updates_in_place_keeping_groupid(self):
+        self.hostgroup.value = 'Renamed Static Group'
+        self.hostgroup.name = 'Renamed Static Group'
+        self.hostgroup.save()
+        sync = HostGroupSync(api=MagicMock(), netbox_obj=self.assignment)
+        self.assertEqual(sync.get_update_params(), {'name': 'Renamed Static Group', 'groupid': 123})

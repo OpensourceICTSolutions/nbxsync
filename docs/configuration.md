@@ -113,12 +113,16 @@ The plugin is configuration to do exactly what you want, by means of the plugin 
     'custom_field_hostname':'',
     'custom_field_display_name':'',
     'exclude_tag': '',
+    'allow_inherited_deletion': False,
+    'adopt_existing_hosts': False,
 }
 ```
 
 ## Inheritance Chain
 
-The `inheritance_chain` setting defines which NetBox objects are traversed when resolving Zabbix assignments. Assignments (templates, tags, hostgroups, macros, proxy/server, interfaces, inventory, configuration groups) made on any object in the chain are inherited by the device or VM being synced, with direct assignments taking priority. Within inherited sources, **first path wins** (leaf-first order as listed).
+The `inheritance_chain` setting defines which NetBox objects are traversed when resolving Zabbix assignments. Assignments (templates, tags, hostgroups, macros, proxy/server, inventory, configuration groups) made on any object in the chain are inherited by the device or VM being synced, with direct assignments taking priority. Within inherited sources, **first path wins** (leaf-first order as listed).
+
+Host interfaces are the exception: they are defined on a Device/VM directly, on a `ZabbixConfigurationGroup`, or on a NetBox Tag (as a reusable interface template), because an interface needs a per-device endpoint. To apply interfaces to a whole Site, SiteGroup or Region, assign a Configuration Group at that level — its interfaces are then cloned onto every inheriting device with that device's primary IP.
 
 ### VirtualMachine and `device`-prefixed paths
 
@@ -209,11 +213,13 @@ This key is used to determine if 'objects' (that is: Devices and/or Virtual Mach
 
 ##### enabled
 
-Either true or false (default: True)
+Either true or false (default: True). When enabled, a periodic job enumerates all Devices and VirtualMachines that inherit a `ZabbixServerAssignment` (direct or from SiteGroup/Site/Region/Role/Platform/etc.) and enqueues each for sync.
 
 ##### interval
 
 Used to determine the interval to sync Devices and Virtual Machines to/from Zabbix, in minutes (default: 360 / 6 hours)
+
+Size the interval so a full reconciliation finishes well before the next one starts, otherwise runs queue up behind each other. Throughput depends on your Zabbix server, the number of interfaces and templates per host, and network latency, so measure it on your own installation: the job logs `duration_seconds` and the number of hosts enqueued on every run.
 
 #### templates
 
@@ -328,13 +334,40 @@ You can use these fields to map the connection between NetBox and the Zabbix hos
 
 ### exclude_tag
 
-When set to a non-empty string (e.g. `'do_not_monitor'`), any `ZabbixTagAssignment` with a tag matching this name — whether assigned directly on a Device/VM or inherited from a Role, Platform, Site, SiteGroup, Region, Manufacturer, or Configuration Group — causes the host to be excluded from Zabbix sync entirely. No Zabbix host is created, and if a host was previously synced it is deleted from Zabbix.
+When set to a non-empty string (e.g. `'do_not_monitor'`), any `ZabbixTagAssignment` with a tag matching this name — whether assigned directly on a Device/VM or inherited from a Role, Platform, Site, SiteGroup, Region, Manufacturer, or Configuration Group — causes the host to be excluded from Zabbix sync entirely. No Zabbix host is created, and an already synced host is removed from Zabbix. Exclusion is an explicit operator decision, so — like a `statusmapping` entry that maps to `deleted` — it always deletes and is not affected by `allow_inherited_deletion` (see below).
 
 This is useful for excluding device classes that should never be monitored (e.g. desktop PCs, VDI sessions, test lab devices) without removing their Site or Platform assignments.
 
 The tag itself is never pushed to Zabbix — it is only used as a signal during sync resolution and is filtered out before Jinja2 rendering.
 
 Defaults to `''` (empty string = feature disabled).
+
+### allow_inherited_deletion
+
+Controls whether losing every `ZabbixServerAssignment` can delete an existing Zabbix host — for example because a Site was moved into another SiteGroup. Such a deletion can be caused by an edit far away from the device, and deleting a Zabbix host discards its measurement history.
+
+While disabled (the default), nbxsync keeps those hosts and logs each one it would have deleted, with the reason and the Zabbix host ID:
+
+```
+Not deleting Zabbix host for switch-01 on Zabbix EU (hostid 10842): no remaining Zabbix server assignment requires
+deletion, but allow_inherited_deletion is disabled. Enable it to let nbxsync remove the host and its history.
+```
+
+Review those log lines after restructuring the site hierarchy, then set the setting to `True` to let nbxsync reconcile. Explicit deletions are unaffected: a `statusmapping` entry that maps to `deleted`, an `exclude_tag` match, and deleting the Device/VM in NetBox always remove the Zabbix host — including when `sync_enabled` is False (inventory deletion is retirement, not a background sync).
+
+Defaults to `False`.
+
+### adopt_existing_hosts
+
+Controls whether nbxsync may bind to a Zabbix host it did not create. During sync, a host whose technical name matches and that carries the managed identity tags (`nb_type`/`nb_id`) can either be adopted or reported as a conflict.
+
+Adoption requires `attach_objtag=True`: without those identity tags on the Zabbix host, adoption cannot safely prove the host belongs to this NetBox object.
+
+Adoption makes NetBox authoritative over that host immediately: its interfaces, templates, macros, tags and inventory are overwritten on the next sync. While disabled (the default), the sync fails with an actionable message naming the host and the setting, and nothing in Zabbix is changed.
+
+Enable it for a controlled migration of hosts that were provisioned by an earlier tool, then turn it off again.
+
+Defaults to `False`.
 
 ## Enabling and Disabling Synchronization
 

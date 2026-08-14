@@ -50,7 +50,7 @@ Templates can be inherited based on device/site hierarchy.
 
 ### `ZabbixTemplateRule`
 
-Regex-driven automatic assignment of a Zabbix template (and optionally a hostgroup and tag) when a Device or VM matches the rule criteria. Evaluated after direct and inherited `ZabbixTemplateAssignment` rows, so explicit assignments always win.
+Regex-driven automatic assignment of a Zabbix template (and optionally a hostgroup and tag) when a Device or VM matches the rule. The pattern is matched against the Platform name only (`re.search`, case-insensitive). Evaluated after direct and inherited `ZabbixTemplateAssignment` rows.
 
 | Field              | Type         | Description |
 |--------------------|--------------|-------------|
@@ -124,6 +124,19 @@ Links a NetBox object to a Zabbix server/host/proxy.
 
 ---
 
+### `ZabbixHostBinding`
+
+Durable mapping from a NetBox Device, VDC or VirtualMachine to a Zabbix `hostid` on a given server. Created and removed by host sync/delete so a host can still be retired after an inherited assignment disappears. There is no operator UI or API.
+
+| Field             | Type         | Description |
+|-------------------|--------------|-------------|
+| `zabbixserver`    | ForeignKey   | Zabbix server |
+| `assigned_object` | Generic FK   | Device, VDC or VirtualMachine |
+| `hostid`          | PositiveBigIntegerField | Zabbix host ID |
+| `hostname`        | CharField    | Last known hostname (informational) |
+
+---
+
 ### `ZabbixHostgroup` / `ZabbixHostgroupAssignment`
 
 Defines host groups and their mapping.
@@ -132,6 +145,14 @@ Defines host groups and their mapping.
 - `ZabbixHostgroupAssignment`: assign them to NetBox objects (Jinja `value` or static)
 
 A hostgroup can also be attached by a `ZabbixTemplateRule.zabbixhostgroup` when the rule matches. The hostgroup detail page lists those rules under **Template rules**; the list view shows assignment and rule counts.
+
+#### Nested host groups
+
+Zabbix nesting is a naming convention (`Network/Region/Site`); Zabbix stores no parent relation between groups.
+
+- Creating `A/B/C` never creates `A` or `A/B`. nbxsync therefore creates missing path segments parent-first.
+- To rename a group in place, edit the `ZabbixHostgroup` `value` (the Zabbix-facing name). Changing a Jinja template produces a new path; hosts migrate on the next sync and the old path may remain as an empty group.
+- Path segments must be non-empty (no leading, trailing or double slashes).
 
 ---
 

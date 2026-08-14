@@ -11,6 +11,8 @@ from nbxsync.choices import HostInterfaceRequirementChoices, ZabbixHostInterface
 from nbxsync.choices.syncsot import SyncSOT
 from nbxsync.choices.zabbixstatus import ZabbixHostStatus
 from nbxsync.models import ZabbixHostInterface, ZabbixMaintenance, ZabbixMaintenanceObjectAssignment, ZabbixMaintenancePeriod
+from nbxsync.utils.host_binding import backfill_or_resolve_conflict, delete_host_binding, delete_host_binding_by_id, get_host_binding, set_host_binding
+from nbxsync.utils.sync.hostgroupsync import ensure_parent_hostgroups
 from nbxsync.utils.sync.hostinterfacesync import HostInterfaceSync
 
 logger = logging.getLogger(__name__)
@@ -33,6 +35,84 @@ class HostSync(ZabbixSyncBase):
         resolve correctly.
         """
         return self.context.get('all_objects', {}).get('_instance') or self.obj.assigned_object
+
+    def _resolve_binding(self):
+        """Resolve a durable hostid for the sync target.
+
+        Order:
+        1. Existing ``ZabbixHostBinding`` for the (server, instance) pair.
+        2. Legacy ``ZabbixServerAssignment.hostid`` on a direct assignment.
+        3. Backfill an existing Zabbix host that carries the managed
+           ``objtag_type``/``objtag_id`` identity tags.
+
+        The resolved hostid is written to ``self.obj.hostid`` so the rest of
+        the sync engine can continue to use the existing id-based paths.
+        """
+        sync_target = self._get_sync_target()
+        zabbixserver = self.obj.zabbixserver
+
+        binding = get_host_binding(sync_target, zabbixserver)
+        if binding:
+            self.obj.hostid = binding.hostid
+            return
+
+        if self.obj.hostid:
+            self._migrate_legacy_hostid(sync_target, zabbixserver)
+            return
+
+        # No binding and no legacy id: try to adopt an existing managed host.
+        try:
+            technical_name = self.sanitize_string(input_str=str(self.get_name_value()))
+            existing_hostid = backfill_or_resolve_conflict(sync_target, zabbixserver, self.api, hostname=technical_name)
+        except RuntimeError:
+            raise
+        if existing_hostid:
+            self.obj.hostid = existing_hostid
+            set_host_binding(sync_target, zabbixserver, existing_hostid, hostname=technical_name)
+
+    def _migrate_legacy_hostid(self, sync_target, zabbixserver):
+        """Move a direct-assignment hostid into a durable binding."""
+        hostid = int(self.obj.hostid)
+        binding = set_host_binding(sync_target, zabbixserver, hostid, hostname=str(self.get_name_value()))
+        self.obj.hostid = binding.hostid
+
+    def _persist_binding(self):
+        """Store/update the binding after a successful create or update."""
+        sync_target = self._get_sync_target()
+        hostid = self.get_id()
+        if not hostid:
+            return
+        set_host_binding(sync_target, self.obj.zabbixserver, int(hostid), hostname=str(self.get_name_value()))
+
+    def _clear_direct_hostid(self):
+        """After migrating to bindings, clear the legacy hostid from direct assignments."""
+        if not self._should_persist():
+            return
+        if not self.obj.pk:
+            return
+        if self.obj.hostid:
+            self.obj.hostid = None
+            self.obj.save(update_fields=['hostid'])
+
+    def _zabbix_host_missing(self):
+        """Return True if the current hostid has no matching remote host."""
+        hostid = self.get_id()
+        if not hostid:
+            return True
+        return not self.find_by_id()
+
+    def set_id(self, value):
+        super().set_id(value)
+        self._persist_binding()
+
+    def sync_to_zabbix(self, object_id):
+        super().sync_to_zabbix(object_id)
+        self._persist_binding()
+
+    def sync(self):
+        self._resolve_binding()
+        super().sync()
+        self._clear_direct_hostid()
 
     def get_base_name(self):
         # If the object has the "name" attribute, only return that (Device). If not (cornercase?), return the display string
@@ -134,7 +214,7 @@ class HostSync(ZabbixSyncBase):
 
     def get_defined_macros(self):
         result = []
-        for macro in (self.context.get('all_objects', {}).get('macros', []) or []):
+        for macro in self.context.get('all_objects', {}).get('macros', []) or []:
             rendered_value, _ = macro.render(object=self._get_sync_target())
             result.append(
                 {
@@ -166,7 +246,7 @@ class HostSync(ZabbixSyncBase):
 
     def get_snmp_macros(self):
         result = []
-        hostinterfaces = (self.context.get('all_objects', {}).get('hostinterfaces', []) or [])
+        hostinterfaces = self.context.get('all_objects', {}).get('hostinterfaces', []) or []
         snmpconf = self.pluginsettings.snmpconfig
 
         for hostinterface in hostinterfaces:
@@ -237,7 +317,7 @@ class HostSync(ZabbixSyncBase):
 
     def get_hostinterface_attributes(self):
         result = {}
-        for hostinterface in (self.context.get('all_objects', {}).get('hostinterfaces', []) or []):
+        for hostinterface in self.context.get('all_objects', {}).get('hostinterfaces', []) or []:
             if hostinterface.type == ZabbixHostInterfaceTypeChoices.AGENT:
                 result['tls_connect'] = hostinterface.tls_connect
                 result['tls_accept'] = 0
@@ -257,7 +337,9 @@ class HostSync(ZabbixSyncBase):
         return result
 
     def get_hostinterface_types(self):
-        hostinterfaces = (self.context.get('all_objects', {}).get('hostinterfaces', []) or [])
+        # use_oob_ip interfaces without a resolvable OOB IP are filtered out once
+        # in SyncHostJob.sync_host(), so every interface here is expected to sync.
+        hostinterfaces = self.context.get('all_objects', {}).get('hostinterfaces', []) or []
         return list({interface.type for interface in hostinterfaces})
 
     def get_templates_clear_attributes(self):
@@ -269,7 +351,7 @@ class HostSync(ZabbixSyncBase):
         currently_assigned_templates = self.api.template.get(hostids=int(self.obj.hostid))
 
         # Flatten current templates to a set of integers
-        current_ids = set(int(current_template['templateid']) for current_template in currently_assigned_templates)
+        current_ids = {int(current_template['templateid']) for current_template in currently_assigned_templates}
 
         # Extract actual template list from the dict
         to_be_templates = self.templates.get('templates', [])
@@ -300,7 +382,7 @@ class HostSync(ZabbixSyncBase):
         result = []
         hostinterface_types = set(self.get_hostinterface_types() or [])
 
-        for assigned_template in (self.context.get('all_objects', {}).get('templates', []) or []):
+        for assigned_template in self.context.get('all_objects', {}).get('templates', []) or []:
             required = set(assigned_template.zabbixtemplate.interface_requirements or [])
 
             # Extract special modifiers
@@ -333,8 +415,8 @@ class HostSync(ZabbixSyncBase):
         zabbix_status = status_mapping.get(status)
 
         result = []
-        exclude_tag = self.pluginsettings.exclude_tag
-        for assigned_tag in (self.context.get('all_objects', {}).get('tags', []) or []):
+        exclude_tag = getattr(self.pluginsettings, 'exclude_tag', '')
+        for assigned_tag in self.context.get('all_objects', {}).get('tags', []) or []:
             # Skip the exclusion tag before rendering — it is a sync-time
             # signal, not a Zabbix host tag. Filtering here avoids
             # unnecessary Jinja2 rendering of a tag that will never reach
@@ -392,6 +474,10 @@ class HostSync(ZabbixSyncBase):
                 if zbx_result:
                     groups.append({'groupid': zbx_result[0]['groupid']})
                     continue
+                # Materialize nested parents before the leaf so the subgroup
+                # inherits the parent's user-group permissions (see
+                # ensure_parent_hostgroups).
+                ensure_parent_hostgroups(self.api, name)
                 created = self.api.hostgroup.create({'name': name})
                 gid = created.get('groupids', [None])[0]
                 if gid:
@@ -472,74 +558,96 @@ class HostSync(ZabbixSyncBase):
                 )
             )
 
-    def delete(self):
-        if not self.obj.hostid:
+    def _clear_deleted_host_state(self, sync_target, zabbixserver):
+        binding_id = getattr(self.obj, 'binding_id', None)
+        if binding_id is not None:
+            delete_host_binding_by_id(binding_id)
+        elif sync_target is not None:
+            delete_host_binding(sync_target, zabbixserver)
+
+        if binding_id is None and self._should_persist():
+            try:
+                self.obj.hostid = None
+                self.obj.save()
+            except (ValidationError, AttributeError):
+                pass
+
+        if sync_target is not None:
+            try:
+                object_ct = ContentType.objects.get_for_model(sync_target)
+                ZabbixHostInterface.objects.filter(
+                    assigned_object_type=object_ct,
+                    assigned_object_id=sync_target.pk,
+                    zabbixserver=zabbixserver,
+                ).update(interfaceid=None)
+            except Exception:
+                pass
+
+    def delete(self):  # noqa: C901
+        """Delete a host by durable ID and remove its binding only after success."""
+        sync_target = self._get_sync_target()
+        zabbixserver = self.obj.zabbixserver
+
+        binding = get_host_binding(sync_target, zabbixserver) if sync_target is not None else None
+        hostid = binding.hostid if binding else self.obj.hostid
+        if not hostid:
             try:
                 self.obj.update_sync_info(success=False, message='Host already deleted or missing host ID.')
             except Exception:
                 pass
             return
 
-        # The assigned object (Device/VM) may already be gone if this job runs
-        # after a cascade delete. Resolve it once and guard all uses below.
-        assigned_object = self.obj.assigned_object
-        if assigned_object is None:
-            # NetBox object is gone — still delete the Zabbix host, then clean up
-            # what we can without touching the now-invalid assignment row.
-            try:
-                self.api_object().delete([self.obj.hostid])
-            except Exception as e:
-                raise RuntimeError(f'Failed to delete orphaned host {self.obj.hostid} from Zabbix: {e}')
-            return
-
         try:
-            object_ct = ContentType.objects.get_for_model(assigned_object)
-            maintenances = self.api.maintenance.get(hostids=[self.obj.hostid], selectHosts='extend')
-            for mw in maintenances:
-                # Check per maintenance window if this host is the only host in the window or not. If it is, we can delete it
-                # If not, we should delete the host from the Netbox window
-                if len(mw['hosts']) > 1:
-                    # Filter out the hostid
-                    hosts = [{'hostid': host['hostid']} for host in mw['hosts'] if int(host['hostid']) != self.obj.hostid]
-                    # Update the maintenance window in Zabbix without our hostid in it
-                    self.api.maintenance.update(maintenanceid=mw['maintenanceid'], hosts=hosts)
-                    for assignment in ZabbixMaintenanceObjectAssignment.objects.filter(maintenanceid=mw['maintenanceid'], assigned_object_type=object_ct, assigned_object_id=assigned_object.id):
-                        assignment.delete()  # Delete the Assignment from Netbox;
+            api_object = self.api_object()
+            get_remote_hosts = getattr(api_object, 'get', None)
+            remote_hosts = get_remote_hosts(hostids=[hostid]) if callable(get_remote_hosts) else [{'hostid': hostid}]
+            if isinstance(remote_hosts, dict):
+                remote_hosts = remote_hosts.get('result', [])
 
-                # If our host is the only one in the Maintenance Object
-                # Delete it...
-                else:
-                    self.api.maintenance.delete([mw['maintenanceid']])
-                    ZabbixMaintenance.objects.get(maintenanceid=mw['maintenanceid']).delete()
+            if not remote_hosts:
+                self._clear_deleted_host_state(sync_target, zabbixserver)
+                try:
+                    self.obj.update_sync_info(success=True, message='Host was already absent from Zabbix.')
+                except Exception:
+                    pass
+                return
 
-            # Delete from Zabbix
-            self.api_object().delete([self.obj.hostid])
+            if sync_target is not None:
+                object_ct = ContentType.objects.get_for_model(sync_target)
+                maintenances = self.api.maintenance.get(hostids=[hostid], selectHosts='extend')
+                for maintenance in maintenances:
+                    if len(maintenance['hosts']) > 1:
+                        hosts = [{'hostid': host['hostid']} for host in maintenance['hosts'] if int(host['hostid']) != int(hostid)]
+                        self.api.maintenance.update(maintenanceid=maintenance['maintenanceid'], hosts=hosts)
+                        ZabbixMaintenanceObjectAssignment.objects.filter(
+                            maintenanceid=maintenance['maintenanceid'],
+                            assigned_object_type=object_ct,
+                            assigned_object_id=sync_target.pk,
+                        ).delete()
+                    else:
+                        self.api.maintenance.delete([maintenance['maintenanceid']])
+                        ZabbixMaintenance.objects.get(maintenanceid=maintenance['maintenanceid']).delete()
+
+            api_object.delete([hostid])
+            self._clear_deleted_host_state(sync_target, zabbixserver)
 
             try:
-                # Unset the host ID and save
-                self.obj.hostid = None
-                self.obj.save()
-            except ValidationError:
-                pass
-
-            # Also clear host IDs from related interfaces
-            try:
-                ZabbixHostInterface.objects.filter(assigned_object_type=self.obj.assigned_object_type, assigned_object_id=assigned_object.id, zabbixserver=self.obj.zabbixserver).update(interfaceid=None)
-
                 self.obj.update_sync_info(success=True, message='Host deleted from Zabbix.')
             except Exception:
                 pass
+        except Exception as exc:
+            try:
+                self.obj.update_sync_info(success=False, message=f'Failed to delete host: {exc}')
+            except Exception:
+                pass
+            raise RuntimeError(f'Failed to delete host {hostid} from Zabbix: {exc}') from exc
 
-        except Exception as e:
-            self.obj.update_sync_info(success=False, message=f'Failed to delete host: {e}')
-            raise RuntimeError(f'Failed to delete host {self.obj.hostid} from Zabbix: {e}')
-
-    def check_default_hostinterface(self):
+    def check_default_hostinterface(self):  # noqa: C901
         if not self.obj.hostid:
             return
 
         hostid = str(int(self.obj.hostid))
-        netbox_hostinterfaces = list(self.context.get('all_objects', {}).get('hostinterfaces', []) or [])
+        netbox_hostinterfaces = self.context.get('all_objects', {}).get('hostinterfaces', []) or []
         zabbix_hostinterfaces = self.api.hostinterface.get(hostids=hostid)
 
         netbox_default_obj_by_type = {}
@@ -574,9 +682,16 @@ class HostSync(ZabbixSyncBase):
                 continue
 
             if nb_default_hostinterface_id != zbx_default_hostinterfaceid:
+                # Zabbix still has a default of this type, but NetBox no longer
+                # does (e.g. OOB SNMP removed from the expected set and waiting
+                # for verify_hostinterfaces to delete it). Nothing to flip.
+                if not nb_default_hostinterface_obj:
+                    continue
+
+                instance = self.context.get('all_objects', {}).get('_instance')
                 # If NB default interface doesn't exist yet in Zabbix, create it as non-default first
                 if not nb_default_hostinterface_id:
-                    syncer = HostInterfaceSync(self.api, nb_default_hostinterface_obj, hostid=hostid)
+                    syncer = HostInterfaceSync(self.api, nb_default_hostinterface_obj, hostid=hostid, _instance=instance)
                     params = syncer.get_create_params()
                     if not params:
                         continue
@@ -588,7 +703,12 @@ class HostSync(ZabbixSyncBase):
                         raise RuntimeError(f'Failed to create interface for type={hostinterface_type}: {created}')
 
                     nb_default_hostinterface_obj.interfaceid = int(hostinterface_id)
-                    nb_default_hostinterface_obj.save()
+                    # Transient ConfigGroup clones are pk=None in-memory copies.
+                    # Saving them would INSERT a new HostInterface row without
+                    # ConfigGroup provenance. Keep the interfaceid on the
+                    # working object only; the next sync resolves by identity.
+                    if not getattr(nb_default_hostinterface_obj, '_is_inherited_copy', False) and nb_default_hostinterface_obj.pk:
+                        nb_default_hostinterface_obj.save()
 
                     # update local variable so the compare is correct for the flip step
                     nb_default_hostinterface_id = str(int(hostinterface_id))
@@ -599,13 +719,14 @@ class HostSync(ZabbixSyncBase):
                 # That way, we can update all interfaces at once
                 desired_hostinterfaces = []
                 for netbox_hostinterface in netbox_hostinterfaces:
-                    syncer = HostInterfaceSync(self.api, netbox_hostinterface, hostid=hostid)
+                    syncer = HostInterfaceSync(self.api, netbox_hostinterface, hostid=hostid, _instance=instance)
                     params = syncer.get_update_params()
                     if not params or not params.get('interfaceid'):
                         continue
                     desired_hostinterfaces.append(params)
 
-                self.api.host.update(hostid=hostid, interfaces=desired_hostinterfaces)
+                if desired_hostinterfaces:
+                    self.api.host.update(hostid=hostid, interfaces=desired_hostinterfaces)
         return
 
     def verify_hostinterfaces(self):
@@ -614,29 +735,63 @@ class HostSync(ZabbixSyncBase):
             return {}
 
         # Extract the currently expected interfaces
-        expected_hostinterfaces = list(self.context.get('all_objects', {}).get('hostinterfaces', []) or [])
-        expected_ids = {int(expected_hostinterface.interfaceid) for expected_hostinterface in expected_hostinterfaces if expected_hostinterface.interfaceid}
+        expected_hostinterfaces = self.context.get('all_objects', {}).get('hostinterfaces', []) or []
+        # Interfaces that could not be synced this run (e.g. an OOB interface on
+        # a device whose oob_ip was cleared) are retained rather than deleted.
+        retained_hostinterfaces = self.context.get('all_objects', {}).get('retained_hostinterfaces', []) or []
+        considered_hostinterfaces = list(expected_hostinterfaces) + list(retained_hostinterfaces)
 
-        # Get currently assigned hostinterface from Zabbix
-        current_hostinterfaces = self.api.hostinterface.get(output=['extend'], hostids=self.obj.hostid)
-        current_ids = {int(current_hostinterface['interfaceid']) for current_hostinterface in current_hostinterfaces}
+        # Include persisted interfaceids from both expected and retained rows.
+        # A previously synced OOB interface kept in retained_hostinterfaces still
+        # carries its interfaceid; omitting it here would delete the remote IF.
+        expected_ids = {int(hi.interfaceid) for hi in considered_hostinterfaces if hi.interfaceid}
 
-        # For expected interfaces without an interfaceid (e.g. inherited from a
-        # ConfigGroup), match by type to the Zabbix interfaces so they are not deleted.
-        expected_types = {int(hi.type) for hi in expected_hostinterfaces}
-        # Match by type so ConfigGroup-inherited interfaces (which have no
-        # persisted interfaceid) are not treated as stale and deleted.
-        # Since zabbix_utils wraps responses differently in worker vs shell,
-        # just don't delete any interfaces that might be linked to items.
-        # The ConfigGroup-expanded interface has interfaceid=None, so it's
-        # not in expected_ids — but trying to delete it fails when items are linked.
-        # Skip deletion entirely for inherited copies.
-        if not self._should_persist():
+        # Get currently assigned hostinterface from Zabbix.
+        # output must be the string 'extend' — a one-element list ['extend'] is
+        # treated as a field name, so type/main/port come back empty and every
+        # transient ConfigGroup/hierarchy interface fails identity matching and
+        # is deleted on the same sync that created it.
+        current_hostinterfaces = self.api.hostinterface.get(output='extend', hostids=self.obj.hostid)
+
+        # Interfaces inherited from a ConfigGroup are transient copies without a
+        # persisted interfaceid, so they must be recognised by what Zabbix stores
+        # instead. Deleting them here would remove an interface that the very
+        # next sync recreates, and fail outright once items are linked to it.
+        # Match the ConfigGroup identity helper: type + main role + connect mode
+        # + port + dns. IP is omitted here because OOB interfaces resolve it at
+        # sync time and would otherwise look "stale" every run.
+        expected_identities = {
+            (
+                int(hi.type),
+                int(hi.interface_type),
+                int(hi.useip),
+                str(hi.port),
+                str(hi.dns or ''),
+            )
+            for hi in considered_hostinterfaces
+            if not hi.interfaceid
+        }
+
+        # Inherited server assignments must not persist ORM rows, but remote
+        # stale-interface cleanup is still required for Site-level proxies.
+        # Gate that destructive remote work on allow_inherited_deletion.
+        if not self._should_persist() and not self.pluginsettings.allow_inherited_deletion:
             return
 
-        to_be_deleted = current_ids - expected_ids
-        for id_to_delete in to_be_deleted:
-            self.api.hostinterface.delete(id_to_delete)
+        for current_hostinterface in current_hostinterfaces:
+            interfaceid = int(current_hostinterface['interfaceid'])
+            if interfaceid in expected_ids:
+                continue
+            identity = (
+                int(current_hostinterface.get('type', 0)),
+                int(current_hostinterface.get('main', 0)),
+                int(current_hostinterface.get('useip', 0)),
+                str(current_hostinterface.get('port', '')),
+                str(current_hostinterface.get('dns', '') or ''),
+            )
+            if identity in expected_identities:
+                continue
+            self.api.hostinterface.delete(interfaceid)
 
     def sanitize_string(self, input_str, replacement='_'):
         """

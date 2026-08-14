@@ -100,7 +100,7 @@ On the `Zabbix` tab of any Device, VDC, or Virtual Machine, a **Sync** button ap
 
 ### Background system job
 
-The `Zabbix Sync Hosts job` runs automatically at the interval configured by `backgroundsync.objects.interval` (default: every 360 minutes). It iterates every `ZabbixServerAssignment` in NetBox and enqueues a `synchost` job for each unique Device, VDC, or VM (subject to both `sync_enabled` flags being `True`).
+The `Zabbix Sync Hosts job` runs automatically at the interval configured by `backgroundsync.objects.interval` (default: every 360 minutes). It enumerates Devices, VDCs and VirtualMachines that inherit a `ZabbixServerAssignment` (directly or via Site/SiteGroup/Region/Role/Platform/etc.), and also reconciles hosts that still have a `ZabbixHostBinding`, then enqueues a `synchost` job for each (subject to both `sync_enabled` flags being `True`).
 
 ### REST API
 

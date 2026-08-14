@@ -9,7 +9,7 @@ from dcim.models import Device
 from utilities.testing import create_test_device
 
 from nbxsync.choices import ZabbixMaintenanceTypeChoices, ZabbixTimePeriodTypeChoices, ZabbixTimePeriodDayofWeekChoices, ZabbixTimePeriodMonthChoices, ZabbixMaintenanceTagOperatorChoices
-from nbxsync.models import ZabbixHostgroup, ZabbixMaintenance, ZabbixMaintenanceObjectAssignment, ZabbixMaintenancePeriod, ZabbixMaintenanceTagAssignment, ZabbixServer, ZabbixServerAssignment, ZabbixTag
+from nbxsync.models import ZabbixHostBinding, ZabbixHostgroup, ZabbixMaintenance, ZabbixMaintenanceObjectAssignment, ZabbixMaintenancePeriod, ZabbixMaintenanceTagAssignment, ZabbixServer, ZabbixServerAssignment, ZabbixTag
 from nbxsync.utils.sync.maintenancesync import MaintenanceSync
 
 
@@ -206,6 +206,21 @@ class MaintenanceSyncGetHostsTestCase(TestCase):
         result = sync.get_hosts()
 
         self.assertEqual(result, [])
+
+    def test_get_hosts_uses_binding_when_assignment_hostid_cleared(self):
+        """HostSync migrates identity to ZabbixHostBinding and clears assignment.hostid."""
+        ZabbixServerAssignment.objects.create(zabbixserver=self.server, assigned_object_type=self.device_ct, assigned_object_id=self.device.pk, hostid=None)
+        ZabbixHostBinding.objects.create(
+            zabbixserver=self.server,
+            assigned_object_type=self.device_ct,
+            assigned_object_id=self.device.pk,
+            hostid=202,
+            hostname=self.device.name,
+        )
+        ZabbixMaintenanceObjectAssignment.objects.create(zabbixmaintenance=self.mw, assigned_object_type=self.device_ct, assigned_object_id=self.device.pk)
+        sync = MaintenanceSync(api=MagicMock(), netbox_obj=self.mw)
+
+        self.assertEqual(sync.get_hosts(), [{'hostid': 202}])
 
 
 class MaintenanceSyncGetHostgroupsTestCase(TestCase):

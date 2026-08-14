@@ -188,7 +188,32 @@ class SyncHostExclusionTestCase(TestCase):
 
     @patch('nbxsync.jobs.synchost.get_plugin_settings')
     @patch('nbxsync.jobs.synchost.safe_delete')
-    def test_run_does_not_delete_when_excluded_and_status_deleted(self, mock_safe_delete, mock_settings):
+    def test_run_deletes_host_when_excluded_even_with_inherited_deletion_disabled(self, mock_safe_delete, mock_settings):
+        """Exclusion is an explicit operator decision and must delete the host
+        even when allow_inherited_deletion (the safety gate for lost server
+        assignments) is disabled. Regression test: the gate must not apply to
+        the exclusion path."""
+        mock_settings.return_value.exclude_tag = 'do_not_monitor'
+        mock_settings.return_value.allow_inherited_deletion = False
+        mock_settings.return_value.statusmapping = MagicMock()
+        mock_settings.return_value.statusmapping.device = {'active': 'enabled'}
+        mock_settings.return_value.statusmapping.virtualmachine = {}
+
+        exclude_tag = self._create_exclude_tag()
+        ZabbixTagAssignment.objects.create(
+            zabbixtag=exclude_tag,
+            assigned_object_type=self.device_ct,
+            assigned_object_id=self.device.id,
+        )
+
+        job = SyncHostJob(instance=self.device)
+        job.run()
+
+        mock_safe_delete.assert_called()
+
+    @patch('nbxsync.jobs.synchost.get_plugin_settings')
+    @patch('nbxsync.jobs.synchost.safe_delete')
+    def test_run_deletes_once_when_excluded_and_status_deleted(self, mock_safe_delete, mock_settings):
         mock_settings.return_value.exclude_tag = 'do_not_monitor'
         mock_settings.return_value.statusmapping = MagicMock()
         mock_settings.return_value.statusmapping.device = {'decommissioning': 'deleted'}
@@ -207,4 +232,4 @@ class SyncHostExclusionTestCase(TestCase):
         job = SyncHostJob(instance=self.device)
         job.run()
 
-        mock_safe_delete.assert_not_called()
+        mock_safe_delete.assert_called_once()

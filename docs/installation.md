@@ -94,7 +94,7 @@ PLUGINS_CONFIG = {
         'backgroundsync': {
             'objects': {
                 'enabled': True,
-                'interval': 60,  # 1 hour
+                'interval': 360,  # 6 hours
             },
             'templates': {
                 'enabled': True,
@@ -118,9 +118,13 @@ PLUGINS_CONFIG = {
         'custom_field_hostname': '',
         'custom_field_display_name': '',
         'exclude_tag': '',
+        'allow_inherited_deletion': False,
+        'adopt_existing_hosts': False,
     }
 }
 ```
+
+See [Configuration](configuration.md) for the meaning of each setting.
 
 #### Run migrations
 
