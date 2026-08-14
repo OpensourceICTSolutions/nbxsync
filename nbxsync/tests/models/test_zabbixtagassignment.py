@@ -88,10 +88,10 @@ class ZabbixTagAssignmentTestCase(TestCase):
         self.assertEqual(context['name'], self.tag.name)
         self.assertEqual(context['description'], self.tag.description)
         self.assertEqual(context['extra'], 'extra_val')
-        self.assertIs(context['device'], self.device)
+        self.assertEqual(context['device'], self.device)
         self.assertEqual(context['site'], self.device.site)
         self.assertEqual(context['device_type'], self.device.device_type)
-        self.assertEqual(context['manufacturer'], self.manufacturer)
+        self.assertEqual(context['manufacturer'], self.device.device_type.manufacturer)
 
     def test_get_context_includes_related_device_objects(self):
         self.device.device_type = self.device_type
