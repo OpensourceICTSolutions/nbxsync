@@ -42,8 +42,8 @@ Tags are rendered within a context that includes the following information:
 
 Just like tags, hostgroups are rendered in a context:
 
-| Key         | Value                 | Explanation |
-|-------------|-----------------------|-------------|
+| Key         | Value                 | Explanation                                                                                  |
+|-------------|-----------------------|----------------------------------------------------------------------------------------------|
 | object      | assigned_object       | The assignment target (not overridden to the synced host during host sync) |
 | value       | zabbixhostgroup.value | The value of the Zabbix Hostgroup (typically the Jinja2 template) |
 | name        | zabbixhostgroup.name  | The name of the Zabbix Hostgroup |
@@ -52,8 +52,8 @@ Just like tags, hostgroups are rendered in a context:
 
 Each field on a `ZabbixHostInventory` record is rendered individually. The context is simpler than for tags and hostgroups:
 
-| Key      | Value            | Explanation |
-|----------|------------------|-------------|
+| Key      | Value            | Explanation                                                  |
+|----------|------------------|--------------------------------------------------------------|
 | `object` | assigned_object  | The assignment target. During host sync this is the Device/VM/VDC being synced |
 
 Inventory can be assigned on hierarchy objects and inherited; during host sync `object` is the host, so fields such as `object.site.name` or `object.primary_ip` resolve correctly.

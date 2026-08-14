@@ -1,21 +1,25 @@
 # Changelog
 
 ## [Unreleased]
-
 ### New features
 
 - Added `exclude_tag` configuration setting to exclude hosts from Zabbix sync entirely via a ZabbixTag assigned to any object in the inheritance chain (`ZabbixTag.tag` name match)
-- Added Site/SiteGroup/Region inheritance paths (appended after role/platform so upgrades do not change Role/Platform precedence); cluster site uses `cluster._site` for VM site scope
+- Added `ZabbixTemplateRule` for regex-based template (and optional hostgroup/tag) assignment by platform name (`re.search`, case-insensitive)
+- Template rules support optional conjunctive criteria: `role_pattern`, `require_tags` (NetBox tag slugs) and `manufacturer` (fail-closed when set; `PROTECT` on delete). Optional hostgroup/tag FKs also use `PROTECT`
+- Template rules that attach a hostgroup are shown on the Zabbix Hostgroup detail/list views
+- Added a REST API endpoint for `ZabbixTemplateRule` (`/api/plugins/nbxsync/zabbixtemplaterule/`)
+- Added Site/SiteGroup/Region inheritance paths (appended after role/platform so upgrades do not change Role/Platform precedence); cluster site uses `cluster._site` (available since NetBox 4.2; plugin requires ≥4.2.6)
 - Added NetBox Tag as an assignment target: any assignment can be pointed at a Tag; tagged Devices/VMs/VDCs inherit it at object level with automatic add/remove lifecycle (`Tag: <name>` shown as source)
 
 ### Improvements
 
 - Plugin requires NetBox ≥4.2.6 (`PluginConfig.min_version`)
 - Inherited sync status on the Zabbix tab uses a neutral indicator (distinct from a direct local assignment)
+- Default `backgroundsync.objects.interval` is 360 minutes so a full reconcile is less likely to overlap the next run
 
 ### Bug fixes
 
-- VirtualMachines no longer inherit assignments via `device`-prefixed `inheritance_chain` paths. On NetBox 4.3+, `VirtualMachine.device` links a guest to its hosting device; skipping those paths prevents host manufacturer/role/device-type templates from leaking onto guests. Virtual Device Contexts still walk those paths
+- VirtualMachines no longer inherit assignments via `device`-prefixed `inheritance_chain` paths (NetBox ≥4.3 `VirtualMachine.device`). Host manufacturer/role/device-type templates no longer leak onto guest VMs; Virtual Device Contexts still walk those paths
 
 ## [1.0.0] - Initial Release
 

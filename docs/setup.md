@@ -84,7 +84,7 @@ Once the Hostgroup is created, create a Hostgroup Assignment on the Device or Vi
 !!! note "Hint"
     Templates can be assigned directly to the Device or VM, or inherited from the DeviceType, Cluster, Manufacturer, Platform, Site, SiteGroup, Region, Tag, etc. Alternatively, Configuration Groups can be used.
 
-Hosts can be excluded from sync entirely by assigning a Zabbix Tag whose name matches the `exclude_tag` plugin setting (see [Configuration](configuration.md#exclude_tag)).
+You can also use a **Zabbix Template Rule** (`Zabbix` → `Zabbix Template Rules`) to assign a template (and optionally a hostgroup and tag) when platform / role / NetBox tags / manufacturer criteria match. Rules run after direct and inherited assignments; see [Zabbix Template Rules](configuration.md#zabbix-template-rules).
 
 ## Debugging
 
@@ -100,7 +100,7 @@ On the `Zabbix` tab of any Device, VDC, or Virtual Machine, a **Sync** button ap
 
 ### Background system job
 
-The `Zabbix Sync Hosts job` runs automatically at the interval configured by `backgroundsync.objects.interval` (default: every 60 minutes). It iterates every `ZabbixServerAssignment` in NetBox and enqueues a `synchost` job for each unique Device, VDC, or VM (subject to both `sync_enabled` flags being `True`).
+The `Zabbix Sync Hosts job` runs automatically at the interval configured by `backgroundsync.objects.interval` (default: every 360 minutes). It iterates every `ZabbixServerAssignment` in NetBox and enqueues a `synchost` job for each unique Device, VDC, or VM (subject to both `sync_enabled` flags being `True`).
 
 ### REST API
 

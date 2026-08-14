@@ -312,7 +312,7 @@ nbxSync integrates with the [Netbox Permission system](https://netbox.readthedoc
 
 **What it is:** Binds a template to a NetBox object in the inheritance set.
 
-**How it’s used:** Attach monitoring logic to assets; supports direct assignment and inheritance from Site/SiteGroup/Region/Tag and similar targets.
+**How it’s used:** Attach monitoring logic to assets; supports direct assignment and inheritance from Site/SiteGroup/Region and similar targets. Template Rules can also assign templates by platform/role/tags/manufacturer.
 
 **Typical permissions:**
 
@@ -325,6 +325,24 @@ nbxSync integrates with the [Netbox Permission system](https://netbox.readthedoc
 - change_zabbixtemplateassignment
 - delete_zabbixtemplateassignment
 - view_zabbixtemplateassignment
+
+## Zabbix Template Rule
+
+**What it is:** A regex rule that assigns a Zabbix template (and optionally a host group and tag) based on Platform name and optional role, tag and manufacturer criteria.
+
+**How it’s used:** Covers platform names that change over time — firmware or build numbers in the name — without curating a template assignment per variant. Compound criteria can also scope a vendor BMC template (for example Dell ∧ Server) without assigning it on every Manufacturer object.
+
+**Typical permissions:**
+
+- _view_ for operators verifying why a host received a template.
+- _add/change/delete_ for engineers owning the monitoring policy; a rule applies to every matching host, so treat it like a global policy object.
+
+### Permissions
+
+- add_zabbixtemplaterule
+- change_zabbixtemplaterule
+- delete_zabbixtemplaterule
+- view_zabbixtemplaterule
 
 ## Zabbix Configuration Group
 

@@ -48,6 +48,26 @@ Assigns a template to a NetBox object (device, VM, etc.).
 
 Templates can be inherited based on device/site hierarchy.
 
+### `ZabbixTemplateRule`
+
+Regex-driven automatic assignment of a Zabbix template (and optionally a hostgroup and tag) when a Device or VM matches the rule criteria. Evaluated after direct and inherited `ZabbixTemplateAssignment` rows, so explicit assignments always win.
+
+| Field              | Type         | Description |
+|--------------------|--------------|-------------|
+| `name`             | CharField    | Human-readable name |
+| `description`      | CharField    | Optional description |
+| `pattern`          | CharField    | Regex matched against Platform name (`re.search`, case-insensitive) |
+| `role_pattern`     | CharField    | Optional regex against Device/VM role name; empty = any |
+| `require_tags`     | CharField    | Optional comma-separated NetBox tag slugs (all required); empty = any |
+| `manufacturer`     | ForeignKey   | Optional `dcim.Manufacturer`; empty = any; `PROTECT` on delete |
+| `zabbixtemplate`   | ForeignKey   | Template assigned on match |
+| `zabbixhostgroup`  | ForeignKey   | Optional hostgroup assigned on match (`PROTECT`) |
+| `zabbixtag`        | ForeignKey   | Optional tag assigned on match (`PROTECT`) |
+| `enabled`          | BooleanField | Soft enable/disable |
+| `priority`         | IntegerField | Lower = higher priority |
+
+See [Zabbix Template Rules](configuration.md#zabbix-template-rules) for matching behaviour and the hostgroup UI.
+
 ### `ZabbixMacro`
 
 Defines a user macro at the Zabbix Server or Zabbix Template level. These macros apply globally to all hosts on the server or to all hosts using the template.
@@ -109,7 +129,9 @@ Links a NetBox object to a Zabbix server/host/proxy.
 Defines host groups and their mapping.
 
 - `ZabbixHostgroup`: static groups defined in Zabbix
-- `ZabbixHostgroupAssignment`: assign them to NetBox objects
+- `ZabbixHostgroupAssignment`: assign them to NetBox objects (Jinja `value` or static)
+
+A hostgroup can also be attached by a `ZabbixTemplateRule.zabbixhostgroup` when the rule matches. The hostgroup detail page lists those rules under **Template rules**; the list view shows assignment and rule counts.
 
 ---
 
@@ -179,7 +201,7 @@ Links a NetBox object to a `ZabbixConfigurationGroup`. Besides Devices, Virtual 
 
 ---
 
-## 🧬 Inheritance Logic
+## Inheritance Logic
 
 Templates, macros, and hostgroups can be inherited across these chains, by default:
 
@@ -199,7 +221,7 @@ VirtualMachine
  └─ NetBox Tags on the object
 ```
 
-Paths that start with `device` apply to Devices and Virtual Device Contexts. For VirtualMachines they are skipped: on NetBox 4.3+, `VirtualMachine.device` points at the hosting device, and walking that path would leak host hardware assignments onto guests.
+Paths that start with `device` apply to Devices and Virtual Device Contexts. For VirtualMachines they are skipped: since NetBox 4.3, `VirtualMachine.device` points at the hosting device, and walking that path would leak host hardware assignments onto guests.
 
 Tag-targeted assignments are collected from the object's NetBox tags before the `inheritance_chain` paths (first seen wins). See [Inheritance Chain](configuration.md#inheritance-chain).
 

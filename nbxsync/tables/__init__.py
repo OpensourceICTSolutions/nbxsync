@@ -23,3 +23,4 @@ from .zabbixconfigurationgroupassignment import *
 # Zabbix Operational View
 from .zabbixproblem import *
 from .zabbixevent import *
+from .zabbixtemplaterule import *

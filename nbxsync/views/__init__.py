@@ -24,3 +24,4 @@ from .zabbixmaintenanceperiod import *
 from .zabbixmaintenanceobjectassignment import *
 from .zabbixmaintenancetagassignment import *
 from .zabbixconfigurationgroupassignment import *
+from .zabbixtemplaterule import *

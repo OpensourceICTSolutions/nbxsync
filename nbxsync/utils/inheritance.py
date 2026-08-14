@@ -10,7 +10,7 @@ from extras.models import Tag
 from virtualization.models import VirtualMachine
 
 from nbxsync.constants import PATH_LABELS
-from nbxsync.models import ZabbixConfigurationGroupAssignment, ZabbixHostgroupAssignment, ZabbixHostInterface, ZabbixHostInventory, ZabbixMacroAssignment, ZabbixServerAssignment, ZabbixTagAssignment, ZabbixTemplateAssignment
+from nbxsync.models import ZabbixConfigurationGroupAssignment, ZabbixHostgroupAssignment, ZabbixHostInterface, ZabbixHostInventory, ZabbixMacroAssignment, ZabbixServerAssignment, ZabbixTagAssignment, ZabbixTemplateAssignment, ZabbixTemplateRule
 from nbxsync.settings import get_plugin_settings
 from nbxsync.tables import ZabbixHostgroupAssignmentObjectViewTable, ZabbixMacroAssignmentObjectViewTable, ZabbixServerAssignmentObjectViewTable, ZabbixTagAssignmentObjectViewTable, ZabbixTemplateAssignmentObjectViewTable
 
@@ -127,10 +127,92 @@ def get_assigned_zabbixobjects(instance, zabbixserver=None):
                 child.ip = primary_ip if primary_ip else None
                 hostinterfaces.append(child)
 
-    # Merge direct + inherited (direct takes priority)
+    # Merge direct + inherited (direct takes priority).
+    # TemplateRule matching runs after this so explicit assignments always win.
     merged_templates = _merge_direct_and_inherited(direct_templates, inherited['templates'], 'zabbixtemplate_id')
+    resolved_template_ids = {getattr(obj, 'zabbixtemplate_id') for obj in merged_templates}
     merged_hostgroups = _merge_direct_and_inherited(direct_hostgroups, inherited['hostgroups'], 'zabbixhostgroup_id')
+    resolved_hostgroup_ids = {getattr(obj, 'zabbixhostgroup_id') for obj in merged_hostgroups}
     merged_tags = _merge_direct_and_inherited(direct_tags, inherited['tags'], 'id')
+    resolved_tag_ids = {obj.zabbixtag_id for obj in merged_tags}
+
+    # ConfigGroup members are also expanded at resolve time so host sync does
+    # not depend on the async RQ propagate job having already cloned rows onto
+    # the device/site. Durable propagation remains for UI; this path is the
+    # sync-time source of truth.
+    if configurationgroup:
+        cg = configurationgroup.zabbixconfigurationgroup
+        cg_ct = ContentType.objects.get_for_model(cg)
+        cg_templates = ZabbixTemplateAssignment.objects.filter(
+            assigned_object_type=cg_ct,
+            assigned_object_id=cg.id,
+        ).select_related('zabbixtemplate')
+        if zabbixserver is not None:
+            cg_templates = cg_templates.filter(zabbixtemplate__zabbixserver=zabbixserver)
+        for ta in cg_templates:
+            if ta.zabbixtemplate_id in resolved_template_ids:
+                continue
+            wrapper = _copy.copy(ta)
+            wrapper.pk = None
+            wrapper._is_inherited_copy = True
+            wrapper.assigned_object_type = content_type
+            wrapper.assigned_object_id = instance.id
+            merged_templates.append(wrapper)
+            resolved_template_ids.add(ta.zabbixtemplate_id)
+
+    platform = getattr(instance, 'platform', None)
+    role = getattr(instance, 'role', None)
+    device_type = getattr(instance, 'device_type', None)
+    manufacturer_id = getattr(device_type, 'manufacturer_id', None) if device_type is not None else None
+    try:
+        object_tag_slugs = {tag.slug for tag in instance.tags.all()} if hasattr(instance, 'tags') else set()
+    except Exception:
+        object_tag_slugs = set()
+    rules_qs = ZabbixTemplateRule.objects.filter(enabled=True).select_related('zabbixtemplate', 'zabbixhostgroup', 'zabbixtag', 'manufacturer')
+    if zabbixserver:
+        rules_qs = rules_qs.filter(zabbixtemplate__zabbixserver=zabbixserver)
+    for rule in rules_qs.order_by('priority', 'name'):
+        if not rule.matches(
+            platform.name if platform else None,
+            role_name=role.name if role else None,
+            netbox_tags=object_tag_slugs,
+            manufacturer_id=manufacturer_id,
+        ):
+            continue
+        inherited_from = f'Regex: {rule.name}'
+        if rule.zabbixtemplate_id and rule.zabbixtemplate_id not in resolved_template_ids:
+            wrapper = ZabbixTemplateAssignment(
+                zabbixtemplate=rule.zabbixtemplate,
+                assigned_object_type=content_type,
+                assigned_object_id=instance.id,
+            )
+            wrapper.pk = None
+            wrapper._is_inherited_copy = True
+            wrapper._inherited_from = inherited_from
+            merged_templates.append(wrapper)
+            resolved_template_ids.add(rule.zabbixtemplate_id)
+        if rule.zabbixhostgroup_id and rule.zabbixhostgroup_id not in resolved_hostgroup_ids:
+            wrapper = ZabbixHostgroupAssignment(
+                zabbixhostgroup=rule.zabbixhostgroup,
+                assigned_object_type=content_type,
+                assigned_object_id=instance.id,
+            )
+            wrapper.pk = None
+            wrapper._is_inherited_copy = True
+            wrapper._inherited_from = inherited_from
+            merged_hostgroups.append(wrapper)
+            resolved_hostgroup_ids.add(rule.zabbixhostgroup_id)
+        if rule.zabbixtag_id and rule.zabbixtag_id not in resolved_tag_ids:
+            wrapper = ZabbixTagAssignment(
+                zabbixtag=rule.zabbixtag,
+                assigned_object_type=content_type,
+                assigned_object_id=instance.id,
+            )
+            wrapper.pk = None
+            wrapper._is_inherited_copy = True
+            wrapper._inherited_from = inherited_from
+            merged_tags.append(wrapper)
+            resolved_tag_ids.add(rule.zabbixtag_id)
 
     return {
         'templates': merged_templates,

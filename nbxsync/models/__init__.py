@@ -26,3 +26,4 @@ from .zabbixmaintenancetagassignment import *
 
 from .zabbixproblem import *
 from .zabbixevent import *
+from .zabbixtemplaterule import *

@@ -65,7 +65,7 @@ The plugin is configuration to do exactly what you want, by means of the plugin 
     'backgroundsync': {
         'objects': {
             'enabled': True,
-            'interval': 60, # 1 hour
+            'interval': 360, # 6 hours
         },
         'templates': {
             'enabled': True,
@@ -120,13 +120,11 @@ The plugin is configuration to do exactly what you want, by means of the plugin 
 
 The `inheritance_chain` setting defines which NetBox objects are traversed when resolving Zabbix assignments. Assignments (templates, tags, hostgroups, macros, proxy/server, interfaces, inventory, configuration groups) made on any object in the chain are inherited by the device or VM being synced, with direct assignments taking priority. Within inherited sources, **first path wins** (leaf-first order as listed).
 
-Host interfaces are the exception: they are defined on a Device/VM directly, on a `ZabbixConfigurationGroup`, or on a NetBox Tag (as a reusable interface template), because an interface needs a per-device endpoint. To apply interfaces to a whole Site, SiteGroup or Region, assign a Configuration Group at that level — its interfaces are then cloned onto every inheriting device with that device's primary IP.
-
 ### VirtualMachine and `device`-prefixed paths
 
 Paths that start with `device` (for example `['device']`, `['device', 'role']`, `['device', 'device_type', 'manufacturer']`) describe the associated physical device.
 
-Virtual Device Contexts keep these paths (a VDC is part of its parent device). VirtualMachines skip them: on NetBox 4.3+, `VirtualMachine.device` links a guest to its hosting device, and walking that path would leak host hardware assignments onto the guest. VMs still inherit via cluster, site, role, platform and tag paths that apply to the VM itself.
+Virtual Device Contexts keep these paths (a VDC is part of its parent device). VirtualMachines skip them: since NetBox 4.3, `VirtualMachine.device` links a guest to its hosting device, and walking that path would leak host hardware assignments onto the guest. VMs still inherit via cluster, site, role, platform and tag paths that apply to the VM itself.
 
 ### Site, SiteGroup, and Region Inheritance
 
@@ -138,18 +136,34 @@ Hierarchy paths are appended after device/role/platform/manufacturer/cluster pat
 | `['site']` | Site (direct) |
 | `['site', 'group']` | The site's SiteGroup (parents walked) |
 | `['site', 'region']` | The site's region (parents walked) |
-| `['cluster', '_site']` | The cluster's scoped site for VMs (`CachedScopeMixin._site`) |
+| `['cluster', '_site']` | The cluster's scoped site for VMs (`CachedScopeMixin._site`, NetBox 4.2+; plugin requires ≥4.2.6) |
 
 If you previously customized `inheritance_chain` with Site paths ahead of Role/Platform, review hosts that have both a Site-level and a Role/Platform-level assignment — effective winners may change. Prefer appending hierarchy paths.
 
 For example, assigning a `ZabbixServerAssignment` (proxy) to a `SiteGroup` means every device at every site in that SiteGroup inherits the proxy — no per-device assignment needed.
 
-### Tag-based assignments
+## Zabbix Template Rules
 
-NetBox Tags are assignment targets: hostgroup, template, tag, macro, server, inventory, configuration group and host interface assignments can be pointed at a Tag. Every Device, VDC or VirtualMachine carrying that tag then inherits the assignment. Direct assignments on the object still take priority. Tag-targeted rows are collected before the `inheritance_chain` paths (first seen wins).
+`ZabbixTemplateRule` assigns a Zabbix template (and optionally a hostgroup and tag) when a Device or VM matches the rule. The platform name is matched with case-insensitive `re.search`. Rules run after direct and inherited assignments, so explicit `ZabbixTemplateAssignment` objects always take priority.
 
-Tagging an object adds the membership on the next sync; removing the tag removes it. The inherited source is shown as `Tag: <name>`. Create Tag-targeted assignments via the API (`assigned_object_type` / `assigned_object_id`); the assignment forms expose Site hierarchy pickers but not a Tag picker.
+Optional hostgroup/tag assignment is useful for OS-family grouping (for example a Windows rule that assigns the agent template, a `Windows` hostgroup and an `os_family=Windows` tag). Hostgroups attached by a rule appear on the Zabbix Hostgroup page under Template rules.
 
+| Field | Description |
+|-------|-------------|
+| `name` | Human-readable name |
+| `pattern` | Regex matched against platform name (`re.search`, case-insensitive). Use `.*` when matching only on role, tags or manufacturer |
+| `role_pattern` | Optional regex against the Device/VM role name. Empty = any role |
+| `require_tags` | Optional comma-separated NetBox tag slugs (all required). Empty = any. Uses object tags, not DeviceType tags |
+| `manufacturer` | Optional Manufacturer. When set, `device_type.manufacturer` must match. Empty = any. Objects without a manufacturer (e.g. VMs) do not match. Uses `PROTECT` on delete |
+| `zabbixtemplate` | Template assigned when the rule matches |
+| `zabbixhostgroup` | Optional hostgroup assigned on match |
+| `zabbixtag` | Optional tag assigned on match |
+| `enabled` | Enable/disable without deleting the rule |
+| `priority` | Lower value = higher priority |
+
+All non-empty criteria are combined with AND. Patterns are validated on save; common nested-quantifier shapes such as `(a+)+` / `(a*){2,}` are rejected as a ReDoS guard (not a complete regex safety analyser). Platform names are capped at 64 characters (roles at 100). Optional hostgroups must belong to the same Zabbix server as the template.
+
+Example: `pattern=.*`, `role_pattern=^Server$`, `manufacturer=Dell`, template = Dell iDRAC by SNMP — without assigning that template on every Dell Manufacturer object.
 
 ## Configuration values
 
@@ -199,7 +213,7 @@ Either true or false (default: True)
 
 ##### interval
 
-Used to determine the interval to sync Devices and Virtual Machines to/from Zabbix, in minutes (default: 60)
+Used to determine the interval to sync Devices and Virtual Machines to/from Zabbix, in minutes (default: 360 / 6 hours)
 
 #### templates
 
