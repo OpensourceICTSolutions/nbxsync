@@ -24,7 +24,7 @@ class ZabbixHostgroupAssignmentTable(ZabbixInheritedAssignmentTable, NetBoxTable
         {% render_zabbix_hostgroup_assignment record as rendered_output %}
         {{ rendered_output|escape }}
         """,
-        verbose_name='Value',
+        verbose_name=_('Value'),
     )
 
     class Meta(NetBoxTable.Meta):
@@ -56,7 +56,7 @@ class ZabbixHostgroupAssignmentObjectViewTable(ZabbixInheritedAssignmentTable, N
         {% render_zabbix_hostgroup_assignment record as rendered_output %}
         {{ rendered_output|escape }}
         """,
-        verbose_name='Value',
+        verbose_name=_('Value'),
     )
 
     class Meta(NetBoxTable.Meta):

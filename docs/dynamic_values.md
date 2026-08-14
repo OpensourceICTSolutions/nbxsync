@@ -14,7 +14,9 @@ For example, if a Hostgroup is given the value:
 
 and is applied to a `Device`, it will render as the device's Site name.
 
-During host synchronisation, tag, macro and host-inventory templates are rendered against the Device, VDC or VirtualMachine being synced — even when the assignment is inherited. Hostgroup templates still render with `object` as the assignment target, so hostgroup Jinja that needs host fields should be assigned where those fields exist.
+During host synchronisation, tag, hostgroup, macro and host-inventory templates are rendered against the Device, VDC or VirtualMachine being synced — even when the assignment is inherited from a Role, Platform, Site or similar. That way templates such as `{{ object.name }}` or `{{ object.site.name }}` resolve to the host, not to the inheritance source.
+
+In the UI preview (and when syncing a hostgroup assignment against a hierarchy object itself), `object` is the assignment target. Hierarchy targets such as DeviceRole or Site are exposed in a device-shaped form (`object.role`, `object.site`, …) so templates like `Roles/{{ object.role.name }}` work without borrowing a descendant device. Targets that cannot fill a single device-shaped value leave the template unresolved.
 
 ## Context
 
@@ -56,7 +58,7 @@ Each field on a `ZabbixHostInventory` record is rendered individually. The conte
 |----------|------------------|--------------------------------------------------------------|
 | `object` | assigned_object  | The assignment target. During host sync this is the Device/VM/VDC being synced |
 
-Inventory can be assigned on hierarchy objects and inherited; during host sync `object` is the host, so fields such as `object.site.name` or `object.primary_ip` resolve correctly.
+Inventory can be assigned on hierarchy objects and inherited; during host sync `object` is always the host, so fields such as `object.site.name` or `object.primary_ip` resolve correctly.
 
 Note that each field has a maximum character length enforced at render time, values that exceed the limit are silently truncated. The `inventory_mode` field controls how Zabbix treats the inventory:
 - `Manual` (the default) means Zabbix only updates inventory via the API, which is how nbxSync writes it. 
