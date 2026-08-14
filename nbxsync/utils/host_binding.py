@@ -3,20 +3,39 @@ import logging
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 
-from nbxsync.models import ZabbixHostBinding
+from nbxsync.models import ZabbixHostBinding, ZabbixServerAssignment
 from nbxsync.settings import get_plugin_settings
 
 logger = logging.getLogger(__name__)
 
 __all__ = (
+    'ManagedHost',
     'get_host_binding',
     'set_host_binding',
     'delete_host_binding',
     'delete_host_binding_by_id',
     'iter_host_bindings',
+    'get_managed_host_id',
+    'iter_managed_hosts',
+    'iter_managed_servers',
     'backfill_or_resolve_conflict',
     'HostBindingDeleteProxy',
 )
+
+
+class ManagedHost:
+    """Assignment-like identity for a managed (object, zabbixserver) pair.
+
+    Readers that previously used ``ZabbixServerAssignment.hostid`` should take
+    ``hostid`` from here: after the first sync that field is cleared and the
+    durable id lives on ``ZabbixHostBinding``.
+    """
+
+    def __init__(self, zabbixserver, hostid, assignment=None):
+        self.zabbixserver = zabbixserver
+        self.zabbixserver_id = getattr(zabbixserver, 'pk', None)
+        self.hostid = hostid
+        self.assignment = assignment
 
 
 def get_host_binding(instance, zabbixserver):
@@ -71,6 +90,94 @@ def iter_host_bindings(instance):
         assigned_object_type=ct,
         assigned_object_id=instance.pk,
     ).select_related('zabbixserver')
+
+
+def get_managed_host_id(instance, zabbixserver):
+    """Return the Zabbix hostid for ``instance`` on ``zabbixserver``.
+
+    Prefer the durable ``ZabbixHostBinding``. Fall back to a *direct*
+    ``ZabbixServerAssignment.hostid`` so leftover pre-binding rows still
+    resolve. Inherited Site/Role assignment rows are never used as identity:
+    those hostids would belong to the parent object, not this host.
+    """
+    if instance is None or zabbixserver is None or getattr(instance, 'pk', None) is None:
+        return None
+
+    binding = get_host_binding(instance, zabbixserver)
+    if binding and binding.hostid:
+        return binding.hostid
+
+    ct = ContentType.objects.get_for_model(instance)
+    assignment = (
+        ZabbixServerAssignment.objects.filter(
+            assigned_object_type=ct,
+            assigned_object_id=instance.pk,
+            zabbixserver=zabbixserver,
+        )
+        .only('hostid')
+        .first()
+    )
+    if assignment and assignment.hostid:
+        return assignment.hostid
+    return None
+
+
+def iter_managed_hosts(instance, *, require_hostid=False):
+    """Yield ``ManagedHost`` for every Zabbix server this instance is managed on.
+
+    Union of durable bindings and resolved server assignments (including
+    inherited Site/Role rows). Servers or assignments with ``sync_enabled=False``
+    are skipped. When ``require_hostid`` is set, inherited assignments without a
+    binding are omitted — they have no hostid to query.
+    """
+    if instance is None or getattr(instance, 'pk', None) is None:
+        return
+
+    seen = set()
+
+    for binding in iter_host_bindings(instance):
+        server = binding.zabbixserver
+        if not server.sync_enabled:
+            continue
+        seen.add(server.pk)
+        if require_hostid and not binding.hostid:
+            continue
+        yield ManagedHost(server, binding.hostid)
+
+    ct = ContentType.objects.get_for_model(instance)
+    direct_assignments = ZabbixServerAssignment.objects.filter(
+        assigned_object_type=ct,
+        assigned_object_id=instance.pk,
+        sync_enabled=True,
+        zabbixserver__sync_enabled=True,
+    ).select_related('zabbixserver')
+    for assignment in direct_assignments:
+        if assignment.zabbixserver_id in seen:
+            continue
+        seen.add(assignment.zabbixserver_id)
+        hostid = assignment.hostid
+        if require_hostid and not hostid:
+            continue
+        yield ManagedHost(assignment.zabbixserver, hostid, assignment)
+
+    if require_hostid:
+        return
+
+    from nbxsync.utils.inheritance import get_assigned_zabbixobjects
+
+    for assignment in get_assigned_zabbixobjects(instance).get('server_assignments', []) or []:
+        if assignment.zabbixserver_id in seen:
+            continue
+        if not assignment.sync_enabled or not assignment.zabbixserver.sync_enabled:
+            continue
+        seen.add(assignment.zabbixserver_id)
+        yield ManagedHost(assignment.zabbixserver, get_managed_host_id(instance, assignment.zabbixserver), assignment)
+
+
+def iter_managed_servers(instance):
+    """Yield distinct enabled ``ZabbixServer`` objects this instance is managed on."""
+    for managed in iter_managed_hosts(instance, require_hostid=False):
+        yield managed.zabbixserver
 
 
 def _host_tags_to_dict(host):

@@ -433,3 +433,112 @@ class BindingJobTestCase(PluginSettingMixin, TestCase):
         mock_safe_delete.assert_not_called()
         self.assertIn('allow_inherited_deletion', ' '.join(logs.output))
         self.assertTrue(ZabbixHostBinding.objects.filter(pk=binding.pk).exists())
+
+
+class ManagedHostIdentityTestCase(TestCase):
+    """get_managed_host_id / iter_managed_hosts after assignment.hostid is cleared."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.server = ZabbixServer.objects.create(name='Identity Zabbix', url='http://zabbix.local', token='t')
+        cls.disabled_server = ZabbixServer.objects.create(name='Disabled Zabbix', url='http://zabbix-off.local', token='t', sync_enabled=False)
+        cls.device = create_test_device(name='identity-test')
+        cls.device_ct = ContentType.objects.get_for_model(cls.device)
+        cls.assignment = ZabbixServerAssignment.objects.create(
+            zabbixserver=cls.server,
+            assigned_object_type=cls.device_ct,
+            assigned_object_id=cls.device.pk,
+        )
+
+    def test_get_managed_host_id_prefers_binding_over_cleared_assignment(self):
+        from nbxsync.utils.host_binding import get_managed_host_id
+
+        self.assignment.hostid = None
+        self.assignment.save()
+        ZabbixHostBinding.objects.create(
+            zabbixserver=self.server,
+            assigned_object_type=self.device_ct,
+            assigned_object_id=self.device.pk,
+            hostid=4242,
+            hostname='identity-test',
+        )
+
+        self.assertEqual(get_managed_host_id(self.device, self.server), 4242)
+
+    def test_get_managed_host_id_falls_back_to_direct_assignment(self):
+        from nbxsync.utils.host_binding import get_managed_host_id
+
+        self.assignment.hostid = 777
+        self.assignment.save()
+
+        self.assertEqual(get_managed_host_id(self.device, self.server), 777)
+
+    def test_get_managed_host_id_ignores_inherited_assignment_hostid(self):
+        from dcim.models import Site
+
+        from nbxsync.utils.host_binding import get_managed_host_id
+
+        site = self.device.site
+        site_ct = ContentType.objects.get_for_model(Site)
+        ZabbixServerAssignment.objects.create(
+            zabbixserver=self.server,
+            assigned_object_type=site_ct,
+            assigned_object_id=site.pk,
+            hostid=9999,
+        )
+        self.assignment.delete()
+
+        self.assertIsNone(get_managed_host_id(self.device, self.server))
+
+    def test_iter_managed_hosts_finds_inherited_binding(self):
+        from dcim.models import Site
+
+        from nbxsync.utils.host_binding import iter_managed_hosts
+
+        site = self.device.site
+        site_ct = ContentType.objects.get_for_model(Site)
+        self.assignment.delete()
+        ZabbixServerAssignment.objects.create(
+            zabbixserver=self.server,
+            assigned_object_type=site_ct,
+            assigned_object_id=site.pk,
+        )
+        ZabbixHostBinding.objects.create(
+            zabbixserver=self.server,
+            assigned_object_type=self.device_ct,
+            assigned_object_id=self.device.pk,
+            hostid=8800,
+            hostname='identity-test',
+        )
+
+        managed = list(iter_managed_hosts(self.device, require_hostid=True))
+        self.assertEqual(len(managed), 1)
+        self.assertEqual(managed[0].hostid, 8800)
+        self.assertEqual(managed[0].zabbixserver_id, self.server.pk)
+
+    def test_iter_managed_hosts_skips_disabled_server(self):
+        from nbxsync.utils.host_binding import iter_managed_hosts
+
+        ZabbixHostBinding.objects.create(
+            zabbixserver=self.disabled_server,
+            assigned_object_type=self.device_ct,
+            assigned_object_id=self.device.pk,
+            hostid=1,
+        )
+        self.assertEqual(list(iter_managed_hosts(self.device, require_hostid=True)), [])
+
+    def test_get_host_assignments_uses_binding_after_hostid_cleared(self):
+        from nbxsync.utils.trigger_dependency_sync import get_host_assignments
+
+        self.assignment.hostid = None
+        self.assignment.save()
+        ZabbixHostBinding.objects.create(
+            zabbixserver=self.server,
+            assigned_object_type=self.device_ct,
+            assigned_object_id=self.device.pk,
+            hostid=5150,
+            hostname='identity-test',
+        )
+
+        result = get_host_assignments(self.device)
+        self.assertEqual(result[self.server.pk].hostid, 5150)

@@ -642,7 +642,23 @@ class HostSync(ZabbixSyncBase):
                 pass
             raise RuntimeError(f'Failed to delete host {hostid} from Zabbix: {exc}') from exc
 
+    def _ensure_hostid(self):
+        """Populate ``self.obj.hostid`` from a durable binding when the assignment row was cleared.
+
+        ``check_default_hostinterface`` and ``verify_hostinterfaces`` are invoked
+        as standalone operations (not via ``sync()``), so they never run
+        ``_resolve_binding()``. After ``_clear_direct_hostid`` the assignment
+        hostid is None even though the binding still holds the real id.
+        """
+        if self.obj.hostid:
+            return
+        sync_target = self._get_sync_target()
+        binding = get_host_binding(sync_target, self.obj.zabbixserver)
+        if binding and binding.hostid:
+            self.obj.hostid = binding.hostid
+
     def check_default_hostinterface(self):  # noqa: C901
+        self._ensure_hostid()
         if not self.obj.hostid:
             return
 
@@ -731,6 +747,7 @@ class HostSync(ZabbixSyncBase):
 
     def verify_hostinterfaces(self):
         # If there is no hostid, no need to continue - so fail early
+        self._ensure_hostid()
         if not self.obj.hostid:
             return {}
 

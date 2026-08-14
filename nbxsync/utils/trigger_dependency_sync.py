@@ -5,9 +5,9 @@ from django.contrib.contenttypes.models import ContentType
 from dcim.models import Interface
 from dcim.utils import decompile_path_node
 
-from nbxsync.models import ZabbixServerAssignment
 from nbxsync.settings import get_plugin_settings
 from nbxsync.utils import ZabbixConnection
+from nbxsync.utils.host_binding import iter_managed_hosts
 
 logger = logging.getLogger(__name__)
 
@@ -54,15 +54,14 @@ def get_managed_trigger_descriptions(trigger_config=None):
 
 
 def get_server_assignments(device):
-    object_ct = ContentType.objects.get_for_model(device)
-    return list(
-        ZabbixServerAssignment.objects.filter(
-            assigned_object_type=object_ct,
-            assigned_object_id=device.pk,
-            sync_enabled=True,
-            zabbixserver__sync_enabled=True,
-        ).select_related('zabbixserver')
-    )
+    """Return managed-host identities for every enabled Zabbix server on this device.
+
+    Uses durable bindings and inherited server assignments. A direct-only
+    ``assigned_object_id=device.pk`` query misses zero-touch hosts whose
+    assignment lives on Site/Role, and ``assignment.hostid`` is cleared after
+    the first binding sync.
+    """
+    return list(iter_managed_hosts(device, require_hostid=False))
 
 
 def get_host_assignments(device):

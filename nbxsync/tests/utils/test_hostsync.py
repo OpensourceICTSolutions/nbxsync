@@ -525,6 +525,31 @@ class HostSyncTestCase(TestCase):
         self.assertEqual(result, {})
         self.assertFalse(called['hostinterface_get'])
 
+    def test_verify_hostinterfaces_uses_binding_when_assignment_hostid_cleared(self):
+        from nbxsync.models import ZabbixHostBinding
+
+        ZabbixHostBinding.objects.create(
+            zabbixserver=self.zabbixserver,
+            assigned_object_type=self.device_ct,
+            assigned_object_id=self.device.id,
+            hostid=12345,
+        )
+        self.obj.hostid = None
+        called = {'hostinterface_get': False}
+
+        def fake_get(*args, **kwargs):
+            called['hostinterface_get'] = True
+            self.assertEqual(str(kwargs.get('hostids')), '12345')
+            return []
+
+        self.sync.api.hostinterface.get = fake_get
+        self.sync.context['all_objects']['_instance'] = self.device
+
+        self.sync.verify_hostinterfaces()
+
+        self.assertTrue(called['hostinterface_get'])
+        self.assertEqual(int(self.obj.hostid), 12345)
+
     def test_verify_hostinterfaces_deletes_unexpected_interfaces(self):
         self.obj.hostid = '12345'
 

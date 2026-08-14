@@ -417,21 +417,16 @@ class TriggerDependencySyncTestCase(TestCase):
         self.assertEqual(get_dependency_level(unsupported), (None, None))
         self.assertEqual(get_managed_trigger_descriptions(), {level.trigger_description for level in self.trigger_config.levels})
 
-    @patch('nbxsync.utils.trigger_dependency_sync.ZabbixServerAssignment.objects')
-    @patch('nbxsync.utils.trigger_dependency_sync.ContentType.objects.get_for_model')
-    def test_get_server_assignments_filters_and_selects_server(self, mock_get_content_type, mock_assignment_objects):
+    @patch('nbxsync.utils.trigger_dependency_sync.iter_managed_hosts')
+    def test_get_server_assignments_uses_managed_hosts(self, mock_iter_managed_hosts):
         device = SimpleNamespace(pk=42)
-        content_type = SimpleNamespace(pk=7)
-        assignment = SimpleNamespace(hostid='1001')
-        mock_get_content_type.return_value = content_type
-        queryset = mock_assignment_objects.filter.return_value
-        queryset.select_related.return_value = [assignment]
+        assignment = SimpleNamespace(hostid='1001', zabbixserver_id=7)
+        mock_iter_managed_hosts.return_value = [assignment]
 
         result = get_server_assignments(device)
 
         self.assertEqual(result, [assignment])
-        mock_assignment_objects.filter.assert_called_once_with(assigned_object_type=content_type, assigned_object_id=42, sync_enabled=True, zabbixserver__sync_enabled=True)
-        queryset.select_related.assert_called_once_with('zabbixserver')
+        mock_iter_managed_hosts.assert_called_once_with(device, require_hostid=False)
 
     @patch('nbxsync.utils.trigger_dependency_sync.get_server_assignments')
     def test_get_host_assignments_skips_missing_hostids_and_keys_by_server(self, mock_get_server_assignments):

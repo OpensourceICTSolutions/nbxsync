@@ -6,7 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 from nbxsync.choices.zabbixstatus import ZabbixHostStatus
 from nbxsync.settings import get_plugin_settings
 from nbxsync.utils import get_assigned_zabbixobjects
-from nbxsync.utils.host_binding import HostBindingDeleteProxy, iter_host_bindings
+from nbxsync.utils.host_binding import HostBindingDeleteProxy, get_managed_host_id, iter_host_bindings
 from nbxsync.utils.sync import HostGroupSync, HostInterfaceSync, HostSync, ProxyGroupSync, ProxySync, run_zabbix_operation
 from nbxsync.utils.sync.safe_delete import safe_delete
 from nbxsync.utils.sync.safe_sync import safe_sync
@@ -265,13 +265,14 @@ class SyncHostJob:
             # - interface_type (defaults should be synced first)
             # - type (group snmp, agent, jmx, etc)
             # - id (None-safe for transient ConfigGroup / hierarchy copies)
+            hostid = get_managed_host_id(self.instance, assignment.zabbixserver) or assignment.hostid
             hostinterfaces_sorted = sorted(
                 all_objects['hostinterfaces'],
                 key=lambda hostinterface: (-int(hostinterface.interface_type == 1), hostinterface.type, hostinterface.id or 0),
             )
             for hostinterface in hostinterfaces_sorted:
                 try:
-                    safe_sync(HostInterfaceSync, hostinterface, extra_args={'hostid': assignment.hostid, '_instance': self.instance})
+                    safe_sync(HostInterfaceSync, hostinterface, extra_args={'hostid': hostid, '_instance': self.instance})
                 except RuntimeError as e:
                     # Continue syncing remaining interfaces even if one fails.
                     # A common case: device inherits both Agent and SNMP

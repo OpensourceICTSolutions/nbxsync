@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from django.contrib.contenttypes.models import ContentType
@@ -133,6 +134,101 @@ class SyncHostJobTestCase(TestCase):
         mock_sync_dependencies.assert_called_once_with(self.device)
         log_text = '\n'.join(log_ctx.output)
         self.assertIn('Zabbix API timeout', log_text)
+
+    @patch('nbxsync.jobs.synchost.sync_device_trigger_dependencies')
+    def test_run_skips_trigger_dependency_sync_when_deleted(self, mock_sync_dependencies):
+        get_plugin_settings().trigger_dependencies.enabled = True
+        self.device.status = 'decommissioning'
+        self.device.save()
+        get_plugin_settings().statusmapping.device['decommissioning'] = ZabbixHostStatus.DELETED
+
+        job = SyncHostJob(instance=self.device)
+        job.run()
+
+        mock_sync_dependencies.assert_not_called()
+
+    @patch('nbxsync.jobs.synchost.safe_sync')
+    @patch.object(SyncHostJob, 'verify_hostinterfaces')
+    @patch.object(SyncHostJob, 'check_default_hostinterface')
+    @patch('nbxsync.jobs.synchost.sync_device_trigger_dependencies')
+    def test_run_skips_trigger_dependency_sync_for_vm(self, mock_sync_dependencies, _mock_check, _mock_verify, _mock_safe_sync):
+        from virtualization.models import VirtualMachine
+
+        from utilities.testing import create_test_virtualmachine
+
+        vm = create_test_virtualmachine(name='SyncHostVMOnly')
+        vm_ct = ContentType.objects.get_for_model(VirtualMachine)
+        ZabbixServerAssignment.objects.create(
+            zabbixserver=self.zabbixserver,
+            assigned_object_type=vm_ct,
+            assigned_object_id=vm.id,
+            hostid='999',
+            zabbixproxy=self.proxy,
+        )
+        get_plugin_settings().trigger_dependencies.enabled = True
+
+        job = SyncHostJob(instance=vm)
+        job.run()
+
+        mock_sync_dependencies.assert_not_called()
+
+    @patch.object(SyncHostJob, '_is_excluded', return_value=True)
+    @patch('nbxsync.jobs.synchost.sync_device_trigger_dependencies')
+    def test_run_skips_trigger_dependency_sync_when_excluded(self, mock_sync_dependencies, _mock_excluded):
+        get_plugin_settings().trigger_dependencies.enabled = True
+
+        job = SyncHostJob(instance=self.device)
+        job.run()
+
+        mock_sync_dependencies.assert_not_called()
+
+    @patch('nbxsync.jobs.synchost.get_plugin_settings')
+    @patch('nbxsync.jobs.synchost.sync_device_trigger_dependencies')
+    def test_run_skips_trigger_dependency_sync_when_config_missing(self, mock_sync_dependencies, mock_settings):
+        mock_settings.return_value = SimpleNamespace(
+            statusmapping=SimpleNamespace(device={'active': None}, virtualmachine={}),
+            exclude_tag='',
+            allow_inherited_deletion=False,
+        )
+
+        job = SyncHostJob(instance=self.device)
+        job.run()
+
+        mock_sync_dependencies.assert_not_called()
+
+    @patch('nbxsync.jobs.synchost.safe_sync')
+    @patch.object(SyncHostJob, 'verify_hostinterfaces')
+    def test_interface_sync_uses_binding_hostid_after_assignment_cleared(self, mock_verify_interfaces, mock_safe_sync):
+        from nbxsync.models import ZabbixHostBinding
+        from nbxsync.utils.sync import HostInterfaceSync
+
+        self.zabbixserverassignment.hostid = None
+        self.zabbixserverassignment.save()
+        ZabbixHostBinding.objects.create(
+            zabbixserver=self.zabbixserver,
+            assigned_object_type=self.device_ct,
+            assigned_object_id=self.device.pk,
+            hostid=4242,
+            hostname=self.device.name,
+        )
+
+        job = SyncHostJob(instance=self.device)
+        with patch('nbxsync.jobs.synchost.get_assigned_zabbixobjects') as mock_gao:
+            mock_gao.return_value = {
+                'hostgroups': [],
+                'hostinterfaces': [self.hostinterface],
+                'server_assignments': [self.zabbixserverassignment],
+                'templates': [],
+                'macros': [],
+                'tags': [],
+                'hostinventory': None,
+                'configurationgroup': None,
+            }
+            job.run()
+
+        interface_calls = [call for call in mock_safe_sync.call_args_list if call.args and call.args[0] is HostInterfaceSync]
+        self.assertTrue(interface_calls)
+        self.assertEqual(interface_calls[0].kwargs['extra_args']['hostid'], 4242)
 
     def test_run_sync_host_deleted(self):
         self.device.status = 'decommissioning'
