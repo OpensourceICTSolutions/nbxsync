@@ -69,6 +69,12 @@ class ZabbixHostInterface(SyncInfoModel, NetBoxModel):
     snmp_community = models.CharField(max_length=75, blank=True, verbose_name=_('SNMPv1/2 Community'))
     snmp_pushcommunity = models.BooleanField(default=True)
 
+    use_oob_ip = models.BooleanField(
+        default=False,
+        verbose_name=_('Use OOB IP'),
+        help_text=_('When enabled and no static IP is set, resolve the interface IP from the device oob_ip field. If the device has no oob_ip, sync skips this interface and keeps any existing Zabbix interface unless inherited deletion is enabled.'),
+    )
+
     # SNMPv3-specific fields
     snmpv3_context_name = models.CharField(max_length=50, blank=True, verbose_name=_('Context Name'))
     snmpv3_security_name = models.CharField(max_length=50, blank=True, verbose_name=_('Security Name'))
@@ -159,6 +165,15 @@ class ZabbixHostInterface(SyncInfoModel, NetBoxModel):
             if self.snmpv3_privacy_passphrase and len(self.snmpv3_privacy_passphrase) < 8:
                 errors['snmpv3_privacy_passphrase'] = _('Privacy passphrase must be at least 8 characters long.')
 
+        # Only devices carry an oob_ip field; a VM or Virtual Device Context can
+        # never resolve one, so the flag would silently suppress the interface.
+        if self.use_oob_ip and self.assigned_object is not None:
+            is_template_target_obj = isinstance(self.assigned_object, (ZabbixConfigurationGroup, Tag))
+            if not is_template_target_obj and not hasattr(self.assigned_object, 'oob_ip'):
+                errors['use_oob_ip'] = _('"Use OOB IP" is only supported for Devices, Configuration Groups and tag-level interface templates, because only Devices have an out-of-band IP.')
+            if self.useip != ZabbixInterfaceUseChoices.IP:
+                errors['useip'] = _('"Use OOB IP" requires "Connect via" to be set to IP; DNS mode would ignore the resolved OOB address.')
+
         # Template-like targets carry no fixed endpoint; the sync engine
         # resolves the interface IP/DNS from each concrete device at sync time.
         template_target_cts = {ContentType.objects.get_for_model(ZabbixConfigurationGroup), ContentType.objects.get_for_model(Tag)}
@@ -168,8 +183,8 @@ class ZabbixHostInterface(SyncInfoModel, NetBoxModel):
         if not is_template_target:
             # Validate based on connection method
             if self.useip == ZabbixInterfaceUseChoices.IP:
-                if not self.ip:
-                    errors['ip'] = _('An IP address is required when "Connect via" is set to IP.')
+                if not self.ip and not self.use_oob_ip:
+                    errors['ip'] = _('An IP address is required when "Connect via" is set to IP (unless "Use OOB IP" is enabled).')
 
             if self.useip == ZabbixInterfaceUseChoices.DNS:
                 if not self.dns:

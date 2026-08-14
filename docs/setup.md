@@ -67,6 +67,8 @@ When adding a host interface assignment, you must specify:
 
 At minimum, specify the Type, Port, and either IP Address or DNS name.
 
+For Devices with a NetBox out-of-band IP, you can enable **Use OOB IP** instead of a static address. Connect via must be IP. The same option on a Configuration Group resolves each member Device's `oob_ip` at sync time.
+
 ### Step 3c: Assign a Hostgroup
 
 !!! danger "Required"

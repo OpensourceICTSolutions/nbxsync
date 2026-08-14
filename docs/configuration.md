@@ -62,24 +62,24 @@ The plugin is configuration to do exactly what you want, by means of the plugin 
         ['site', 'region'],
         ['cluster', '_site'],
     ],
-    'backgroundsync': {
-        'objects': {
-            'enabled': True,
-            'interval': 360, # 6 hours
+        'backgroundsync': {
+            'objects': {
+                'enabled': True,
+                'interval': 360, # 6 hours
+            },
+            'templates': {
+                'enabled': True,
+                'interval': 1440, # 24 hours
+            },
+            'proxies': {
+                'enabled': True,
+                'interval': 1440, # 24 hours
+            },
+            'maintenance': {
+                'enabled': True,
+                'interval': 15, # 15 minutes
+            },
         },
-        'templates': {
-            'enabled': True,
-            'interval': 1440, # 24 hours
-        },
-        'proxies': {
-            'enabled': True,
-            'interval': 1440, # 24 hours
-        },
-        'maintenance': {
-            'enabled': True,
-            'interval': 15, # 15 minutes
-        },
-    },
     'trigger_dependencies': {
         'enabled': False,
         'levels': [
@@ -110,8 +110,8 @@ The plugin is configuration to do exactly what you want, by means of the plugin 
     'attach_objtag': True,
     'objtag_type': 'nb_type',
     'objtag_id': 'nb_id',
-    'custom_field_hostname':'',
-    'custom_field_display_name':'',
+    'custom_field_hostname': '',
+    'custom_field_display_name': '',
     'exclude_tag': '',
     'allow_inherited_deletion': False,
     'adopt_existing_hosts': False,
@@ -160,8 +160,8 @@ Optional hostgroup/tag assignment is useful for OS-family grouping (for example 
 | `require_tags` | Optional comma-separated NetBox tag slugs (all required). Empty = any. Uses object tags, not DeviceType tags |
 | `manufacturer` | Optional Manufacturer. When set, `device_type.manufacturer` must match. Empty = any. Objects without a manufacturer (e.g. VMs) do not match. Uses `PROTECT` on delete |
 | `zabbixtemplate` | Template assigned when the rule matches |
-| `zabbixhostgroup` | Optional hostgroup assigned on match |
-| `zabbixtag` | Optional tag assigned on match |
+| `zabbixhostgroup` | Optional hostgroup assigned on match (`PROTECT` on delete) |
+| `zabbixtag` | Optional tag assigned on match (`PROTECT` on delete) |
 | `enabled` | Enable/disable without deleting the rule |
 | `priority` | Lower value = higher priority |
 
@@ -217,9 +217,9 @@ Either true or false (default: True). When enabled, a periodic job enumerates al
 
 ##### interval
 
-Used to determine the interval to sync Devices and Virtual Machines to/from Zabbix, in minutes (default: 360 / 6 hours)
+Used to determine the interval to sync Devices and Virtual Machines to/from Zabbix, in minutes (default: 360 / 6 hours).
 
-Size the interval so a full reconciliation finishes well before the next one starts, otherwise runs queue up behind each other. Throughput depends on your Zabbix server, the number of interfaces and templates per host, and network latency, so measure it on your own installation: the job logs `duration_seconds` and the number of hosts enqueued on every run.
+Size the interval so a full reconciliation finishes well before the next one starts, otherwise runs queue up behind each other. Throughput depends on your Zabbix server, the number of interfaces and templates per host, and network latency — measure it on your installation (`duration_seconds` and hosts enqueued are logged each run) and raise the interval if runs overlap.
 
 #### templates
 
@@ -356,6 +356,14 @@ deletion, but allow_inherited_deletion is disabled. Enable it to let nbxsync rem
 Review those log lines after restructuring the site hierarchy, then set the setting to `True` to let nbxsync reconcile. Explicit deletions are unaffected: a `statusmapping` entry that maps to `deleted`, an `exclude_tag` match, and deleting the Device/VM in NetBox always remove the Zabbix host — including when `sync_enabled` is False (inventory deletion is retirement, not a background sync).
 
 Defaults to `False`.
+
+### use_oob_ip
+
+`use_oob_ip` is a field on `ZabbixHostInterface`, not a `PLUGINS_CONFIG` key. When enabled, the interface IP is taken from the Device's NetBox `oob_ip` at sync time. A static `ip` on the interface still wins if set. There is no primary-IP fallback.
+
+Allowed on Devices, Configuration Groups, and Tag-level interface templates; rejected on Virtual Machines and Virtual Device Contexts. Connect via must be IP. On a Configuration Group or Tag template, sync-time expansion leaves `ip` empty so each member Device resolves its own `oob_ip`.
+
+If a Device has no `oob_ip`, the interface is skipped for that sync. Existing Zabbix interfaces are retained while `allow_inherited_deletion` is disabled, and their type still counts for template requirements. See [Out-of-band interfaces](models.md#out-of-band-interfaces).
 
 ### adopt_existing_hosts
 

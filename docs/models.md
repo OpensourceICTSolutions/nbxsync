@@ -60,7 +60,7 @@ Regex-driven automatic assignment of a Zabbix template (and optionally a hostgro
 | `role_pattern`     | CharField    | Optional regex against Device/VM role name; empty = any |
 | `require_tags`     | CharField    | Optional comma-separated NetBox tag slugs (all required); empty = any |
 | `manufacturer`     | ForeignKey   | Optional `dcim.Manufacturer`; empty = any; `PROTECT` on delete |
-| `zabbixtemplate`   | ForeignKey   | Template assigned on match |
+| `zabbixtemplate`   | ForeignKey   | Template assigned on match (`PROTECT`) |
 | `zabbixhostgroup`  | ForeignKey   | Optional hostgroup assigned on match (`PROTECT`) |
 | `zabbixtag`        | ForeignKey   | Optional tag assigned on match (`PROTECT`) |
 | `enabled`          | BooleanField | Soft enable/disable |
@@ -99,14 +99,25 @@ Describes how NetBox IP/DNS maps to Zabbix interfaces.
 
 Includes rich SNMP and TLS configuration fields.
 
-| Field            | Description                                |
-|------------------|--------------------------------------------|
-| `ip` / `dns`     | IP or DNS to use                           |
-| `type`           | Zabbix type (agent, SNMP, IPMI...)         |
-| `port`           | Connection port                            |
-| `tls_*`          | TLS credentials if applicable              |
-| `snmp_*`         | SNMPv3 credentials                         |
-| `assigned_object`| Device, VDC, VirtualMachine, ZabbixConfigurationGroup, or Tag |
+| Field            | Description                                                          |
+|------------------|----------------------------------------------------------------------|
+| `ip` / `dns`     | IP or DNS to use                                                     |
+| `type`           | Zabbix type (agent, SNMP, IPMI...)                                   |
+| `port`           | Connection port                                                      |
+| `use_oob_ip`     | Resolve the IP from the Device's NetBox `oob_ip` when no static `ip` is set |
+| `tls_*`          | TLS credentials if applicable                                        |
+| `snmp_*`         | SNMPv3 credentials                                                   |
+| `assigned_object`| Device, VDC, VirtualMachine, ZabbixConfigurationGroup, or Tag        |
+
+#### Out-of-band interfaces
+
+`use_oob_ip` resolves the interface IP from the Device's NetBox `oob_ip`. A static `ip` wins if both are set. There is no primary-IP fallback.
+
+Only Devices have an out-of-band IP, so the field is allowed on Devices, Configuration Groups, and Tag-level interface templates, and rejected on Virtual Machines and Virtual Device Contexts. Connect via must be IP.
+
+On a Configuration Group, sync-time expansion clones the interface without substituting primary IP; each Device's `oob_ip` is resolved at host sync.
+
+When a Device has no `oob_ip`, the interface is skipped for that sync. With `allow_inherited_deletion` disabled (the default), any existing Zabbix interface is retained and its type still counts for template requirements. With the setting enabled, the remote interface may be removed. Either outcome is logged.
 
 ## Sync & Assignment Models
 
@@ -214,7 +225,7 @@ For Zabbix Tags, only statically defined objects are supported - as there is no 
 
 Models a group of configuration settings (such as `ZabbixServer`, `ZabbixHostInterface` et cetera) that are *replicated* to all assigned objects.
 
-Please note that on the `ZabbixHostInterface`, no IP address needs to be entered: upon replicating this to the assigned object, the *primary IP Address* will be used on the `ZabbixHostInterface`
+Please note that on the `ZabbixHostInterface`, no IP address needs to be entered for a normal interface: upon replicating this to the assigned object, the *primary IP Address* will be used. Interfaces with `use_oob_ip` leave `ip` empty and resolve from each Device's `oob_ip` at host sync instead.
 
 ### `ZabbixConfigurationGroupAssignment`
 

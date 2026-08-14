@@ -32,6 +32,7 @@ class ZabbixHostInterfaceFilterSet(NetBoxModelFilterSet):
             'port',
             'snmp_community',
             'ip',
+            'use_oob_ip',
             'assigned_object_type',
             'assigned_object_id',
         )

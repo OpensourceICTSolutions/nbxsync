@@ -131,7 +131,9 @@ for parent in hostinterface_parents:
         )
 ```
 
-Because the group-level `ZabbixHostInterface` has no IP (it can't — it's on the group, not a device), the IP is pulled from the device's `primary_ip` at propagation time. The group-level record stores the interface type, port, SNMP config etc., and the IP is injected per-device.
+Because the group-level `ZabbixHostInterface` has no IP (it can't — it's on the group, not a device), a normal interface pulls the device's `primary_ip` at propagation time. The group-level record stores the interface type, port, SNMP config etc., and the IP is injected per-device.
+
+Interfaces with `use_oob_ip` are different: sync-time expansion (including Site/SiteGroup/Region membership) leaves `ip` empty and resolves each Device's NetBox `oob_ip` during host sync. There is no primary-IP fallback for OOB interfaces.
 
 ---
 

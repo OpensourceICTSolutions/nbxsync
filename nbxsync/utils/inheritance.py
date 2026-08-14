@@ -4,6 +4,7 @@ from collections import OrderedDict
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q, QuerySet
 from django.db.models.manager import BaseManager
+from virtualization.models import VirtualMachine
 
 from dcim.models import DeviceRole, Region, SiteGroup
 from extras.models import Tag
@@ -36,7 +37,7 @@ def get_zabbixassignments_for_request(instance, request):
         'zabbixserver_assignments_table': table_or_none(assignments.get('server_assignments'), ZabbixServerAssignmentObjectViewTable),
         'zabbix_template_table': table_or_none(assignments['templates'], ZabbixTemplateAssignmentObjectViewTable),
         'zabbix_macro_table': table_or_none(assignments['macros'], ZabbixMacroAssignmentObjectViewTable, attach_instance=True),
-        'zabbix_tag_table': table_or_none(assignments['tags'], ZabbixTagAssignmentObjectViewTable),
+        'zabbix_tag_table': table_or_none(assignments['tags'], ZabbixTagAssignmentObjectViewTable, attach_instance=True),
         'zabbix_hostgroup_table': table_or_none(assignments['hostgroups'], ZabbixHostgroupAssignmentObjectViewTable),
         'hostinventory_assignment': assignments.get('hostinventory'),
         'configurationgroup_assignment': assignments.get('configurationgroup'),
@@ -51,6 +52,22 @@ def _merge_direct_and_inherited(direct_list, inherited_map, key):
     direct_ids = {getattr(obj, key) for obj in direct_list}
     inherited_filtered = [obj for obj in inherited_map.values() if getattr(obj, key) not in direct_ids]
     return list(direct_list) + inherited_filtered
+
+
+def _hostinterface_identity(interface):
+    """Identity of a host interface as Zabbix sees it.
+
+    Zabbix allows multiple interfaces of one type per host, distinguished by
+    their endpoint and role, so deduplication must compare all of it.
+    """
+    return (
+        interface.type,
+        interface.interface_type,
+        interface.useip,
+        interface.port,
+        interface.dns,
+        bool(interface.use_oob_ip),
+    )
 
 
 def get_assigned_zabbixobjects(instance, zabbixserver=None):
@@ -89,7 +106,9 @@ def get_assigned_zabbixobjects(instance, zabbixserver=None):
     direct_server_assignments = list(direct_server_assignments)
 
     hostinventory = ZabbixHostInventory.objects.filter(assigned_object_type=content_type, assigned_object_id=instance.id).first()
-    direct_configurationgroup = ZabbixConfigurationGroupAssignment.objects.filter(assigned_object_type=content_type, assigned_object_id=instance.id).first()
+    # Multiple direct groups are allowed (unique is per group+object). Prefer the
+    # newest membership when picking the primary group for interface expansion.
+    direct_configurationgroup = ZabbixConfigurationGroupAssignment.objects.filter(assigned_object_type=content_type, assigned_object_id=instance.id).order_by('-created', '-pk').first()
 
     inherited = resolve_inherited_zabbix_assignments(instance, zabbixserver)
 
@@ -98,12 +117,27 @@ def get_assigned_zabbixobjects(instance, zabbixserver=None):
 
     configurationgroup = direct_configurationgroup or next(iter(inherited.get('configurationgroups', {}).values()), None)
 
-    # Merge direct + inherited (direct takes priority)
-    # ZabbixHostInterfaces assigned to SiteGroup/Role/Site are resolved
-    # naturally by the inheritance chain. If the interface lacks an IP,
-    # HostInterfaceSync.get_create_params() falls back to the device's
-    # primary IP automatically.
-    hostinterfaces = _merge_direct_and_inherited(direct_hostinterfaces, inherited.get('hostinterfaces', {}), 'id')
+    # Merge direct + inherited (direct takes priority).
+    # Hierarchy HostInterfaces (Site/Role/…) must be detached copies: writing
+    # interfaceid back onto the Site row would make every device share one
+    # remote interface. Same pattern as ConfigGroup expansion below.
+    hostinterfaces = []
+    for hi in _merge_direct_and_inherited(direct_hostinterfaces, inherited.get('hostinterfaces', {}), 'id'):
+        is_direct = hi.assigned_object_type_id == content_type.id and hi.assigned_object_id == instance.id
+        if is_direct:
+            hostinterfaces.append(hi)
+            continue
+        child = _copy.copy(hi)
+        child.pk = None
+        child.interfaceid = None
+        child._is_inherited_copy = True
+        child.assigned_object_type = content_type
+        child.assigned_object_id = instance.id
+        if not child.use_oob_ip and not child.ip_id:
+            primary_ip = getattr(instance, 'primary_ip4', None) or getattr(instance, 'primary_ip6', None)
+            child.ip = primary_ip if primary_ip else None
+        hostinterfaces.append(child)
+
     # Expand ConfigGroup-defined interfaces for this specific instance.
     # When a ConfigGroup is assigned at Site/Platform level, the signal-based
     # propagation cannot clone per-device interfaces (Site has no primary_ip).
@@ -114,21 +148,44 @@ def get_assigned_zabbixobjects(instance, zabbixserver=None):
             assigned_object_type=cg_ct,
             assigned_object_id=configurationgroup.zabbixconfigurationgroup_id,
         )
-        existing_types = {hi.type for hi in hostinterfaces}
+        if zabbixserver is not None:
+            cg_interfaces = cg_interfaces.filter(zabbixserver=zabbixserver)
+        # A host can legitimately carry several interfaces of the same Zabbix
+        # type (two SNMP interfaces on different ports, an in-band and an OOB
+        # agent interface, ...), so ConfigGroup interfaces are suppressed only
+        # when an interface with the same identity is already present.
+        existing_identities = {_hostinterface_identity(hi) for hi in hostinterfaces}
         primary_ip = getattr(instance, 'primary_ip4', None) or getattr(instance, 'primary_ip6', None)
         for cg_iface in cg_interfaces:
-            if cg_iface.type not in existing_types:
-                # Clone the interface with the device's primary IP
-                child = _copy.copy(cg_iface)
-                child.pk = None
-                child._is_inherited_copy = True
-                child.assigned_object_type = content_type
-                child.assigned_object_id = instance.id
+            if _hostinterface_identity(cg_iface) in existing_identities:
+                continue
+            child = _copy.copy(cg_iface)
+            child.pk = None
+            child.interfaceid = None
+            child._is_inherited_copy = True
+            child.assigned_object_type = content_type
+            child.assigned_object_id = instance.id
+            if not cg_iface.use_oob_ip:
+                # Clone the interface with the device's primary IP. OOB
+                # interfaces keep resolving from the device's oob_ip instead.
                 child.ip = primary_ip if primary_ip else None
-                hostinterfaces.append(child)
+            hostinterfaces.append(child)
+            existing_identities.add(_hostinterface_identity(child))
 
-    # Merge direct + inherited (direct takes priority).
-    # TemplateRule matching runs after this so explicit assignments always win.
+    # Zabbix allows only one main interface per type. Direct assignments are
+    # merged first, so the first DEFAULT of each type wins; later defaults
+    # (typically inherited) are demoted for this sync only.
+    seen_default_types = set()
+    for hi in hostinterfaces:
+        if int(hi.interface_type) != 1:
+            continue
+        if hi.type in seen_default_types:
+            hi.interface_type = 0
+            continue
+        seen_default_types.add(hi.type)
+
+    # Resolve regex-based template rules (matched against platform name)
+    # These are applied after direct + inherited, so explicit assignments always win
     merged_templates = _merge_direct_and_inherited(direct_templates, inherited['templates'], 'zabbixtemplate_id')
     resolved_template_ids = {getattr(obj, 'zabbixtemplate_id') for obj in merged_templates}
     merged_hostgroups = _merge_direct_and_inherited(direct_hostgroups, inherited['hostgroups'], 'zabbixhostgroup_id')
@@ -181,6 +238,8 @@ def get_assigned_zabbixobjects(instance, zabbixserver=None):
             continue
         inherited_from = f'Regex: {rule.name}'
         if rule.zabbixtemplate_id and rule.zabbixtemplate_id not in resolved_template_ids:
+            # Create an unsaved ZabbixTemplateAssignment wrapper so downstream
+            # code (table rendering, sync) sees the same interface as real assignments.
             wrapper = ZabbixTemplateAssignment(
                 zabbixtemplate=rule.zabbixtemplate,
                 assigned_object_type=content_type,
@@ -231,9 +290,23 @@ def _walk_ancestors(obj, parent_attr='parent'):
 
     Includes obj itself so callers can check assignments on the
     starting object AND all ancestors. Cycle-safe via a seen-set.
+
+    NestedGroupModel / MPTT types (SiteGroup, Region, DeviceRole, …) use
+    ``get_ancestors(include_self=True)`` — one query — matching NetBox's own
+    ConfigContext ancestry walk. Other parents fall back to attribute chasing.
     """
     if obj is None:
         return
+    get_ancestors = getattr(obj, 'get_ancestors', None)
+    if callable(get_ancestors):
+        try:
+            # MPTT returns root→leaf; inheritance is leaf-first (nearest wins).
+            ancestors = list(get_ancestors(include_self=True))
+            yield from reversed(ancestors)
+            return
+        except TypeError:
+            # Unexpected signature — fall through to the attribute walk.
+            pass
     seen = set()
     cur = obj
     while cur is not None and cur not in seen:
