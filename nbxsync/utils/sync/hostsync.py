@@ -705,18 +705,25 @@ class HostSync(ZabbixSyncBase):
                     continue
 
                 instance = self.context.get('all_objects', {}).get('_instance')
-                # If NB default interface doesn't exist yet in Zabbix, create it as non-default first
+                # Resolve an existing interface before creating one. Inherited
+                # interface rows intentionally have no persisted interfaceid;
+                # blindly creating a replacement makes host.update try to delete
+                # the original interface, which Zabbix rejects while items use it.
                 if not nb_default_hostinterface_id:
                     syncer = HostInterfaceSync(self.api, nb_default_hostinterface_obj, hostid=hostid, _instance=instance)
-                    params = syncer.get_create_params()
-                    if not params:
-                        continue
+                    matches = syncer.find_by_name()
+                    hostinterface_id = matches[0].get('interfaceid') if matches else None
 
-                    params['main'] = 0  # create as NON-default
-                    created = self.api.hostinterface.create(**params)
-                    hostinterface_id = created.get('interfaceids', [None])[0]
                     if not hostinterface_id:
-                        raise RuntimeError(f'Failed to create interface for type={hostinterface_type}: {created}')
+                        params = syncer.get_create_params()
+                        if not params:
+                            continue
+
+                        params['main'] = 0  # create as NON-default
+                        created = self.api.hostinterface.create(**params)
+                        hostinterface_id = created.get('interfaceids', [None])[0]
+                        if not hostinterface_id:
+                            raise RuntimeError(f'Failed to create interface for type={hostinterface_type}: {created}')
 
                     nb_default_hostinterface_obj.interfaceid = int(hostinterface_id)
                     # Transient ConfigGroup clones are pk=None in-memory copies.

@@ -709,3 +709,40 @@ class HostSyncTestCase(TestCase):
         self.sync.check_default_hostinterface()
         self.assertEqual(HI.objects.count(), before)
         self.assertEqual(clone.interfaceid, 555)
+
+    def test_check_default_reuses_existing_remote_interface(self):
+        clone = ZabbixHostInterface(
+            zabbixserver=self.zabbixserver,
+            type=ZabbixHostInterfaceTypeChoices.AGENT,
+            interface_type=ZabbixInterfaceTypeChoices.DEFAULT,
+            useip=ZabbixInterfaceUseChoices.IP,
+            port=10050,
+            ip=self.ip,
+            assigned_object_type=self.device_ct,
+            assigned_object_id=self.device.id,
+        )
+        clone.pk = None
+        clone._is_inherited_copy = True
+        self.sync.context['all_objects']['hostinterfaces'] = [clone]
+
+        self.sync.api.hostinterface.get = lambda **kwargs: [
+            {
+                'interfaceid': '999',
+                'type': int(ZabbixHostInterfaceTypeChoices.AGENT),
+                'main': 1,
+                'useip': int(ZabbixInterfaceUseChoices.IP),
+                'ip': str(self.ip.address.ip),
+                'dns': '',
+                'port': '10050',
+            }
+        ]
+        creates = []
+        updates = []
+        self.sync.api.hostinterface.create = lambda **params: creates.append(params)
+        self.sync.api.host.update = lambda **kwargs: updates.append(kwargs)
+
+        self.sync.check_default_hostinterface()
+
+        self.assertEqual(creates, [])
+        self.assertEqual(clone.interfaceid, 999)
+        self.assertEqual(updates[0]['interfaces'][0]['interfaceid'], 999)
