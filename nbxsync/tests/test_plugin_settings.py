@@ -45,6 +45,10 @@ class PluginSettingsModelTestCase(TestCase):
         settings = PluginSettingsModel()
         self.assertIn(('role',), settings.inheritance_chain)
         self.assertIn(('device_type', 'manufacturer'), settings.inheritance_chain)
+        self.assertIn(('cluster', '_site'), settings.inheritance_chain)
+        self.assertNotIn(('cluster', 'site'), settings.inheritance_chain)
+        # Hierarchy must not precede role/platform (upgrade-safe precedence)
+        self.assertLess(settings.inheritance_chain.index(('role',)), settings.inheritance_chain.index(('site',)))
 
     @patch('nbxsync.settings.apps')
     def test_get_plugin_settings(self, mock_apps):

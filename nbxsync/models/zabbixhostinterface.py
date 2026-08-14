@@ -7,9 +7,10 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
-
-from netbox.models import NetBoxModel
 from ipam.models import IPAddress
+
+from extras.models import Tag
+from netbox.models import NetBoxModel
 from utilities.jinja2 import render_jinja2
 
 from nbxsync.choices import (
@@ -24,8 +25,7 @@ from nbxsync.choices import (
     ZabbixInterfaceUseChoices,
     ZabbixTLSChoices,
 )
-
-from nbxsync.constants.assignment_models import DEVICE_OR_VM_ASSIGNMENT_MODELS, CONFIGGROUP_OBJECTS
+from nbxsync.constants.assignment_models import CONFIGGROUP_OBJECTS, DEVICE_OR_VM_ASSIGNMENT_MODELS, TAG_OBJECTS
 from nbxsync.constants.template_pattern import TEMPLATE_PATTERN
 from nbxsync.models import SyncInfoModel, ZabbixConfigurationGroup
 
@@ -46,7 +46,7 @@ class ZabbixHostInterface(SyncInfoModel, NetBoxModel):
     ip = models.ForeignKey(to=IPAddress, on_delete=models.SET_NULL, null=True, blank=True, verbose_name=_('IP Address'), related_name='zabbix_hostinterfaces')
     port = models.IntegerField(blank=False, null=False, verbose_name=_('Port number'))
 
-    assigned_object_type = models.ForeignKey(to=ContentType, limit_choices_to=(DEVICE_OR_VM_ASSIGNMENT_MODELS | CONFIGGROUP_OBJECTS), on_delete=models.CASCADE, related_name='+', blank=True, null=True)
+    assigned_object_type = models.ForeignKey(to=ContentType, limit_choices_to=(DEVICE_OR_VM_ASSIGNMENT_MODELS | CONFIGGROUP_OBJECTS | TAG_OBJECTS), on_delete=models.CASCADE, related_name='+', blank=True, null=True)
     assigned_object_id = models.PositiveBigIntegerField(blank=True, null=True)
     assigned_object = GenericForeignKey(ct_field='assigned_object_type', fk_field='assigned_object_id')
 
@@ -128,7 +128,7 @@ class ZabbixHostInterface(SyncInfoModel, NetBoxModel):
     def dns_is_template(self):
         return bool(TEMPLATE_PATTERN.search(self.dns))
 
-    def clean(self):
+    def clean(self):  # noqa: C901 — validation ladder, flat reads better than split
         super().clean()
         errors = {}
 
@@ -159,8 +159,13 @@ class ZabbixHostInterface(SyncInfoModel, NetBoxModel):
             if self.snmpv3_privacy_passphrase and len(self.snmpv3_privacy_passphrase) < 8:
                 errors['snmpv3_privacy_passphrase'] = _('Privacy passphrase must be at least 8 characters long.')
 
-        # If the assigned object type is *not* a ZabbixConfigurationGroup, we validate the IP and/or DNS entry
-        if self.assigned_object_type != ContentType.objects.get_for_model(ZabbixConfigurationGroup):
+        # Template-like targets carry no fixed endpoint; the sync engine
+        # resolves the interface IP/DNS from each concrete device at sync time.
+        template_target_cts = {ContentType.objects.get_for_model(ZabbixConfigurationGroup), ContentType.objects.get_for_model(Tag)}
+        is_template_target = self.assigned_object_type in template_target_cts
+
+        # If the assigned object type is *not* a template target, we validate the IP and/or DNS entry
+        if not is_template_target:
             # Validate based on connection method
             if self.useip == ZabbixInterfaceUseChoices.IP:
                 if not self.ip:
@@ -170,9 +175,9 @@ class ZabbixHostInterface(SyncInfoModel, NetBoxModel):
                 if not self.dns:
                     errors['dns'] = _('A DNS name is required when "Connect via" is set to DNS.')
 
-        # # If ZbxConfigGroup, ensure neither IP and DNS are set, as we cannot support this
-        # # The IP will be set upon assignment!
-        if self.assigned_object_type == ContentType.objects.get_for_model(ZabbixConfigurationGroup):
+        # Template-like rows are endpoint-free; the IP is set upon resolution
+        # for each concrete device at sync time.
+        if is_template_target:
             self.ip = None
             # Only set DNS to '' when its NOT a template
             if not self.dns_is_template():
@@ -199,7 +204,7 @@ class ZabbixHostInterface(SyncInfoModel, NetBoxModel):
     def get_tls_accept_display(self):
         return [ZabbixTLSChoices(value).label for value in self.tls_accept if value in ZabbixTLSChoices.values]
 
-    def get_ipmi_privilege_display(self):
+    def get_ipmi_privlege_display(self):
         return IPMIPrivilegeChoices(self.ipmi_privilege).label
 
     def get_ipmi_authtype_display(self):
@@ -214,5 +219,5 @@ class ZabbixHostInterface(SyncInfoModel, NetBoxModel):
     def get_snmpv3_authentication_protocol_display(self):
         return ZabbixInterfaceSNMPV3AuthProtoChoices(self.snmpv3_authentication_protocol).label
 
-    def get_snmpv3_privacy_protocol_display(self):
+    def get_snmpv3_snmpv3_privacy_protocol_display(self):
         return ZabbixInterfaceSNMPV3PrivProtoChoices(self.snmpv3_privacy_protocol).label

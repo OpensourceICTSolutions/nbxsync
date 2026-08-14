@@ -197,6 +197,15 @@ urlpatterns = [
     path('zabbixconfigurationgroupassignment/<int:pk>/edit/', ZabbixConfigurationGroupAssignmentEditView.as_view(), name='zabbixconfigurationgroupassignment_edit'),
     path('zabbixconfigurationgroupassignment/<int:pk>/delete/', ZabbixConfigurationGroupAssignmentDeleteView.as_view(), name='zabbixconfigurationgroupassignment_delete'),
     path('zabbixconfigurationgroupassignment/<int:pk>/changelog/', ObjectChangeLogView.as_view(), name='zabbixconfigurationgroupassignment_changelog', kwargs={'model': ZabbixConfigurationGroupAssignment}),
+    # Zabbix Template Rule
+    path('zabbixtemplaterule/', ZabbixTemplateRuleListView.as_view(), name='zabbixtemplaterule_list'),
+    path('zabbixtemplaterule/add/', ZabbixTemplateRuleEditView.as_view(), name='zabbixtemplaterule_add'),
+    path('zabbixtemplaterule/edit/', ZabbixTemplateRuleBulkEditView.as_view(), name='zabbixtemplaterule_bulk_edit'),
+    path('zabbixtemplaterule/delete/', ZabbixTemplateRuleBulkDeleteView.as_view(), name='zabbixtemplaterule_bulk_delete'),
+    path('zabbixtemplaterule/<int:pk>/', ZabbixTemplateRuleView.as_view(), name='zabbixtemplaterule'),
+    path('zabbixtemplaterule/<int:pk>/edit/', ZabbixTemplateRuleEditView.as_view(), name='zabbixtemplaterule_edit'),
+    path('zabbixtemplaterule/<int:pk>/delete/', ZabbixTemplateRuleDeleteView.as_view(), name='zabbixtemplaterule_delete'),
+    path('zabbixtemplaterule/<int:pk>/changelog/', ObjectChangeLogView.as_view(), name='zabbixtemplaterule_changelog', kwargs={'model': ZabbixTemplateRule}),
     # Sync Device/VM Object
     path('zabbixhost/<str:objtype>/<int:pk>/sync', TriggerHostSyncJobView.as_view(), name='zabbixhost_sync'),
     path('zabbixhost/<str:objtype>/<int:pk>/sync-info/', ZabbixSyncInfoModalView.as_view(), name='zabbixhost_info'),

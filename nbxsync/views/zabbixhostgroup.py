@@ -1,10 +1,11 @@
+from django.db.models import Count
 from netbox.views.generic import BulkDeleteView, BulkImportView, BulkEditView, ObjectDeleteView, ObjectEditView, ObjectListView, ObjectView
 from utilities.views import register_model_view
 
 from nbxsync.filtersets import ZabbixHostgroupFilterSet
 from nbxsync.forms import ZabbixHostgroupBulkEditForm, ZabbixHostgroupFilterForm, ZabbixHostgroupForm, ZabbixHostgroupBulkImportForm
-from nbxsync.models import ZabbixHostgroup, ZabbixHostgroupAssignment
-from nbxsync.tables import ZabbixHostgroupObjectViewTable, ZabbixHostgroupTable
+from nbxsync.models import ZabbixHostgroup, ZabbixHostgroupAssignment, ZabbixTemplateRule
+from nbxsync.tables import ZabbixHostgroupObjectViewTable, ZabbixHostgroupTable, ZabbixTemplateRuleHostgroupViewTable
 
 __all__ = (
     'ZabbixHostgroupListView',
@@ -29,6 +30,16 @@ class ZabbixHostgroupListView(ObjectListView):
     filterset = ZabbixHostgroupFilterSet
     filterset_form = ZabbixHostgroupFilterForm
 
+    def get_queryset(self, request):
+        return (
+            super()
+            .get_queryset(request)
+            .annotate(
+                assignment_count=Count('zabbixhostgroupassignment', distinct=True),
+                rule_count=Count('zabbixtemplaterules', distinct=True),
+            )
+        )
+
 
 @register_model_view(ZabbixHostgroup)
 class ZabbixHostgroupView(ObjectView):
@@ -41,7 +52,7 @@ class ZabbixHostgroupView(ObjectView):
     def get_extra_context(self, request, instance):
         context = super().get_extra_context(request, instance)
 
-        # Get all assignments where this template is used
+        # Direct assignments (Sites/Roles Jinja, Priority tags, …)
         hostgroupassignments = ZabbixHostgroupAssignment.objects.filter(zabbixhostgroup=instance)
 
         if hostgroupassignments:
@@ -50,7 +61,20 @@ class ZabbixHostgroupView(ObjectView):
         else:
             hostgroupassignment_table = None
 
+        # TemplateRules that attach this hostgroup when a platform (and optional
+        # tags) match — e.g. OS/Linux via the Linux TemplateRule. This is a
+        # second, first-class path; empty "Assigned objects" does not mean unused.
+        templaterules = ZabbixTemplateRule.objects.filter(zabbixhostgroup=instance).select_related(
+            'zabbixtemplate',
+        )
+        if templaterules.exists():
+            templaterule_table = ZabbixTemplateRuleHostgroupViewTable(templaterules)
+            templaterule_table.configure(request)
+        else:
+            templaterule_table = None
+
         context['hostgroupassignment_table'] = hostgroupassignment_table
+        context['templaterule_table'] = templaterule_table
         return context
 
 

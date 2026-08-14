@@ -20,6 +20,11 @@ class SyncInfoModel(models.Model):
             success (bool): Whether the sync was successful.
             message (str): Optional message to describe the sync outcome.
         """
+        # Skip persistence for inherited copies (pk=None) — these are transient
+        # copies of assignments from Site/Platform/etc. and must not write back.
+        if getattr(self, '_is_inherited_copy', False):
+            return
+
         if success and message == '':
             message = 'Synchronization successful'
 

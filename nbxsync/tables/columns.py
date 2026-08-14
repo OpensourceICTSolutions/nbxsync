@@ -47,5 +47,11 @@ class JinjaValueColumn(tables.Column):
 
     def render(self, value, record, table):
         instance = getattr(table, 'instance', None)
-        output, success = record.render(object=instance)
-        return output
+        try:
+            if instance is not None:
+                output, success = record.render(object=instance)
+            else:
+                output, success = record.render()
+            return output if success and output else ''
+        except Exception:
+            return ''

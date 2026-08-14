@@ -6,7 +6,7 @@ from django.utils.translation import gettext_lazy as _
 from netbox.forms import NetBoxModelBulkEditForm, NetBoxModelFilterSetForm, NetBoxModelForm
 from utilities.forms.fields import DynamicModelChoiceField, TagFilterField
 from utilities.forms.rendering import FieldSet, TabbedGroups
-from dcim.models import Device, VirtualDeviceContext, DeviceRole, DeviceType, Manufacturer, Platform
+from dcim.models import Device, VirtualDeviceContext, DeviceRole, DeviceType, Manufacturer, Platform, Site, SiteGroup, Region
 from virtualization.models import Cluster, ClusterType, VirtualMachine
 
 from nbxsync.constants.assignment_type_to_field import ASSIGNMENT_TYPE_TO_FIELD
@@ -26,6 +26,9 @@ class ZabbixMacroAssignmentForm(NetBoxModelForm):
     manufacturer = DynamicModelChoiceField(queryset=Manufacturer.objects.all(), required=False, selector=True, label=_('Manufacturer'))
     platform = DynamicModelChoiceField(queryset=Platform.objects.all(), required=False, selector=True, label=_('Platform'))
     virtualmachine = DynamicModelChoiceField(queryset=VirtualMachine.objects.all(), required=False, selector=True, label=_('Virtual Machine'))
+    site = DynamicModelChoiceField(queryset=Site.objects.all(), required=False, selector=True, label=_('Site'))
+    sitegroup = DynamicModelChoiceField(queryset=SiteGroup.objects.all(), required=False, selector=True, label=_('Site Group'))
+    region = DynamicModelChoiceField(queryset=Region.objects.all(), required=False, label=_('Region'))
     cluster = DynamicModelChoiceField(queryset=Cluster.objects.all(), required=False, selector=True, label=_('Cluster'))
     clustertype = DynamicModelChoiceField(queryset=ClusterType.objects.all(), required=False, selector=True, label=_('Cluster Type'))
     zabbixconfigurationgroup = DynamicModelChoiceField(queryset=ZabbixConfigurationGroup.objects.all(), required=False, selector=True, label=_('Zabbix Configuration Group'))
@@ -43,6 +46,9 @@ class ZabbixMacroAssignmentForm(NetBoxModelForm):
                 FieldSet('virtualmachine', name=_('Virtual Machine')),
                 FieldSet('cluster', name=_('Cluster')),
                 FieldSet('clustertype', name=_('Cluster Type')),
+                FieldSet('site', name=_('Site')),
+                FieldSet('sitegroup', name=_('Site Group')),
+                FieldSet('region', name=_('Region')),
                 FieldSet('zabbixconfigurationgroup', name=_('Zabbix Configuration Group')),
             ),
             name=_('Assignment'),
@@ -66,6 +72,9 @@ class ZabbixMacroAssignmentForm(NetBoxModelForm):
             'manufacturer',
             'platform',
             'zabbixconfigurationgroup',
+            'site',
+            'sitegroup',
+            'region',
         )
 
     @property

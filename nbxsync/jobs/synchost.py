@@ -1,9 +1,9 @@
+import copy
 import logging
 
 from django.contrib.contenttypes.models import ContentType
 
 from nbxsync.choices.zabbixstatus import ZabbixHostStatus
-from nbxsync.models import ZabbixServerAssignment
 from nbxsync.settings import get_plugin_settings
 from nbxsync.utils import get_assigned_zabbixobjects
 from nbxsync.utils.sync import HostGroupSync, HostInterfaceSync, HostSync, ProxyGroupSync, ProxySync, run_zabbix_operation
@@ -20,10 +20,49 @@ class SyncHostJob:
     def __init__(self, **kwargs):
         self.instance = kwargs.get('instance')  # This is the Device or VirtualMachine object
 
-    def run(self):
-        object_ct = ContentType.objects.get_for_model(self.instance)
+    def _prepare_assignment(self, assignment):
+        """
+        If the assignment is inherited (not directly on this device/VM),
+        create a detached copy so that hostid and sync metadata cannot be
+        persisted back to the Site-level (or Platform-level) assignment row.
 
-        zabbixserver_assignments = ZabbixServerAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=self.instance.pk)
+        Uses pk=None (Django idiom for "new object") so any accidental save()
+        would INSERT rather than UPDATE the original row.  The _is_inherited_copy
+        flag is checked by SyncBase.sync() to skip save() entirely.
+        """
+        instance_ct = ContentType.objects.get_for_model(self.instance)
+        is_direct = assignment.assigned_object_type_id == instance_ct.id and assignment.assigned_object_id == self.instance.pk
+        if not is_direct:
+            assignment = copy.copy(assignment)
+            assignment.pk = None
+            assignment._is_inherited_copy = True
+        return assignment
+
+    def _is_excluded(self, pluginsettings, all_objects):
+        """Check whether this device/VM should be excluded from Zabbix sync.
+
+        When a ZabbixTag with the configured ``exclude_tag`` name (default:
+        empty string — disabled) is assigned to a DeviceRole, Platform, Site,
+        Manufacturer, ConfigGroup, or directly to the Device/VM, every host
+        that inherits from that object is excluded. The tag is never pushed
+        to Zabbix — it is only used as a signal during sync resolution.
+
+        Returns True if the host should be excluded.
+        """
+        exclude_tag = pluginsettings.exclude_tag
+        if not exclude_tag:
+            return False
+
+        for tag_assignment in all_objects.get('tags', []):
+            if tag_assignment.zabbixtag.tag == exclude_tag:
+                logger.debug('Excluding %s: exclude tag "%s" present', self.instance, exclude_tag)
+                return True
+
+        return False
+
+    def run(self):
+        all_objects = get_assigned_zabbixobjects(self.instance)
+        zabbixserver_assignments = all_objects.get('server_assignments', [])
 
         status = self.instance.status
         object_type = self.instance._meta.model_name  # "device" or "virtualmachine"
@@ -31,9 +70,23 @@ class SyncHostJob:
         status_mapping = getattr(pluginsettings.statusmapping, object_type, {})
         zabbix_status = status_mapping.get(status)
 
+        # --- Exclusion check ---
+        if self._is_excluded(pluginsettings, all_objects):
+            # Still delete the host from Zabbix if it was previously synced
+            if zabbix_status != ZabbixHostStatus.DELETED:
+                for assignment in zabbixserver_assignments:
+                    if assignment.sync_enabled and assignment.zabbixserver.sync_enabled:
+                        assignment = self._prepare_assignment(assignment)
+                        self.delete_host(assignment)
+            logger.info('Skipping sync for %s (excluded)', self.instance)
+            return
         for assignment in zabbixserver_assignments:
             if not assignment.sync_enabled or not assignment.zabbixserver.sync_enabled:
                 continue
+
+            # Detach inherited assignments so hostid/sync-info is not written
+            # back to the source row (e.g. a Site-level assignment).
+            assignment = self._prepare_assignment(assignment)
 
             if zabbix_status == ZabbixHostStatus.DELETED:
                 self.delete_host(assignment)
@@ -42,21 +95,24 @@ class SyncHostJob:
                 self.sync_host(assignment)
                 self.verify_hostinterfaces(assignment)
 
-            if object_type == 'device' and zabbix_status != ZabbixHostStatus.DELETED and pluginsettings.trigger_dependencies.enabled:
-                try:
-                    sync_device_trigger_dependencies(self.instance)
-                except Exception:
-                    logger.exception('Trigger dependency sync failed for %s; continuing.', self.instance)
+        trigger_config = getattr(pluginsettings, 'trigger_dependencies', None)
+        if object_type == 'device' and zabbix_status != ZabbixHostStatus.DELETED and trigger_config is not None and trigger_config.enabled:
+            try:
+                sync_device_trigger_dependencies(self.instance)
+            except Exception:
+                logger.exception('Trigger dependency sync failed for %s; continuing.', self.instance)
 
     def delete_host(self, assignment):
         safe_delete(HostSync, assignment)
 
     def verify_hostinterfaces(self, assignment):
         all_objects = get_assigned_zabbixobjects(self.instance, zabbixserver=assignment.zabbixserver)
+        all_objects['_instance'] = self.instance
         run_zabbix_operation(HostSync, assignment, 'verify_hostinterfaces', extra_args={'all_objects': all_objects})
 
     def check_default_hostinterface(self, assignment):
         all_objects = get_assigned_zabbixobjects(self.instance, zabbixserver=assignment.zabbixserver)
+        all_objects['_instance'] = self.instance
         run_zabbix_operation(HostSync, assignment, 'check_default_hostinterface', extra_args={'all_objects': all_objects})
 
     def sync_host(self, assignment):
@@ -64,6 +120,7 @@ class SyncHostJob:
             all_objects = get_assigned_zabbixobjects(self.instance, zabbixserver=assignment.zabbixserver)
             # Add the assigned_objects attribute, so we dont have to do this expensive calculation again later on :)
             assignment.assigned_objects = all_objects
+            all_objects['_instance'] = self.instance
 
             # Create all hostgroups
             for hostgroup in all_objects['hostgroups']:
@@ -88,7 +145,7 @@ class SyncHostJob:
                 # This can happen, in cases where the host exists, a new HostInterface is added (SNMP for example) and a new template (which requires SNMP)
                 # In such cases, the Host Update will fail, due to the Interface not existing yet.
                 # Fail silently, so we can create the interface - and we'll sync the template on the next run...
-                pass
+                logger.warning(f'Initial HostSync failed for {self.instance}: {e}')
 
             # Once the Host exists and we have a HostId, time to sync the interfaces
             # Sort by:
@@ -97,7 +154,15 @@ class SyncHostJob:
             # - id
             hostinterfaces_sorted = sorted(all_objects['hostinterfaces'], key=lambda hostinterface: (-int(hostinterface.interface_type == 1), hostinterface.type, hostinterface.id))
             for hostinterface in hostinterfaces_sorted:
-                safe_sync(HostInterfaceSync, hostinterface, extra_args={'hostid': assignment.hostid})
+                try:
+                    safe_sync(HostInterfaceSync, hostinterface, extra_args={'hostid': assignment.hostid, '_instance': self.instance})
+                except Exception as e:
+                    # Continue syncing remaining interfaces even if one fails.
+                    # A common case: device inherits both Agent and SNMP
+                    # interfaces but the SNMP credentials are wrong — this
+                    # should not prevent the Agent interface and templates
+                    # from being synced.
+                    logger.warning(f'HostInterfaceSync failed for {self.instance}: {e}')
 
             safe_sync(HostSync, assignment, extra_args={'all_objects': all_objects})
 
