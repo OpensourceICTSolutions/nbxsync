@@ -1,5 +1,22 @@
 # Changelog
 
+## [Unreleased]
+
+### New features
+
+- Added `exclude_tag` configuration setting to exclude hosts from Zabbix sync entirely via a ZabbixTag assigned to any object in the inheritance chain (`ZabbixTag.tag` name match)
+- Added Site/SiteGroup/Region inheritance paths (appended after role/platform so upgrades do not change Role/Platform precedence); cluster site uses `cluster._site` for VM site scope
+- Added NetBox Tag as an assignment target: any assignment can be pointed at a Tag; tagged Devices/VMs/VDCs inherit it at object level with automatic add/remove lifecycle (`Tag: <name>` shown as source)
+
+### Improvements
+
+- Plugin requires NetBox ≥4.2.6 (`PluginConfig.min_version`)
+- Inherited sync status on the Zabbix tab uses a neutral indicator (distinct from a direct local assignment)
+
+### Bug fixes
+
+- VirtualMachines no longer inherit assignments via `device`-prefixed `inheritance_chain` paths. On NetBox 4.3+, `VirtualMachine.device` links a guest to its hosting device; skipping those paths prevents host manufacturer/role/device-type templates from leaking onto guests. Virtual Device Contexts still walk those paths
+
 ## [1.0.0] - Initial Release
 
 - Loads of features, :)

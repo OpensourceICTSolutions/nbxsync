@@ -270,3 +270,6 @@ class ZabbixConfigurationGroupAssignmentSignalsTestCase(TestCase):
 
         self.assertTrue(ZabbixHostInterface.objects.filter(zabbixserver=self.server, assigned_object_type=self.device_ct, assigned_object_id=dev_with_ip.pk, parent=hostinterface_parent).exists())
         self.assertFalse(ZabbixHostInterface.objects.filter(zabbixserver=self.server, assigned_object_type=self.device_ct, assigned_object_id=dev_no_ip.pk, parent=hostinterface_parent).exists())
+
+    def test_delete_children_job_skips_missing_content_type(self):
+        DeleteConfigGroupAssignmentChildrenJob(configgroup_pk=self.cfg.pk, assigned_object_type_pk=None, assigned_object_id=None).run()

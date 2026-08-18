@@ -272,3 +272,16 @@ class ZabbixSyncBaseTests(TestCase):
         obj = self.NoZabbixAttrs()
         result = resolve_zabbixserver(obj, fallback_path=None)
         self.assertIsNone(result)
+
+    def test_should_persist_skips_save_for_inherited_copy(self):
+        """When _is_inherited_copy is True, sync() must not call save() or update_sync_info()."""
+        self.obj._is_inherited_copy = True
+        # sot is ZABBIX in setUp, so sync() will find the object and call sync_from_zabbix + save()
+        self.sync.sync()
+        self.assertFalse(self.obj._saved)
+        self.assertEqual(self.obj._updated, {})
+
+    def test_should_persist_saves_when_not_inherited_copy(self):
+        """When _is_inherited_copy is absent/False, sync() calls save() as usual."""
+        self.sync.sync()
+        self.assertTrue(self.obj._saved)

@@ -3,10 +3,14 @@ from django.db.models import Q
 ASSIGNMENT_MODELS = Q(
     Q(app_label='dcim', model='device')
     | Q(app_label='dcim', model='virtualdevicecontext')
+    | Q(app_label='dcim', model='site')
+    | Q(app_label='dcim', model='sitegroup')
+    | Q(app_label='dcim', model='region')
     | Q(app_label='dcim', model='manufacturer')
     | Q(app_label='dcim', model='devicerole')
     | Q(app_label='dcim', model='devicetype')
     | Q(app_label='dcim', model='platform')
+    | Q(app_label='extras', model='tag')
     | Q(app_label='virtualization', model='virtualmachine')
     | Q(app_label='virtualization', model='cluster')
     | Q(app_label='virtualization', model='clustertype')
@@ -16,3 +20,5 @@ MACRO_ASSIGNMENT_MODELS = Q(Q(app_label='nbxsync', model='zabbixserver') | Q(app
 MAINTENANCE_ASSIGNMENT_OBJECTS = Q(Q(Q(app_label='nbxsync', model='zabbixhostgroup')) | DEVICE_OR_VM_ASSIGNMENT_MODELS)
 
 CONFIGGROUP_OBJECTS = Q(app_label='nbxsync', model='zabbixconfigurationgroup')
+
+TAG_OBJECTS = Q(app_label='extras', model='tag')

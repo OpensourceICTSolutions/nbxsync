@@ -55,6 +55,12 @@ The plugin is configuration to do exactly what you want, by means of the plugin 
         ['cluster'],
         ['cluster', 'type'],
         ['type'],
+        # Hierarchy appended after device/role/platform (first-seen wins)
+        ['device', 'site'],
+        ['site'],
+        ['site', 'group'],
+        ['site', 'region'],
+        ['cluster', '_site'],
     ],
     'backgroundsync': {
         'objects': {
@@ -105,9 +111,45 @@ The plugin is configuration to do exactly what you want, by means of the plugin 
     'objtag_type': 'nb_type',
     'objtag_id': 'nb_id',
     'custom_field_hostname':'',
-    'custom_field_display_name':''
+    'custom_field_display_name':'',
+    'exclude_tag': '',
 }
 ```
+
+## Inheritance Chain
+
+The `inheritance_chain` setting defines which NetBox objects are traversed when resolving Zabbix assignments. Assignments (templates, tags, hostgroups, macros, proxy/server, interfaces, inventory, configuration groups) made on any object in the chain are inherited by the device or VM being synced, with direct assignments taking priority. Within inherited sources, **first path wins** (leaf-first order as listed).
+
+Host interfaces are the exception: they are defined on a Device/VM directly, on a `ZabbixConfigurationGroup`, or on a NetBox Tag (as a reusable interface template), because an interface needs a per-device endpoint. To apply interfaces to a whole Site, SiteGroup or Region, assign a Configuration Group at that level — its interfaces are then cloned onto every inheriting device with that device's primary IP.
+
+### VirtualMachine and `device`-prefixed paths
+
+Paths that start with `device` (for example `['device']`, `['device', 'role']`, `['device', 'device_type', 'manufacturer']`) describe the associated physical device.
+
+Virtual Device Contexts keep these paths (a VDC is part of its parent device). VirtualMachines skip them: on NetBox 4.3+, `VirtualMachine.device` links a guest to its hosting device, and walking that path would leak host hardware assignments onto the guest. VMs still inherit via cluster, site, role, platform and tag paths that apply to the VM itself.
+
+### Site, SiteGroup, and Region Inheritance
+
+Hierarchy paths are appended after device/role/platform/manufacturer/cluster paths so upgrading into Site inheritance does not silently override existing Role or Platform assignments. SiteGroup and Region ancestors are walked automatically when a group or region is reached.
+
+| Path | Description |
+|------|-------------|
+| `['device', 'site']` | The device's site (also VDC → device → site; not walked for VirtualMachines) |
+| `['site']` | Site (direct) |
+| `['site', 'group']` | The site's SiteGroup (parents walked) |
+| `['site', 'region']` | The site's region (parents walked) |
+| `['cluster', '_site']` | The cluster's scoped site for VMs (`CachedScopeMixin._site`) |
+
+If you previously customized `inheritance_chain` with Site paths ahead of Role/Platform, review hosts that have both a Site-level and a Role/Platform-level assignment — effective winners may change. Prefer appending hierarchy paths.
+
+For example, assigning a `ZabbixServerAssignment` (proxy) to a `SiteGroup` means every device at every site in that SiteGroup inherits the proxy — no per-device assignment needed.
+
+### Tag-based assignments
+
+NetBox Tags are assignment targets: hostgroup, template, tag, macro, server, inventory, configuration group and host interface assignments can be pointed at a Tag. Every Device, VDC or VirtualMachine carrying that tag then inherits the assignment. Direct assignments on the object still take priority. Tag-targeted rows are collected before the `inheritance_chain` paths (first seen wins).
+
+Tagging an object adds the membership on the next sync; removing the tag removes it. The inherited source is shown as `Tag: <name>`. Create Tag-targeted assignments via the API (`assigned_object_type` / `assigned_object_id`); the assignment forms expose Site hierarchy pickers but not a Tag picker.
+
 
 ## Configuration values
 
@@ -269,6 +311,16 @@ These tags allow you to navigate from a Zabbix host back to the corresponding  N
 
 ### custom_field_hostname and custom_field_display_name
 You can use these fields to map the connection between NetBox and the Zabbix hostname and display name. The device name is used as the default.
+
+### exclude_tag
+
+When set to a non-empty string (e.g. `'do_not_monitor'`), any `ZabbixTagAssignment` with a tag matching this name — whether assigned directly on a Device/VM or inherited from a Role, Platform, Site, SiteGroup, Region, Manufacturer, or Configuration Group — causes the host to be excluded from Zabbix sync entirely. No Zabbix host is created, and if a host was previously synced it is deleted from Zabbix.
+
+This is useful for excluding device classes that should never be monitored (e.g. desktop PCs, VDI sessions, test lab devices) without removing their Site or Platform assignments.
+
+The tag itself is never pushed to Zabbix — it is only used as a signal during sync resolution and is filtered out before Jinja2 rendering.
+
+Defaults to `''` (empty string = feature disabled).
 
 ## Enabling and Disabling Synchronization
 

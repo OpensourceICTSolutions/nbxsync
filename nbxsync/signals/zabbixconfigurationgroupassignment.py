@@ -9,7 +9,7 @@ __all__ = ('handle_postsave_zabbixconfigurationgroupassignment', 'handle_postdel
 
 @receiver(post_save, sender=ZabbixConfigurationGroupAssignment)
 def handle_postsave_zabbixconfigurationgroupassignment(sender, instance, created, **kwargs):
-    if instance.zabbixconfigurationgroup is None:
+    if instance.zabbixconfigurationgroup is None or instance.assigned_object_type_id is None:
         return
 
     propagate_configgroup_assignment.delay(instance.pk)
@@ -17,7 +17,7 @@ def handle_postsave_zabbixconfigurationgroupassignment(sender, instance, created
 
 @receiver(post_delete, sender=ZabbixConfigurationGroupAssignment)
 def handle_postdelete_zabbixconfigurationgroupassignment(sender, instance, **kwargs):
-    if instance.zabbixconfigurationgroup is None:
+    if instance.zabbixconfigurationgroup is None or instance.assigned_object_type_id is None:
         return
 
     delete_configgroup_assignment_children.delay(configgroup_pk=instance.zabbixconfigurationgroup.pk, assigned_object_type_pk=instance.assigned_object_type_id, assigned_object_id=instance.assigned_object_id)

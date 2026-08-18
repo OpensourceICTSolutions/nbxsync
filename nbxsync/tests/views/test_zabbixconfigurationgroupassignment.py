@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 
@@ -117,6 +119,11 @@ class ZabbixConfigurationGroupAssignmentViewTestCase(
         # Verify our except path executed and logged
         self.assertTrue(any('Prefill error' in msg for msg in cm.output))
 
+    def test_form_exposes_role_manufacturer_and_tag(self):
+        form = ZabbixConfigurationGroupAssignmentForm()
+        for field in ('role', 'manufacturer', 'platform', 'devicetype', 'cluster', 'clustertype', 'tag'):
+            self.assertIn(field, form.fields)
+
     def test_clean_raises_if_multiple_assignments(self):
         form = ZabbixConfigurationGroupAssignmentForm(
             data={
@@ -129,10 +136,49 @@ class ZabbixConfigurationGroupAssignmentViewTestCase(
         self.assertIn('virtualmachine', form.errors)
         self.assertIn('A Zabbix Configuration Group can only be assigned to a single object.', form.errors['virtualmachine'][0])
 
-    def test_clean_sets_assigned_object_none_if_unassigned(self):
+    def test_clean_requires_assigned_object(self):
         form = ZabbixConfigurationGroupAssignmentForm(data={'zabbixconfigurationgroup': str(self.zabbix_configurationgroups[0].id)})
 
-        form.is_valid()
-
-        # Should not raise and assigned_object should be None
+        self.assertFalse(form.is_valid())
+        self.assertIn('A Zabbix Configuration Group must be assigned to an object.', str(form.errors))
         self.assertIsNone(form.instance.assigned_object)
+
+    def test_clean_assigns_device_role(self):
+        role = self.devices[0].role
+        form = ZabbixConfigurationGroupAssignmentForm(
+            data={
+                'zabbixconfigurationgroup': str(self.zabbix_configurationgroups[0].id),
+                'role': role.pk,
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.instance.assigned_object, role)
+
+    def test_clean_assigns_manufacturer(self):
+        manufacturer = self.devices[0].device_type.manufacturer
+        form = ZabbixConfigurationGroupAssignmentForm(
+            data={
+                'zabbixconfigurationgroup': str(self.zabbix_configurationgroups[0].id),
+                'manufacturer': manufacturer.pk,
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.instance.assigned_object, manufacturer)
+
+    @patch('nbxsync.signals.zabbixconfigurationgroupassignment.delete_configgroup_assignment_children')
+    def test_delete_null_assignment_succeeds(self, _mock_job):
+        self.user.is_superuser = True
+        self.user.save()
+
+        obj = ZabbixConfigurationGroupAssignment.objects.create(
+            zabbixconfigurationgroup=self.zabbix_configurationgroups[0],
+            assigned_object_type=None,
+            assigned_object_id=None,
+        )
+        url = reverse('plugins:nbxsync:zabbixconfigurationgroupassignment_delete', args=[obj.pk])
+        response = self.client.post(url, data={'confirm': True})
+
+        self.assertIn(response.status_code, (200, 302))
+        self.assertFalse(ZabbixConfigurationGroupAssignment.objects.filter(pk=obj.pk).exists())

@@ -31,6 +31,11 @@ class ZabbixConfigurationGroupAssignmentSerializer(NetBoxModelSerializer):
 
     @extend_schema_field(OpenApiTypes.OBJECT)
     def get_assigned_object(self, instance):
-        serializer = get_serializer_for_model(instance.assigned_object_type.model_class())
+        if instance.assigned_object_type is None or instance.assigned_object is None:
+            return None
+        model = instance.assigned_object_type.model_class()
+        if model is None:
+            return None
+        serializer = get_serializer_for_model(model)
         context = {'request': self.context['request']}
         return serializer(instance.assigned_object, context=context).data
