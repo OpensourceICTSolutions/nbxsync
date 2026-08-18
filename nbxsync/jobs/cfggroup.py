@@ -87,6 +87,10 @@ class DeleteConfigGroupAssignmentChildrenJob:
     def run(self):
         logger.debug('%s: deleting children for configgroup_pk=%s object_type_pk=%s object_id=%s', self.__class__.__name__, self.configgroup_pk, self.assigned_object_type_pk, self.assigned_object_id)
 
+        if not self.assigned_object_type_pk:
+            logger.warning('%s: missing assigned_object_type_pk – skipping', self.__class__.__name__)
+            return
+
         try:
             assigned_ct = ContentType.objects.get(pk=self.assigned_object_type_pk)
         except ContentType.DoesNotExist:

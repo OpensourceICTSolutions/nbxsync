@@ -1,4 +1,5 @@
 from dcim.models import Device, VirtualDeviceContext, DeviceRole, DeviceType, Manufacturer, Platform, Site, SiteGroup, Region
+from extras.models import Tag
 from virtualization.models import Cluster, ClusterType, VirtualMachine
 
 from nbxsync.models import ZabbixHostgroup, ZabbixServer, ZabbixTag, ZabbixTemplate, ZabbixConfigurationGroup
@@ -17,6 +18,7 @@ ASSIGNMENT_TYPE_TO_FIELD_NBOBJS = {
     Site: 'site',
     SiteGroup: 'sitegroup',
     Region: 'region',
+    Tag: 'tag',
     ZabbixConfigurationGroup: 'zabbixconfigurationgroup',
 }
 
