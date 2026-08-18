@@ -42,7 +42,9 @@
             {% render_zabbix_tag_assignment object as rendered_output %}
             <div class="card">
                 <div class="card-header">Rendered Value</div>
-                <div class="card-body">{{ rendered_output|safe }}</div>
+                <div class="card-body">
+                    {{ rendered_output|safe }}
+                </div>
             </div>
             {% plugin_right_page object %}
         </div>

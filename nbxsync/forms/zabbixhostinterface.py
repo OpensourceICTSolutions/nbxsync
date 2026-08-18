@@ -5,6 +5,7 @@ from django.utils.translation import gettext_lazy as _
 from django.core.validators import MaxValueValidator, MinValueValidator
 
 from netbox.forms import NetBoxModelBulkEditForm, NetBoxModelFilterSetForm, NetBoxModelForm
+from utilities.forms import BOOLEAN_WITH_BLANK_CHOICES
 from utilities.forms.fields import DynamicModelChoiceField, TagFilterField
 from utilities.forms.rendering import FieldSet, TabbedGroups
 from dcim.models import Device, VirtualDeviceContext
@@ -57,6 +58,7 @@ class ZabbixHostInterfaceForm(NetBoxModelForm):
             'useip',
             'interface_type',
             'ip',
+            'use_oob_ip',
             'device',
             'virtualdevicecontext',
             'virtualmachine',
@@ -114,6 +116,7 @@ class ZabbixHostInterfaceForm(NetBoxModelForm):
             'useip',
             'interface_type',
             'ip',
+            'use_oob_ip',
             'device',
             'virtualdevicecontext',
             'virtualmachine',
@@ -213,6 +216,7 @@ class ZabbixHostInterfaceFilterForm(NetBoxModelFilterSetForm):
             'useip',
             'interface_type',
             'ip',
+            'use_oob_ip',
             'device',
             'virtualdevicecontext',
             'virtualmachine',
@@ -220,6 +224,8 @@ class ZabbixHostInterfaceFilterForm(NetBoxModelFilterSetForm):
             name=_('Zabbix Host Interface'),
         ),
     )
+
+    use_oob_ip = forms.NullBooleanField(required=False, label=_('Use OOB IP'), widget=forms.Select(choices=BOOLEAN_WITH_BLANK_CHOICES))
 
     tag = TagFilterField(model)
 
@@ -233,6 +239,7 @@ class ZabbixHostInterfaceBulkEditForm(NetBoxModelBulkEditForm):
     ip = forms.ModelChoiceField(queryset=IPAddress.objects.all(), required=False, label=_('IP Address'))
     dns = forms.CharField(label=_('DNS'), required=False, max_length=1200)
     port = forms.CharField(label=_('Port'), required=False, max_length=10)
+    use_oob_ip = forms.NullBooleanField(required=False, label=_('Use OOB IP'), widget=forms.Select(choices=BOOLEAN_WITH_BLANK_CHOICES))
 
     fieldsets = (
         FieldSet(
@@ -240,6 +247,7 @@ class ZabbixHostInterfaceBulkEditForm(NetBoxModelBulkEditForm):
             'useip',
             'interface_type',
             'ip',
+            'use_oob_ip',
             'dns',
             'port',
             name=_('Host Interface'),

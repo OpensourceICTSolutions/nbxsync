@@ -60,3 +60,45 @@ class HostEventsViewOpenEventTests(TestCase):
         open_row = next(r for r in rows if r['eventid'] == '3')
         self.assertIsNone(open_row['end_time'])
         self.assertIsNone(open_row['duration'])
+
+
+class HostInfoBindingIdentityTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.device = create_test_device(name='dev-binding-ops')
+        cls.server = ZabbixServer.objects.create(name='ZBX-bind', url='http://example.com', token='test')
+        cls.assignment = ZabbixServerAssignment.objects.create(zabbixserver=cls.server, hostid=None, assigned_object_type=ContentType.objects.get_for_model(Device), assigned_object_id=cls.device.pk)
+
+        from nbxsync.models import ZabbixHostBinding
+
+        ZabbixHostBinding.objects.create(
+            zabbixserver=cls.server,
+            assigned_object_type=ContentType.objects.get_for_model(Device),
+            assigned_object_id=cls.device.pk,
+            hostid=202,
+            hostname=cls.device.name,
+        )
+
+    @patch('nbxsync.views.hostinfo.ZabbixConnection')
+    def test_events_use_binding_when_assignment_hostid_cleared(self, mock_conn):
+        api = MagicMock()
+        api.event.get.return_value = [_make_event('1', '1000')]
+        mock_conn.return_value.__enter__.return_value = api
+
+        response = self.client.get(reverse('plugins:nbxsync:zabbixhost_events', kwargs={'objtype': 'device', 'pk': self.device.pk}))
+        self.assertEqual(response.status_code, 200)
+        rows = list(response.context['table'].rows)
+        self.assertEqual(len(rows), 1)
+        api.event.get.assert_called()
+        self.assertEqual(api.event.get.call_args.kwargs['hostids'], 202)
+
+    @patch('nbxsync.views.hostinfo.ZabbixConnection')
+    def test_problems_use_binding_when_assignment_hostid_cleared(self, mock_conn):
+        api = MagicMock()
+        api.problem.get.return_value = []
+        mock_conn.return_value.__enter__.return_value = api
+
+        response = self.client.get(reverse('plugins:nbxsync:zabbixhost_problems', kwargs={'objtype': 'device', 'pk': self.device.pk}))
+        self.assertEqual(response.status_code, 200)
+        api.problem.get.assert_called_once()
+        self.assertEqual(api.problem.get.call_args.kwargs['hostids'], 202)

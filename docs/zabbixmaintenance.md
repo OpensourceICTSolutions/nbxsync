@@ -144,7 +144,7 @@ Each object can only be assigned once to a given maintenance window.
 !!! note
     When assigning a `ZabbixHostgroup`, only hostgroups with **static** values are supported. Hostgroups whose `value` field contains a Jinja2 template cannot be resolved without a device context, so they cannot be used here.
 
-When the maintenance is synced, the assigned Devices, VDCs, and VirtualMachines are resolved to their Zabbix `hostid` values via their `ZabbixServerAssignment`. Objects that have not yet been synchronized to Zabbix (no `hostid`) are silently skipped.
+When the maintenance is synced, the assigned Devices, VDCs, and VirtualMachines are resolved to their Zabbix `hostid` values via `ZabbixHostBinding`, falling back to a legacy `ZabbixServerAssignment.hostid` when no binding exists yet. Objects that have not yet been synchronized to Zabbix (no `hostid`) are silently skipped.
 
 ## `ZabbixMaintenanceTagAssignment`
 

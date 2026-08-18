@@ -1,5 +1,46 @@
 # Changelog
 
+## [Unreleased]
+
+### New features
+
+- Added `exclude_tag` configuration setting to exclude hosts from Zabbix sync entirely via a ZabbixTag assigned to any object in the inheritance chain (`ZabbixTag.tag` name match)
+- Added `ZabbixTemplateRule` for regex-based template (and optional hostgroup/tag) assignment by platform name (`re.search`, case-insensitive)
+- Template rules support optional conjunctive criteria: `role_pattern`, `require_tags` (NetBox tag slugs) and `manufacturer` (fail-closed when set; `PROTECT` on delete). Optional hostgroup/tag FKs also use `PROTECT`
+- Template rules that attach a hostgroup are shown on the Zabbix Hostgroup detail/list views
+- Added a REST API endpoint for `ZabbixTemplateRule` (`/api/plugins/nbxsync/zabbixtemplaterule/`)
+- Added Site/SiteGroup/Region inheritance paths (appended after role/platform so upgrades do not change Role/Platform precedence); cluster site uses `cluster._site` (available since NetBox 4.2; plugin requires ≥4.2.6)
+- Added `ZabbixHostBinding`: a durable record of the Zabbix host owned by each NetBox object, so a host can still be retired after its (inherited) assignment disappears
+- Added a background sync job that enumerates Devices/VMs inheriting a Zabbix server assignment, providing zero-touch provisioning for newly created inventory
+- Added `allow_inherited_deletion` (default `False`) so inheritance-driven host deletions are reported with their impact before any Zabbix history is discarded
+- Added `use_oob_ip` on Zabbix Host Interfaces to resolve the interface IP from a Device's NetBox `oob_ip` (Devices, Configuration Groups, and Tag templates; Connect via must be IP; never falls back to primary IP)
+- Added `adopt_existing_hosts` (default `False`) so binding to a pre-existing Zabbix host is an explicit decision instead of a silent takeover. Requires `attach_objtag=True` (identity tags)
+
+### Improvements
+
+- Nested hostgroups: missing path segments (`A/B/C`) are created parent-first in Zabbix so permissions can inherit into subgroups
+- Nested hostgroup rename: editing a static group's `ZabbixHostgroup.value` renames the Zabbix group in place via the stored `groupid`
+- Configuration Group interfaces are deduplicated by interface identity (type, connect mode, port, DNS, OOB flag), so a second interface of the same Zabbix type is no longer dropped
+- A failing host interface no longer hides the failure: per-interface and template-linkage failures are recorded on the assignment and reported as an aggregated job error
+- Background host reconciliation collects host primary keys with queryset iterators instead of materialising full Device/VM lists
+- Default `backgroundsync.objects.interval` is 360 minutes so a full reconcile is less likely to overlap the next run
+- Inherited sync status on the Zabbix tab uses a neutral indicator (distinct from a direct local assignment)
+- Plugin requires NetBox ≥4.2.6 (`PluginConfig.min_version`)
+
+### Bug fixes
+
+- VirtualMachines no longer inherit assignments via `device`-prefixed `inheritance_chain` paths (NetBox 4.3+ `VirtualMachine.device`). Host manufacturer/role/device-type templates no longer leak onto guest VMs; Virtual Device Contexts still walk those paths
+- Jinja2 tag and hostgroup values are rendered against the Device/VM being synchronised, not against the inheritance source (Role, Platform, Site, …)
+- Tag/hostgroup Jinja context exposes `device`, `site`, `tenant`, `role`, `device_type`, and `manufacturer` aliases from the render object (covers #102; aliases follow the host during sync)
+- UI previews for hierarchy assignments use a device-shaped view of the target object instead of borrowing a sample descendant device
+- UI previews skip Devices/VMs carrying the configured `exclude_tag` when selecting a representative host
+- Fixed unresolvable `use_oob_ip` interfaces so existing Zabbix interfaces are retained when `allow_inherited_deletion` is disabled, including rows that still carry an `interfaceid`
+- Fixed template interface gating so retained OOB interfaces still satisfy SNMP (and other) template requirements instead of silently clearing those templates
+- Fixed host-interface matching to use type, port, connect mode, and main/non-main role so in-band and OOB interfaces of the same Zabbix type no longer collide
+- Fixed duplicate remote host interfaces that shared the full match tuple to converge on one canonical interface instead of creating another copy each sync
+- Fixed OOB/primary endpoint resolution to refetch `IPAddress` by id so a stale in-memory address string cannot break interface sync
+- Deleting a Device/VM in NetBox always retires its Zabbix host (via `ZabbixHostBinding`) even when `sync_enabled` is False on the assignment or server — inventory deletion is intentional retirement, not a background sync
+
 ## [1.0.0] - Initial Release
 
 - Loads of features, :)

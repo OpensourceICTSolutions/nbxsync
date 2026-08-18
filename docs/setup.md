@@ -67,13 +67,15 @@ When adding a host interface assignment, you must specify:
 
 At minimum, specify the Type, Port, and either IP Address or DNS name.
 
+For Devices with a NetBox out-of-band IP, you can enable **Use OOB IP** instead of a static address. Connect via must be IP. The same option on a Configuration Group resolves each member Device's `oob_ip` at sync time.
+
 ### Step 3c: Assign a Hostgroup
 
 !!! danger "Required"
     A Hostgroup assignment is required
 
 !!! note "Hint"
-    Hostgroups can be assigned directly to the Device, VDC or VM, or inherited from the DeviceType, Cluster, Manufacturer, Platform, etc. Alternatively, Configuration Groups can be used.
+    Hostgroups can be assigned directly to the Device, VDC or VM, or inherited from the DeviceType, Cluster, Manufacturer, Platform, Site, SiteGroup, Region, Tag, etc. Alternatively, Configuration Groups can be used.
 
 Each host in Zabbix requires at least one Hostgroup. Create a hostgroup using the left-hand menu: `Zabbix` -> `Zabbix Hostgroups` and click `Add`. Ensure the hostgroup is associated with the same Zabbix Server. The value can be static or [dynamically rendered using a Jinja2 template](dynamic_values.md).
 
@@ -82,8 +84,9 @@ Once the Hostgroup is created, create a Hostgroup Assignment on the Device or Vi
 ### Step 3d: Assign a Template
 
 !!! note "Hint"
-    Templates can be assigned directly to the Device or VM, or inherited from the DeviceType, Cluster, Manufacturer, Platform, etc. Alternatively, Configuration Groups can be used.
+    Templates can be assigned directly to the Device or VM, or inherited from the DeviceType, Cluster, Manufacturer, Platform, Site, SiteGroup, Region, Tag, etc. Alternatively, Configuration Groups can be used.
 
+You can also use a **Zabbix Template Rule** (`Zabbix` → `Zabbix Template Rules`) to assign a template (and optionally a hostgroup and tag) when platform / role / NetBox tags / manufacturer criteria match. Rules run after direct and inherited assignments; see [Zabbix Template Rules](configuration.md#zabbix-template-rules).
 
 ## Debugging
 
@@ -99,7 +102,7 @@ On the `Zabbix` tab of any Device, VDC, or Virtual Machine, a **Sync** button ap
 
 ### Background system job
 
-The `Zabbix Sync Hosts job` runs automatically at the interval configured by `backgroundsync.objects.interval` (default: every 60 minutes). It iterates every `ZabbixServerAssignment` in NetBox and enqueues a `synchost` job for each unique Device, VDC, or VM (subject to both `sync_enabled` flags being `True`).
+The `Zabbix Sync Hosts job` runs automatically at the interval configured by `backgroundsync.objects.interval` (default: every 360 minutes). It enumerates Devices, VDCs and VirtualMachines that inherit a `ZabbixServerAssignment` (directly or via Site/SiteGroup/Region/Role/Platform/etc.), and also reconciles hosts that still have a `ZabbixHostBinding`, then enqueues a `synchost` job for each (subject to both `sync_enabled` flags being `True`).
 
 ### REST API
 

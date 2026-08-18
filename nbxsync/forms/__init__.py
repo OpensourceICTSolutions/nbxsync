@@ -20,3 +20,5 @@ from .zabbixmaintenanceobjectassignment import *
 from .zabbixmaintenancetagassignment import *
 from .zabbixconfigurationgroup import *
 from .zabbixconfigurationgroupassignment import *
+
+from .zabbixtemplaterule import *

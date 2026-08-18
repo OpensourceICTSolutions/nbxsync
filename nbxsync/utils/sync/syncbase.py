@@ -27,6 +27,10 @@ class ZabbixSyncBase:
         if self.sot is None:
             raise ValueError(f"No source-of-truth setting found for key '{self.sot_key}'.")
 
+    def _should_persist(self) -> bool:
+        """False for transient inherited copies that must never write back to their source row."""
+        return not getattr(self.obj, '_is_inherited_copy', False)
+
     @classmethod
     def resolve_zabbixserver(cls, obj):
         if callable(cls.zabbixserver_path):
@@ -62,7 +66,8 @@ class ZabbixSyncBase:
                 self.sync_from_zabbix(found)
             elif self.sot == SyncSOT.NETBOX:
                 self.sync_to_zabbix(object_id)
-            self.obj.save()
+            if self._should_persist():
+                self.obj.save()
             logger.debug(f'Found and synced {self.__class__.__name__} ID: {object_id}')
         else:
             # Object not found: create in Zabbix, always
@@ -72,23 +77,53 @@ class ZabbixSyncBase:
                     raise RuntimeError(f'{self.__class__.__name__} creation returned no ID.')
             except RuntimeError as err:
                 logger.warning(str(err))
-                self.obj.update_sync_info(success=False, message=str(err))
+                if self._should_persist():
+                    self.obj.update_sync_info(success=False, message=str(err))
                 raise
             self.set_id(object_id)
-            self.obj.save()
-            self.obj.update_sync_info(success=True)
+            if self._should_persist():
+                self.obj.save()
+                self.obj.update_sync_info(success=True)
 
     def try_create(self):
+        params = self.get_create_params()
+        if not params:
+            return None
         try:
-            # print('Create params:')
-            # print(self.get_create_params())
-            result = self.api_object().create(**self.get_create_params())
-            # print('Zabbix result: ')
-            # print(result)
+            result = self.api_object().create(**params)
             return result.get(self.result_key(), [None])[0]
         except Exception as err:
+            # Race condition: another concurrent job may have created the
+            # object between our find_by_name() check and this create().
+            # Recover only when Zabbix rejected the parameters (-32602) and
+            # exactly one object with our name now exists, so a genuine
+            # validation failure is still reported instead of silently
+            # adopting an unrelated object.
+            if self._is_duplicate_error(err):
+                found_by_name = self.find_by_name()
+                if len(found_by_name) == 1:
+                    logger.debug(f'{self.__class__.__name__} already existed (race), reusing ID')
+                    return found_by_name[0].get(self.id_field.split('.')[-1])
             msg = f'{self.__class__.__name__} creation failed: {err}'
             raise RuntimeError(msg)
+
+    @staticmethod
+    def _is_duplicate_error(err) -> bool:
+        """Whether a Zabbix API error reports an already-existing object.
+
+        zabbix_utils raises APIRequestError with the JSON-RPC payload attached.
+        Duplicates come back as "Invalid params" (-32602), whose data carries
+        the specific reason, so both the code and the reason are checked.
+        """
+        code = getattr(err, 'code', None)
+        if code is not None:
+            try:
+                if int(code) != -32602:
+                    return False
+            except (TypeError, ValueError):
+                return False
+        detail = ' '.join(str(part) for part in (getattr(err, 'data', ''), getattr(err, 'message', ''), err) if part)
+        return 'already exists' in detail.lower()
 
     def find_by_name(self):
         name_key = 'name'
@@ -116,15 +151,23 @@ class ZabbixSyncBase:
 
     def sync_to_zabbix(self, object_id):
         self.set_id(object_id)
-        self.obj.save()
-        self.obj.update_sync_info(success=True)
+        if self._should_persist():
+            self.obj.save()
+            self.obj.update_sync_info(success=True)
         self.update_in_zabbix(object_id=object_id)
 
     def update_in_zabbix(self, **kwargs):
-        # print('Update params:')
-        # print(self.get_update_params(object_id=kwargs.get('object_id', None)))
-        result = self.api_object().update(**self.get_update_params(object_id=kwargs.get('object_id', None)))
-        # print(result)
+        params = self.get_update_params(object_id=kwargs.get('object_id', None))
+        try:
+            self.api_object().update(**params)
+        except Exception as err:
+            # Zabbix 7.0 hostgroup.update (and similar) rejects no-op updates
+            # where the name is unchanged with -32602 "already exists". The
+            # object is already in the desired state — treat as success.
+            if self._is_duplicate_error(err):
+                logger.debug(f'{self.__class__.__name__} update was a no-op (already desired state)')
+                return
+            raise
         logger.debug(f'Updated {self.__class__.__name__} ID {self.get_id()}')
 
     # --- Object-specific methods to override per implementation ---

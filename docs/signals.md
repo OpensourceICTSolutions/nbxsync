@@ -13,7 +13,7 @@ When a Device or VirtualMachine is deleted in NetBox, a `pre_delete` signal fire
 - `ZabbixTagAssignment`
 - `ZabbixMacroAssignment`
 
-If **NetBox is the Source of Truth** for hosts (`sot.host = 'netbox'`), a `deletehost` background job is also enqueued on the RQ `low` queue, which will delete the corresponding host from Zabbix once a worker picks it up.
+If **NetBox is the Source of Truth** for hosts (`sot.host = 'netbox'`), a `deletehost` background job is also enqueued on the RQ `low` queue, which deletes the corresponding Zabbix host via `ZabbixHostBinding`. This retirement runs even when `sync_enabled` is False on the assignment or server: deleting the NetBox object is an intentional decommission, not a background sync.
 
 If **Zabbix is the Source of Truth** for hosts, the `ZabbixServerAssignment` is deleted from NetBox instead, and no deletion is sent to Zabbix.
 

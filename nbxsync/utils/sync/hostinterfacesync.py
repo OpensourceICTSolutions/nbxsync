@@ -1,7 +1,12 @@
+import logging
+
 from ipam.models import IPAddress
-from nbxsync.models import ZabbixServerAssignment
+
+from nbxsync.utils.host_binding import get_managed_host_id
 
 from .syncbase import ZabbixSyncBase
+
+logger = logging.getLogger(__name__)
 
 
 class HostInterfaceSync(ZabbixSyncBase):
@@ -14,23 +19,114 @@ class HostInterfaceSync(ZabbixSyncBase):
     def get_name_value(self):
         return self.obj.assigned_object.name
 
-    def get_create_params(self):
+    def _resolve_hostid(self):
+        """Hostid from sync context, else the durable binding / leftover direct assignment."""
         hostid = self.context.get('hostid', None)
-        zbxserverassignment = None
+        if hostid:
+            return hostid
+        instance = self.context.get('_instance') or getattr(self.obj, 'assigned_object', None)
+        return get_managed_host_id(instance, getattr(self.obj, 'zabbixserver', None))
 
+    def find_by_name(self):
+        """Locate the remote interface that matches this NetBox interface.
+
+        Zabbix allows several interfaces of one type per host (e.g. in-band and
+        OOB SNMP). Matching on type alone is ambiguous, so narrow by port,
+        connect mode, and main/non-main role. Return an empty list when nothing
+        matches so the create path runs instead of updating the wrong interface.
+
+        When several candidates share the whole match tuple, converge
+        deterministically instead of letting the generic 'not exactly one'
+        fallback create yet another copy: see _canonical_interface().
+        """
+        hostid = self._resolve_hostid()
         if not hostid:
-            # No HostID, get it from the assignment
-            zbxserverassignment = ZabbixServerAssignment.objects.filter(assigned_object_type=self.obj.assigned_object_type, assigned_object_id=self.obj.assigned_object.id).first()
-            # If the assignment isnt found... Return
-            if not zbxserverassignment:
-                return {}
+            return []
+        candidates = self.api_object().get(hostids=[hostid], filter={'type': str(self.obj.type)}) or []
+        port = str(self.obj.port)
+        useip = str(int(self.obj.useip))
+        main = str(int(self.obj.interface_type))
+        matches = [iface for iface in candidates if str(iface.get('port', '')) == port and str(iface.get('useip', '')) == useip and str(iface.get('main', '')) == main]
+        if len(matches) <= 1:
+            return matches
+        return [self._canonical_interface(matches)]
 
-            # Update the hostid field :)
-            hostid = zbxserverassignment.hostid
+    def _desired_endpoint(self):
+        """Return ('ip'|'dns', value) the synced interface should monitor."""
+        if int(self.obj.useip) == 0:  # DNS
+            return 'dns', self.obj.dns or ''
+        ipaddr = ''
+        if self.obj.ip_id:
+            ipaddr = IPAddress.objects.get(id=self.obj.ip_id).address.ip
+        elif self.obj.use_oob_ip:
+            instance = self.context.get('_instance')
+            oob_ip_id = getattr(instance, 'oob_ip_id', None) if instance else None
+            if oob_ip_id:
+                ipaddr = IPAddress.objects.get(id=oob_ip_id).address.ip
+        else:
+            instance = self.context.get('_instance')
+            if instance:
+                primary_id = getattr(instance, 'primary_ip4_id', None) or getattr(instance, 'primary_ip6_id', None)
+                if primary_id:
+                    ipaddr = IPAddress.objects.get(id=primary_id).address.ip
+        return 'ip', str(ipaddr) if ipaddr else ''
+
+    def _canonical_interface(self, matches):
+        """Pick the single remote interface identical to this NetBox interface.
+
+        Zabbix legitimately holds several interfaces sharing type/port/useip/main
+        with *different endpoints* (in-band vs OOB) — those are distinct objects
+        and must be kept. Only fully identical rows (same endpoint too) are true
+        duplicates. Among them the canonical one is deterministic: the main
+        interface first, then the lowest interfaceid (oldest = most likely the
+        original). Anything beyond it is deleted so the next sync does not widen
+        the split again; when nothing matches the desired endpoint exactly, the
+        deterministic pick is returned so the generic update path aligns its
+        endpoint to NetBox instead of creating another copy.
+        """
+        endpoint_field, endpoint_value = self._desired_endpoint()
+        exact = [i for i in matches if endpoint_value and str(i.get(endpoint_field, '')) == endpoint_value]
+        pool = exact or matches
+        mains = [i for i in pool if str(i.get('main')) == '1'] or pool
+        chosen = min(mains, key=lambda i: int(i['interfaceid']))
+        extras = [i for i in exact if int(i['interfaceid']) != int(chosen['interfaceid'])]
+        if extras:
+            self.api_object().delete([int(i['interfaceid']) for i in extras])
+            logger.warning('Deleted %d duplicate host interface(s) for hostid=%s (type=%s port=%s endpoint=%s)', len(extras), self.context.get('hostid'), self.obj.type, self.obj.port, endpoint_value)
+        return chosen
+
+    def get_create_params(self):
+        hostid = self._resolve_hostid()
+        if not hostid:
+            return {}
 
         ipaddr = ''
         if self.obj.ip_id:
             ipaddr = IPAddress.objects.get(id=self.obj.ip_id).address.ip
+        elif self.obj.use_oob_ip:
+            # Resolve from the device's oob_ip field (canonical NetBox OOB IP).
+            # use_oob_ip never falls back to the primary IP: the OOB interface
+            # would otherwise silently monitor the wrong address.
+            # Always refetch by id — the in-memory GFK/related object can expose
+            # address as a raw string before refresh (same pattern as ip_id above).
+            instance = self.context.get('_instance')
+            oob_ip_id = getattr(instance, 'oob_ip_id', None) if instance else None
+            if oob_ip_id:
+                ipaddr = IPAddress.objects.get(id=oob_ip_id).address.ip
+            else:
+                # No OOB IP on this device — skip interface creation.
+                return {}
+        elif self.context.get('_instance'):
+            # If the interface is inherited (e.g. from SiteGroup or Role)
+            # and has no IP assigned, fall back to the device's primary IP
+            instance = self.context.get('_instance')
+            primary_ip = getattr(instance, 'primary_ip4', None) or getattr(instance, 'primary_ip6', None)
+            if primary_ip:
+                primary_id = getattr(primary_ip, 'pk', None) or getattr(instance, 'primary_ip4_id', None) or getattr(instance, 'primary_ip6_id', None)
+                if primary_id:
+                    ipaddr = IPAddress.objects.get(id=primary_id).address.ip
+                else:
+                    ipaddr = primary_ip.address.ip
 
         dns_name, _ = self.obj.render_dns()
         result = {

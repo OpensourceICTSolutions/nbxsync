@@ -1,14 +1,14 @@
 import logging
 
-from django.contrib.contenttypes.models import ContentType
 from django.http import Http404
+from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import TemplateView
 
 from nbxsync.constants.assignment_type_to_field import OBJECT_TYPE_MODEL_MAP
-from nbxsync.models import ZabbixServerAssignment
 from nbxsync.tables import ZabbixEventTable, ZabbixProblemTable
 from nbxsync.utils import ZabbixConnection
+from nbxsync.utils.host_binding import iter_managed_hosts
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +21,10 @@ def _resolve_model_or_404(objtype):
     return model
 
 
-def _server_assignments_for(model, pk):
-    """Return all ZabbixServerAssignments pointing at the given (model, pk)."""
-    object_ct = ContentType.objects.get_for_model(model)
-    return ZabbixServerAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=pk).select_related('assigned_object_type', 'zabbixserver')
+def _managed_hosts_for(model, pk):
+    """Return managed (server, hostid) identities for the given (model, pk)."""
+    instance = get_object_or_404(model, pk=pk)
+    return list(iter_managed_hosts(instance, require_hostid=True))
 
 
 def _event_row(assignment, event, *, end_time, duration):
@@ -58,7 +58,7 @@ class ZabbixHostProblemsView(TemplateView):
         problem_list = []
         fetch_errors = []
 
-        for assignment in _server_assignments_for(model, pk):
+        for assignment in _managed_hosts_for(model, pk):
             if not assignment.hostid:
                 continue
 
@@ -91,7 +91,7 @@ class ZabbixHostEventsView(TemplateView):
         event_list = []
         fetch_errors = []
 
-        for assignment in _server_assignments_for(model, pk):
+        for assignment in _managed_hosts_for(model, pk):
             if not assignment.hostid:
                 continue
 

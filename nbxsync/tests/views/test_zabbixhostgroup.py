@@ -5,9 +5,9 @@ from dcim.models import Device
 from utilities.testing import ViewTestCases, create_test_device, create_test_user
 
 
-from nbxsync.models import ZabbixHostgroup, ZabbixHostgroupAssignment, ZabbixServer
+from nbxsync.models import ZabbixHostgroup, ZabbixHostgroupAssignment, ZabbixServer, ZabbixTemplate, ZabbixTemplateRule
 from nbxsync.views import ZabbixHostgroupView
-from nbxsync.tables import ZabbixHostgroupObjectViewTable
+from nbxsync.tables import ZabbixHostgroupObjectViewTable, ZabbixTemplateRuleHostgroupViewTable
 
 
 class ZabbixHostgroupTestCase(
@@ -129,3 +129,36 @@ class ZabbixHostgroupTestCase(
 
         table = context.get('hostgroupassignment_table')
         self.assertIsNone(table)
+        self.assertIsNone(context.get('templaterule_table'))
+
+    def test_get_extra_context_shows_template_rules_without_assignments(self):
+        """OS/*-style groups: no HostgroupAssignment, but TemplateRule.zabbixhostgroup set."""
+        user = create_test_user(username='zbxhostgroup rules user')
+        user.is_superuser = True
+        user.save()
+
+        zabbix_hostgroup = ZabbixHostgroup.objects.first()
+        server = zabbix_hostgroup.zabbixserver
+        template = ZabbixTemplate.objects.create(
+            name='Linux by Agent (test)',
+            templateid=91001,
+            zabbixserver=server,
+        )
+        ZabbixTemplateRule.objects.create(
+            name='Linux',
+            pattern=r'Ubuntu|Linux',
+            zabbixtemplate=template,
+            zabbixhostgroup=zabbix_hostgroup,
+            enabled=True,
+            priority=100,
+        )
+
+        request = RequestFactory().get('/dummy')
+        request.user = user
+        context = ZabbixHostgroupView().get_extra_context(request, zabbix_hostgroup)
+
+        self.assertIsNone(context.get('hostgroupassignment_table'))
+        rule_table = context.get('templaterule_table')
+        self.assertIsNotNone(rule_table)
+        self.assertIsInstance(rule_table, ZabbixTemplateRuleHostgroupViewTable)
+        self.assertGreater(len(list(rule_table.rows)), 0)

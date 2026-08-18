@@ -35,6 +35,7 @@ class ZabbixHostInterfaceTable(NetBoxTable):
             'type',
             'dns',
             'ip',
+            'use_oob_ip',
             'port',
             'useip',
             'interface_type',
@@ -44,6 +45,7 @@ class ZabbixHostInterfaceTable(NetBoxTable):
             'assigned_object',
             'type',
             'ip',
+            'use_oob_ip',
             'port',
         )
 
@@ -73,6 +75,7 @@ class ZabbixHostInterfaceObjectViewTable(NetBoxTable):
             'type',
             'dns',
             'ip',
+            'use_oob_ip',
             'port',
             'useip',
             'interface_type',

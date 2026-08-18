@@ -1,5 +1,6 @@
-from .sync_info import *
+# ruff: noqa: I001
 
+from .sync_info import *
 from .zabbixhostgroup import *
 from .zabbixserver import *
 from .zabbixtag import *
@@ -7,6 +8,8 @@ from .zabbixtemplate import *
 
 from .zabbixconfigurationgroup import *
 from .zabbixconfigurationgroupassignment import *
+
+from .zabbixhostbinding import *
 
 from .zabbixmacro import *
 from .zabbixhostinterface import *
@@ -26,3 +29,4 @@ from .zabbixmaintenancetagassignment import *
 
 from .zabbixproblem import *
 from .zabbixevent import *
+from .zabbixtemplaterule import *

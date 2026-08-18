@@ -9,6 +9,7 @@ from nbxsync.models import (
     ZabbixMaintenanceTagAssignment,
     ZabbixServerAssignment,
 )
+from nbxsync.utils.host_binding import get_host_binding
 
 from .syncbase import ZabbixSyncBase
 
@@ -118,14 +119,23 @@ class MaintenanceSync(ZabbixSyncBase):
         result = []
         zabbixhostgroup_ct = ContentType.objects.get_for_model(ZabbixHostgroup)
         for host in ZabbixMaintenanceObjectAssignment.objects.exclude(assigned_object_type=zabbixhostgroup_ct).filter(zabbixmaintenance=self.obj):
-            object_ct = ContentType.objects.get_for_model(host.assigned_object)
-            hostid = None
-            zabbixserver_assignment = ZabbixServerAssignment.objects.filter(assigned_object_type=object_ct, assigned_object_id=host.assigned_object_id).first()
-            if not zabbixserver_assignment:
+            assigned = host.assigned_object
+            if assigned is None:
                 continue
-
-            hostid = zabbixserver_assignment.hostid
-
+            # Prefer the durable ZabbixHostBinding: after HostSync migrates
+            # identity off ZabbixServerAssignment.hostid, reading only the
+            # assignment left automatic maintenance windows with an empty
+            # hosts list.
+            binding = get_host_binding(assigned, self.obj.zabbixserver)
+            hostid = binding.hostid if binding else None
+            if not hostid:
+                object_ct = ContentType.objects.get_for_model(assigned)
+                zabbixserver_assignment = ZabbixServerAssignment.objects.filter(
+                    zabbixserver=self.obj.zabbixserver,
+                    assigned_object_type=object_ct,
+                    assigned_object_id=assigned.pk,
+                ).first()
+                hostid = getattr(zabbixserver_assignment, 'hostid', None) if zabbixserver_assignment else None
             if not hostid:
                 continue
 

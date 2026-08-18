@@ -13,7 +13,7 @@ __all__ = ('ZabbixServerAssignment',)
 
 class ZabbixServerAssignment(SyncInfoModel, NetBoxModel):
     zabbixserver = models.ForeignKey('nbxsync.ZabbixServer', on_delete=models.CASCADE, related_name='zabbixserverassignment')
-    hostid = models.IntegerField(blank=True, null=True)
+    hostid = models.PositiveBigIntegerField(blank=True, null=True)
     zabbixproxy = models.ForeignKey(to='nbxsync.ZabbixProxy', blank=True, null=True, on_delete=models.CASCADE)
     zabbixproxygroup = models.ForeignKey(to='nbxsync.ZabbixProxyGroup', blank=True, null=True, on_delete=models.CASCADE)
     assigned_object_type = models.ForeignKey(to=ContentType, limit_choices_to=ASSIGNMENT_MODELS, on_delete=models.CASCADE, related_name='+', blank=True, null=True)

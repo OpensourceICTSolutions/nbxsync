@@ -1,11 +1,12 @@
+from django.contrib.contenttypes.models import ContentType
+from django.shortcuts import get_object_or_404
 from django_rq import get_queue
+from drf_spectacular.utils import extend_schema
+
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
-from django.apps import apps
-from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema
 
 from nbxsync.constants.assignment_type_to_field import OBJECT_TYPE_MODEL_MAP
 
@@ -34,7 +35,14 @@ class ZabbixSyncViewSet(ViewSet):
         Model = OBJECT_TYPE_MODEL_MAP[obj_type]
         instance = get_object_or_404(Model, pk=obj_id)
 
+        content_type = ContentType.objects.get_for_model(instance)
         queue = get_queue('low')
-        queue.enqueue_job(queue.create_job(func='nbxsync.worker.synchost', args=[instance], timeout=9000))
+        queue.enqueue_job(
+            queue.create_job(
+                func='nbxsync.worker.synchost',
+                args=[content_type.app_label, content_type.model, instance.pk],
+                timeout=9000,
+            )
+        )
 
         return Response({'count': 1, 'results': [{'scheduled': True}]}, status=202)

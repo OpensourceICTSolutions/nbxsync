@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.contrib.contenttypes.models import ContentType
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.utils.translation import gettext_lazy as _
@@ -6,10 +7,9 @@ from django.views import View
 from django.views.generic import TemplateView
 from django_rq import get_queue
 
-
-from nbxsync.models import ZabbixMaintenance, ZabbixProxy, ZabbixProxyGroup, ZabbixServer, ZabbixConfigurationGroup
-from nbxsync.utils.cfggroup.resync_zabbixconfiggroupassignment import resync_zabbixconfigurationgroupassignment
 from nbxsync.constants.assignment_type_to_field import OBJECT_TYPE_MODEL_MAP
+from nbxsync.models import ZabbixConfigurationGroup, ZabbixMaintenance, ZabbixProxy, ZabbixProxyGroup, ZabbixServer
+from nbxsync.utils.cfggroup.resync_zabbixconfiggroupassignment import resync_zabbixconfigurationgroupassignment
 
 __all__ = (
     'ZabbixSyncInfoModalView',
@@ -49,12 +49,13 @@ class TriggerHostSyncJobView(View):
             raise Http404(_('Unsupported object type: %(objtype)s') % {'objtype': objtype})
 
         instance = get_object_or_404(model, pk=pk)
+        content_type = ContentType.objects.get_for_model(instance)
         messages.success(request, _('Sync job enqueued for %(name)s') % {'name': str(instance)})
         queue = get_queue('low')
         queue.enqueue_job(
             queue.create_job(
                 func='nbxsync.worker.synchost',
-                args=[instance],
+                args=[content_type.app_label, content_type.model, instance.pk],
                 timeout=9000,
             )
         )

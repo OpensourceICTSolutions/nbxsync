@@ -2,9 +2,9 @@
 
 ## Overview
 
-A `ZabbixConfigurationGroup` is a **reusable configuration template** that lets you define a set of Zabbix assignments **once** and have them automatically propagated to many NetBox objects (Devices, Virtual Machines, VirtualDeviceContexts).
+A `ZabbixConfigurationGroup` is a **reusable configuration template** that lets you define a set of Zabbix assignments **once** and have them automatically propagated to many NetBox objects.
 
-Think of it as a "profile": you attach Zabbix servers, templates, tags, host groups, macros and host interfaces to the group itself, then assign that group to individual devices/VMs. Whenever a device is added to the group, it immediately inherits all of those Zabbix configurations automatically.
+Think of it as a "profile": you attach Zabbix servers, templates, tags, host groups, macros and host interfaces to the group itself, then assign that group to Devices, VDCs, VirtualMachines, or hierarchy objects such as Site, SiteGroup, Region or Tag. Whenever a member is added to the group, it immediately inherits all of those Zabbix configurations automatically.
 
 ---
 
@@ -27,12 +27,12 @@ A minimal model, just a name and a description. All the complexity lives in assi
 ```python
 class ZabbixConfigurationGroupAssignment(NetBoxModel):
     zabbixconfigurationgroup = ForeignKey('nbxsync.ZabbixConfigurationGroup', ...)
-    assigned_object_type     = ForeignKey(ContentType, limit_choices_to=DEVICE_OR_VM_ASSIGNMENT_MODELS, ...)
+    assigned_object_type     = ForeignKey(ContentType, limit_choices_to=ASSIGNMENT_MODELS, ...)
     assigned_object_id       = PositiveBigIntegerField(...)
     assigned_object          = GenericForeignKey(...)
 ```
 
-This is the **membership record**: it links a group to a specific Device, VirtualMachine or VirtualDeviceContext (enforced by `DEVICE_OR_VM_ASSIGNMENT_MODELS`). A unique constraint prevents the same object from being added to the same group twice.
+This is the **membership record**: it links a group to a NetBox object in the inheritance set (Device, VDC, VM, Site, SiteGroup, Region, Manufacturer, Role, DeviceType, Platform, Cluster, ClusterType, Tag). A unique constraint prevents the same object from being added to the same group twice.
 
 The important distinction: this is **not** about Zabbix config per se — it is purely about group membership. The actual Zabbix config is stored on the group itself via the normal assignment models (see below).
 
@@ -131,7 +131,9 @@ for parent in hostinterface_parents:
         )
 ```
 
-Because the group-level `ZabbixHostInterface` has no IP (it can't — it's on the group, not a device), the IP is pulled from the device's `primary_ip` at propagation time. The group-level record stores the interface type, port, SNMP config etc., and the IP is injected per-device.
+Because the group-level `ZabbixHostInterface` has no IP (it can't — it's on the group, not a device), a normal interface pulls the device's `primary_ip` at propagation time. The group-level record stores the interface type, port, SNMP config etc., and the IP is injected per-device.
+
+Interfaces with `use_oob_ip` are different: sync-time expansion (including Site/SiteGroup/Region membership) leaves `ip` empty and resolves each Device's NetBox `oob_ip` during host sync. There is no primary-IP fallback for OOB interfaces.
 
 ---
 
