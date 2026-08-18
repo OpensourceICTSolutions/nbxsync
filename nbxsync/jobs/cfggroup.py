@@ -302,13 +302,14 @@ class PropagateHostGroupAssignmentJob:
 class DeleteHostGroupAssignmentClonesJob:
     def __init__(self, **kwargs):
         self.configgroup_pk = kwargs['configgroup_pk']
+        self.zabbixhostgroup_pk = kwargs['zabbixhostgroup_pk']
 
     def run(self):
         assignments = ZabbixHostgroupAssignment.objects.filter(zabbixconfigurationgroup_id=self.configgroup_pk).select_related('assigned_object_type')
 
         def _delete():
             for assigned in assignments:
-                ZabbixHostgroupAssignment.objects.filter(assigned_object_type=assigned.assigned_object_type, assigned_object_id=assigned.assigned_object_id, zabbixconfigurationgroup_id=self.configgroup_pk).delete()
+                ZabbixHostgroupAssignment.objects.filter(zabbixhostgroup_id=self.zabbixhostgroup_pk, assigned_object_type=assigned.assigned_object_type, assigned_object_id=assigned.assigned_object_id, zabbixconfigurationgroup_id=self.configgroup_pk).delete()
 
         transaction.on_commit(_delete)
 
