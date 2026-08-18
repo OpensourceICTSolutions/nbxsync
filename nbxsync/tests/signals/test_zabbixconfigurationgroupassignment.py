@@ -12,9 +12,8 @@ class ZabbixConfigurationGroupAssignmentPostSaveSignalTestCase(TestCase):
         self.cfg = ZabbixConfigurationGroup.objects.create(name='Test Config Group', description='Signal test cfg group')
 
     @patch('nbxsync.signals.zabbixconfigurationgroupassignment.propagate_configgroup_assignment')
-    def test_postsave_enqueues_job_when_configgroup_present(self, mock_job):
-        asn = ZabbixConfigurationGroupAssignment(zabbixconfigurationgroup=self.cfg, assigned_object_type=None, assigned_object_id=None)
-        asn.pk = 42
+    def test_postsave_enqueues_job_when_configgroup_and_target_present(self, mock_job):
+        asn = SimpleNamespace(pk=42, zabbixconfigurationgroup=self.cfg, assigned_object_type_id=99)
 
         handle_postsave_zabbixconfigurationgroupassignment(sender=ZabbixConfigurationGroupAssignment, instance=asn, created=True)
 
@@ -22,7 +21,16 @@ class ZabbixConfigurationGroupAssignmentPostSaveSignalTestCase(TestCase):
 
     @patch('nbxsync.signals.zabbixconfigurationgroupassignment.propagate_configgroup_assignment')
     def test_postsave_returns_early_when_configgroup_none(self, mock_job):
-        asn = SimpleNamespace(zabbixconfigurationgroup=None)
+        asn = SimpleNamespace(zabbixconfigurationgroup=None, assigned_object_type_id=99)
+
+        handle_postsave_zabbixconfigurationgroupassignment(sender=ZabbixConfigurationGroupAssignment, instance=asn, created=True)
+
+        mock_job.delay.assert_not_called()
+
+    @patch('nbxsync.signals.zabbixconfigurationgroupassignment.propagate_configgroup_assignment')
+    def test_postsave_returns_early_when_assigned_object_type_none(self, mock_job):
+        asn = ZabbixConfigurationGroupAssignment(zabbixconfigurationgroup=self.cfg, assigned_object_type=None, assigned_object_id=None)
+        asn.pk = 42
 
         handle_postsave_zabbixconfigurationgroupassignment(sender=ZabbixConfigurationGroupAssignment, instance=asn, created=True)
 
@@ -39,6 +47,14 @@ class ZabbixConfigurationGroupAssignmentPostSaveSignalTestCase(TestCase):
     @patch('nbxsync.signals.zabbixconfigurationgroupassignment.delete_configgroup_assignment_children')
     def test_postdelete_returns_early_when_configgroup_none(self, mock_job):
         asn = SimpleNamespace(zabbixconfigurationgroup=None, assigned_object_type_id=None, assigned_object_id=None)
+
+        handle_postdelete_zabbixconfigurationgroupassignment(sender=ZabbixConfigurationGroupAssignment, instance=asn)
+
+        mock_job.delay.assert_not_called()
+
+    @patch('nbxsync.signals.zabbixconfigurationgroupassignment.delete_configgroup_assignment_children')
+    def test_postdelete_returns_early_when_assigned_object_type_none(self, mock_job):
+        asn = SimpleNamespace(zabbixconfigurationgroup=self.cfg, assigned_object_type_id=None, assigned_object_id=None)
 
         handle_postdelete_zabbixconfigurationgroupassignment(sender=ZabbixConfigurationGroupAssignment, instance=asn)
 
