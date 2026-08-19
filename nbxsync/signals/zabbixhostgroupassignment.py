@@ -33,4 +33,4 @@ def handle_postdelete_zabbixhostgroupassignment(sender, instance, **kwargs):
     if not is_configgroup_assignment(instance):
         return
 
-    delete_hostgroup_assignment_clones.delay(configgroup_pk=instance.assigned_object_id)
+    delete_hostgroup_assignment_clones.delay(configgroup_pk=instance.assigned_object_id, zabbixhostgroup_pk=instance.zabbixhostgroup_id)

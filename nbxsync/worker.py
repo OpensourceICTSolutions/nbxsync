@@ -95,8 +95,8 @@ def propagate_hostgroup_assignment(assignment_pk):
 
 
 @job('low')
-def delete_hostgroup_assignment_clones(configgroup_pk):
-    DeleteHostGroupAssignmentClonesJob(configgroup_pk=configgroup_pk).run()
+def delete_hostgroup_assignment_clones(configgroup_pk, zabbixhostgroup_pk):
+    DeleteHostGroupAssignmentClonesJob(configgroup_pk=configgroup_pk, zabbixhostgroup_pk=zabbixhostgroup_pk).run()
 
 
 @job('low')
